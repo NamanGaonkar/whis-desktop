@@ -29,17 +29,14 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Build dependencies
-        run: npm run build:server-deps
+      - name: Build Server
+        run: npm run build:server
 
       - name: Lint
         run: npx oxlint
 
       - name: Typecheck
         run: npm run typecheck
-
-      - name: Build Server
-        run: npm run build:server
 
       - name: Build Desktop Main
         run: npm run build:main --workspace=whis-desktop
