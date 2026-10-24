@@ -1,6 +1,6 @@
 {
   "name": "whis",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "private": true,
   "description": "Paseo: voice-controlled development environment for local AI coding agents",
   "keywords": [
@@ -47,7 +47,6 @@
     "test:e2e:composer-keyboard:android": "./packages/app/e2e/mobile/composer-keyboard/android.sh",
     "dev:website": "npm run dev --workspace=@getpaseo/website",
     "postinstall": "node scripts/postinstall-patches.mjs",
-    
     "build": "npm run build --workspaces --if-present",
     "build:apk": "node scripts/build-apk.mjs",
     "build:apk:arm64": "node scripts/build-apk.mjs arm64",
@@ -158,4 +157,3 @@
     "react-native-worklets": "0.10.1"
   }
 }
-

@@ -20,6 +20,7 @@ Whis is an open developer platform and desktop environment to orchestrate, super
 ## Supported Agents
 
 Whis orchestrates leading AI coding agents:
+
 - Claude Code
 - Codex
 - GitHub Copilot CLI
@@ -33,6 +34,7 @@ Whis orchestrates leading AI coding agents:
 ## Desktop App
 
 The desktop application provides an integrated environment with automatic daemon supervision:
+
 - Download the installer or portable executable from the Releases page.
 - Launch the application to start the local workspace and daemon automatically.
 - Open Settings to configure providers, API keys, and workspace environments.
@@ -64,7 +66,7 @@ Run the Whis daemon and web interface in Docker:
 
 ```bash
 docker run -d --name whis \
-  -p 6767:6767 \
+  -p 6868:6868 \
   -e WHIS_PASSWORD=change-me \
   -v "$PWD/whis-home:/home/whis" \
   -v "$PWD:/workspace" \
@@ -80,13 +82,13 @@ Build integrations, dashboards, and automated services with `@whis/client`:
 ```ts
 import { createWhisClient } from "@whis/client";
 
-const client = createWhisClient({ url: "ws://127.0.0.1:6767/ws" });
+const client = createWhisClient({ url: "ws://127.0.0.1:6868/ws" });
 await client.connect();
 
 const agent = await client.agents.create({
   config: { provider: "whis" },
   cwd: process.cwd(),
-  prompt: "Review the current diff and summarize changes."
+  prompt: "Review the current diff and summarize changes.",
 });
 
 const result = await agent.waitForFinish();

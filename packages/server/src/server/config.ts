@@ -35,7 +35,7 @@ export {
   type PersistedConfig,
 } from "./persisted-config.js";
 
-const DEFAULT_PORT = 6767;
+const DEFAULT_PORT = 6868;
 const DEFAULT_RELAY_ENDPOINT = "relay.paseo.sh:443";
 const DEFAULT_APP_BASE_URL = "https://app.paseo.sh";
 const DEFAULT_TRUSTED_PROXIES = ["loopback"];
@@ -485,9 +485,10 @@ function resolveListenAddress(
 ): string {
   return (
     cli?.listen ??
+    env.WHIS_LISTEN ??
     env.PASEO_LISTEN ??
     persisted.daemon?.listen ??
-    `127.0.0.1:${env.PORT ?? DEFAULT_PORT}`
+    `127.0.0.1:${env.WHIS_PORT ?? env.PORT ?? DEFAULT_PORT}`
   );
 }
 

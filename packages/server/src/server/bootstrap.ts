@@ -675,7 +675,7 @@ export async function createPaseoDaemon(
   // pattern.
   const agentMcpAuthToken = randomUUID();
 
-  const listenTarget = parseListenString(config.listen);
+  let listenTarget = parseListenString(config.listen);
 
   const app = express();
   app.set("trust proxy", resolveExpressTrustProxySetting(config));
@@ -1689,7 +1689,30 @@ export async function createPaseoDaemon(
 
       // Start main HTTP server
       await new Promise<void>((resolve, reject) => {
-        const onError = (err: Error) => {
+        let listenAttempt = 0;
+        const onError = (err: unknown) => {
+          const errCode = (err as { code?: string } | null | undefined)?.code;
+          if (
+            listenTarget.type === "tcp" &&
+            (errCode === "EACCES" || errCode === "EADDRINUSE") &&
+            !process.env.WHIS_LISTEN &&
+            !process.env.PASEO_LISTEN &&
+            !process.env.WHIS_PORT &&
+            !process.env.PORT &&
+            listenAttempt < 10
+          ) {
+            listenAttempt++;
+            const nextPort = listenTarget.port + 1;
+            logger.warn(
+              { err, attemptedPort: listenTarget.port, nextPort },
+              "Daemon listen port unavailable, trying fallback port",
+            );
+            listenTarget = { ...listenTarget, port: nextPort };
+            httpServer.once("error", onError);
+            httpServer.once("listening", onListening);
+            httpServer.listen(listenTarget.port, listenTarget.host);
+            return;
+          }
           httpServer.off("listening", onListening);
           reject(err);
         };

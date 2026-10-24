@@ -312,7 +312,12 @@ async function startDaemon(): Promise<DesktopDaemonStatus> {
       home,
       timeoutMs: 30_000,
       ...invocation,
-      env: { ...invocation.env, PASEO_CLI: getBundledCliShimPath() },
+      env: {
+        ...invocation.env,
+        PASEO_CLI: getBundledCliShimPath(),
+        WHIS_HOME: home,
+        PASEO_HOME: home,
+      },
       mode: "managed",
       desktopManaged: true,
       onAcquired: (instance) => {
@@ -477,6 +482,11 @@ export function createDaemonCommandHandlers(): Record<string, DesktopCommandHand
 export function registerDaemonManager(): void {
   const handlers = createDaemonCommandHandlers();
 
+  ipcMain.handle("whis:invoke", async (_e, c: string, a?: Record<string, unknown>) => {
+    const h = handlers[c];
+    if (!h) throw new Error(`Unknown desktop command: ${c}`);
+    return await h(a);
+  });
   ipcMain.handle(
     "paseo:invoke",
     async (_event, command: string, args?: Record<string, unknown>) => {

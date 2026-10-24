@@ -457,7 +457,7 @@ export function buildDarkSemanticColors(tint: DarkThemeConfig) {
 // ---------------------------------------------------------------------------
 
 // Paseo â€” subtle teal-green tint (default)
-// Whis — Deep Obsidian with Warm Amber Glow (default)
+// Whis ï¿½ Deep Obsidian with Warm Amber Glow (default)
 const whisDarkColors = buildDarkSemanticColors({
   surface0: "#0F0D0B",
   surface1: "#181410",
