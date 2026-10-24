@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, Text, View, type PressableStateCallbackType } from "react-native";
 import { StyleSheet, useUnistyles } from "react-native-unistyles";
 import { ChevronRight } from "lucide-react-native";
@@ -24,6 +24,13 @@ interface HostProject {
 export default function ProjectsScreen({ serverId }: ProjectsScreenProps) {
   const { t } = useTranslation();
   const { projects, hostErrors, isLoading } = useProjects();
+  const [timedOut, setTimedOut] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setTimedOut(true), 2500);
+    return () => clearTimeout(timer);
+  }, []);
+
   const hostProjects = useMemo<HostProject[]>(
     () =>
       projects.flatMap((project) =>
@@ -49,7 +56,7 @@ export default function ProjectsScreen({ serverId }: ProjectsScreenProps) {
     projects: iconTargets,
   });
 
-  if (isLoading && hostProjects.length === 0) {
+  if (isLoading && hostProjects.length === 0 && !timedOut) {
     return (
       <View style={styles.centered} testID="projects-list">
         <LoadingSpinner size="large" color={styles.spinnerColor.color} />

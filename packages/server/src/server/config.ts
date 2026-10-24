@@ -521,11 +521,14 @@ function resolveWorktreesRoot(
 }
 
 function resolveAppendSystemPrompt(persisted: ReturnType<typeof loadPersistedConfig>): string {
-  return persisted.daemon?.appendSystemPrompt ?? "";
+  return (
+    persisted.daemon?.appendSystemPrompt ??
+    "You are Whis, an AI coding assistant. You maintain cross-chat memory and context about the user's workspace, code architecture, decisions, and preferences. Remember important patterns, user instructions, and project conventions across sessions and chat histories."
+  );
 }
 
 function resolveBrowserToolsEnabled(persisted: ReturnType<typeof loadPersistedConfig>): boolean {
-  return persisted.daemon?.browserTools?.enabled ?? false;
+  return persisted.daemon?.browserTools?.enabled ?? true;
 }
 
 /**

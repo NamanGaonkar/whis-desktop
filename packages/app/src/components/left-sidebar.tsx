@@ -425,6 +425,7 @@ function SidebarFooter({
   handleOpenHostSettings: (serverId: string) => void;
   onBeforeNavigate?: () => void;
 }) {
+  const hosts = useHosts();
   const newAgentKeys = useShortcutKeys("new-agent");
   const settingsKeys = useShortcutKeys("toggle-settings");
 
@@ -442,11 +443,13 @@ function SidebarFooter({
             shortcutKeys={newAgentKeys}
           />
           <SidebarUsageIcon label={labels.usage} />
-          <SidebarHostPicker
-            label={labels.hosts}
-            onAddHost={handleAddHost}
-            onOpenHostSettings={handleOpenHostSettings}
-          />
+          {hosts.length > 1 ? (
+            <SidebarHostPicker
+              label={labels.hosts}
+              onAddHost={handleAddHost}
+              onOpenHostSettings={handleOpenHostSettings}
+            />
+          ) : null}
           <View style={styles.footerSpacer} />
           <SidebarHelpMenu />
           <FooterIconButton

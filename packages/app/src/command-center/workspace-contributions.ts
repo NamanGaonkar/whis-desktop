@@ -545,17 +545,6 @@ function buildCreationContributions(
   ];
   const primary = source.gitActions.primary;
   if (primary) contributions.push(buildGitContribution(source, primary, 1, "always"));
-  contributions.push(
-    buildQueryAction(source, {
-      id: "tab:new-terminal",
-      rank: 2,
-      title: source.labels.newTerminal,
-      keywords: ["terminal", "shell", "console"],
-      icon: source.icons.newTerminal,
-      shortcutKeys: source.shortcuts.newTerminal,
-      action: { id: "workspace.terminal.new", scope: "workspace" },
-    }),
-  );
   if (source.capabilities.canOpenBrowserTabs) {
     contributions.push(
       buildQueryAction(source, {

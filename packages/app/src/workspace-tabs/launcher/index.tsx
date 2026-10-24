@@ -6,19 +6,15 @@ import {
   type ComponentType,
   type ReactNode,
 } from "react";
-import { useRouter, type Href } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Globe, SquarePen, SquareTerminal } from "lucide-react-native";
 import invariant from "tiny-invariant";
 import { useIsCompactFormFactor } from "@/constants/layout";
-import { useDaemonConfig } from "@/hooks/use-daemon-config";
 import { pluginIconComponent } from "@/plugins/icons";
 import { useInstalledPlugins } from "@/plugins/registry";
 import { pluginPanelSupportsLocation } from "@/plugins/workspace-panels/locations";
-import { buildSettingsHostSectionRoute } from "@/utils/host-routes";
 import type { NewTabSelection } from "@/workspace-tabs/new-tab";
 import type { WorkspaceTabTarget } from "@/workspace-tabs/model";
-import type { TerminalProfile } from "@getpaseo/protocol/messages";
 import { panelCanLaunchInPane, panelSupportsHost, type PaneHost } from "@/panels/panel-manifest";
 import {
   getPanelRegistration,
@@ -26,10 +22,6 @@ import {
   type PanelPresentation,
 } from "@/panels/panel-registry";
 import { ensurePanelsRegistered } from "@/panels/register-panels";
-import {
-  getTerminalProfileIcon,
-  resolveTerminalProfiles,
-} from "@getpaseo/protocol/terminal-profiles";
 import { getBuiltInLaunchOrder, type BuiltInLaunchItemId } from "./internal/catalog";
 
 export type WorkspaceTabLaunchPurpose = "primary" | "supporting";
@@ -103,10 +95,8 @@ export function useWorkspaceTabLaunchCatalog(input: {
 }): readonly WorkspaceTabLaunchGroup[] {
   const { serverId, purpose, host, surface, panePanelKinds = EMPTY_PANE_PANEL_KINDS } = input;
   const { t } = useTranslation();
-  const router = useRouter();
   const launcher = useContext(NewTabLauncherContext);
   invariant(launcher, "NewTabLauncherProvider is required");
-  const { config } = useDaemonConfig(serverId);
   const plugins = useInstalledPlugins();
   const isCompact = useIsCompactFormFactor();
   ensurePanelsRegistered();
@@ -117,9 +107,6 @@ export function useWorkspaceTabLaunchCatalog(input: {
     },
     [launcher],
   );
-  const editTerminalProfiles = useCallback(() => {
-    router.push(buildSettingsHostSectionRoute(serverId, "terminals") as Href);
-  }, [router, serverId]);
 
   return useMemo(() => {
     const changesPresentation = getLaunchPresentation("changes_tree");
@@ -141,8 +128,9 @@ export function useWorkspaceTabLaunchCatalog(input: {
         label: t("workspace.tabs.fallback.terminal"),
         Icon: SquareTerminal,
         shortcutActionId: "workspace-terminal-new",
-        disabled: launcher.terminalDisabled,
+        disabled: true,
         panelKind: "terminal",
+        hidden: true,
         launch: launchSelection(BUILT_IN_SELECTIONS.terminal),
       },
       changes: {
@@ -181,7 +169,6 @@ export function useWorkspaceTabLaunchCatalog(input: {
         shortcutActionId: "workspace-tab-target-browser",
         disabled: false,
         panelKind: "browser",
-        hidden: !launcher.showBrowser,
         launch: launchSelection(BUILT_IN_SELECTIONS.browser),
       },
       pullRequest: {
@@ -220,31 +207,11 @@ export function useWorkspaceTabLaunchCatalog(input: {
         });
       }
     }
-
-    const profiles = resolveTerminalProfiles(config?.terminalProfiles);
     const groups: WorkspaceTabLaunchGroup[] = [{ id: "tabs", label: null, items: tabItems }];
     if (pluginItems.length > 0) {
       groups.push({ id: "plugin-panels", label: null, items: pluginItems });
     }
-    if (profiles.length > 0) {
-      groups.push({
-        id: "terminal-profiles",
-        label: t("workspace.tabs.actions.terminalProfilesMenu"),
-        items: profiles.map((profile: TerminalProfile) => ({
-          id: `terminal-profile:${profile.id}`,
-          label: profile.name,
-          terminalIconKey: getTerminalProfileIcon(profile),
-          disabled: launcher.terminalDisabled,
-          panelKind: "terminal",
-          launch: launchSelection({ kind: "terminal", profile }),
-        })),
-        accessory: {
-          id: "edit-terminal-profiles",
-          label: t("workspace.tabs.actions.editTerminalProfiles"),
-          run: editTerminalProfiles,
-        },
-      });
-    }
+    // Terminal profiles disabled in Whis Desktop
     if (surface !== "menu") return groups;
     return groups.flatMap((group) => {
       const items = group.items.filter((item) =>
@@ -253,8 +220,6 @@ export function useWorkspaceTabLaunchCatalog(input: {
       return items.length > 0 ? [{ ...group, items }] : [];
     });
   }, [
-    config?.terminalProfiles,
-    editTerminalProfiles,
     isCompact,
     launchSelection,
     launcher,

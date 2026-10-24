@@ -4,8 +4,8 @@ import { useTranslation } from "react-i18next";
 import { View, Text, Pressable, ScrollView } from "react-native";
 import { StyleSheet, useUnistyles } from "react-native-unistyles";
 import { useRouter } from "expo-router";
-import { FolderOpen, Inbox, Plug, Smartphone } from "lucide-react-native";
-import { PaseoLogo } from "@/components/icons/paseo-logo";
+import { FolderOpen, Inbox, Plug } from "lucide-react-native";
+import { WhisLogo } from "@/components/icons/paseo-logo";
 import { CommunityLinks } from "@/components/community-links";
 import { MenuHeader } from "@/components/headers/menu-header";
 import { useOpenAddProject } from "@/hooks/use-open-add-project";
@@ -19,7 +19,6 @@ import {
   HEADER_TOP_PADDING_MOBILE,
 } from "@/constants/layout";
 import { useLocalDaemonServerId } from "@/hooks/use-is-local-daemon";
-import { PairDeviceModal } from "@/desktop/components/pair-device-modal";
 import { buildSettingsHostSectionRoute } from "@/utils/host-routes";
 
 const WINDOW_CONTENT_DATASET = { "window-content": "" };
@@ -33,7 +32,6 @@ export function OpenProjectScreen() {
   const importSession = useImportSession();
   const chooseHost = useHostChooser();
   const localServerId = useLocalDaemonServerId();
-  const [isPairDeviceOpen, setIsPairDeviceOpen] = useState(false);
 
   const isCompactLayout = useIsCompactFormFactor();
 
@@ -47,17 +45,19 @@ export function OpenProjectScreen() {
     void openProjectPicker();
   }, [openProjectPicker]);
 
-  const handleOpenPairDevice = useCallback(() => setIsPairDeviceOpen(true), []);
-  const handleClosePairDevice = useCallback(() => setIsPairDeviceOpen(false), []);
-
   const handleOpenProviders = useCallback(() => {
+    const targetServerId = localServerId ?? hosts[0]?.serverId;
+    if (targetServerId) {
+      router.push(buildSettingsHostSectionRoute(targetServerId, "providers"));
+      return;
+    }
     chooseHost({
       title: "Choose host",
       onChooseHost: (serverId) => {
         router.push(buildSettingsHostSectionRoute(serverId, "providers"));
       },
     });
-  }, [chooseHost, router]);
+  }, [chooseHost, hosts, localServerId, router]);
 
   return (
     <View style={styles.container}>
@@ -69,7 +69,7 @@ export function OpenProjectScreen() {
       >
         <View style={styles.content}>
           <View style={styles.logo}>
-            <PaseoLogo size={52} />
+            <WhisLogo size={52} />
           </View>
           {hosts.map((host) => (
             <HostError key={host.serverId} serverId={host.serverId} label={host.label} />
@@ -97,27 +97,12 @@ export function OpenProjectScreen() {
               onPress={handleOpenProviders}
               testID="open-project-setup-providers"
             />
-            {localServerId ? (
-              <HomeTile
-                icon={Smartphone}
-                title={t("openProject.tiles.pairDevice.title")}
-                description={t("openProject.tiles.pairDevice.description")}
-                onPress={handleOpenPairDevice}
-                testID="open-project-pair-device"
-              />
-            ) : null}
           </View>
         </View>
         <View style={styles.communityRow}>
           <CommunityLinks />
         </View>
       </ScrollView>
-      <PairDeviceModal
-        serverId={localServerId ?? ""}
-        visible={isPairDeviceOpen}
-        onClose={handleClosePairDevice}
-        testID="open-project-pair-device-modal"
-      />
       {importSession.sheet}
     </View>
   );

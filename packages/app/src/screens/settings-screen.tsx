@@ -19,8 +19,6 @@ import {
   ArrowLeft,
   Settings,
   Palette,
-  Server,
-  Network,
   Bot,
   Boxes,
   Gauge,
@@ -30,15 +28,11 @@ import {
   Bell,
   Shield,
   Puzzle,
-  Plus,
   FolderGit2,
-  SquareTerminal,
   Code2,
   Files,
-  Smartphone,
   Sparkles,
   Blocks,
-  Globe,
   PanelLeft,
   MessageSquare,
   ChevronRight,
@@ -51,7 +45,6 @@ import { HostStatusDot } from "@/components/host-status-dot";
 import { SettingsSection } from "@/components/settings/headings/settings-section";
 import { AppearanceSection } from "@/screens/settings/appearance/appearance-section";
 import { OpenLocationSection } from "@/screens/settings/open-location/open-location-section";
-import { TerminalSection } from "@/screens/settings/terminal/terminal-section";
 import { ChatSection } from "@/screens/settings/chat/chat-section";
 import { SidebarNavSection } from "@/screens/settings/sidebar/sidebar-nav-section";
 import { SendingSection } from "@/screens/settings/general/sending-section";
@@ -86,7 +79,6 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { DesktopPermissionsSection } from "@/desktop/components/desktop-permissions-section";
 import { DesktopNotificationsSection } from "@/desktop/components/desktop-notifications-section";
-import { BrowserDataSection } from "@/desktop/browser/settings/browser-data-section";
 import { IntegrationsSection } from "@/desktop/components/integrations-section";
 import { isElectronRuntime } from "@/desktop/host";
 import { useDesktopAppUpdater } from "@/desktop/updates/use-desktop-app-updater";
@@ -106,13 +98,11 @@ import {
 } from "@/i18n/locales";
 import {
   HostConnectionsPage,
-  HostPairDevicePage,
   HostAgentsPage,
   HostSettingsPage,
   HostProvidersPage,
   HostUsagePage,
   HostWorkspacesPage,
-  HostTerminalsPage,
 } from "@/screens/settings/host-page";
 import { PluginSettingsContent } from "@/plugins/settings";
 import { useInstalledPlugins } from "@/plugins/registry";
@@ -167,23 +157,9 @@ const SIDEBAR_SECTION_ITEMS: SidebarSectionItem[] = [
   },
   { id: "chat", labelKey: "settings.sections.chat", icon: MessageSquare, Content: ChatSection },
   {
-    id: "terminal",
-    labelKey: "settings.sections.terminal",
-    icon: SquareTerminal,
-    Content: TerminalSection,
-  },
-  {
-    id: "browser",
-    labelKey: "settings.sections.browser",
-    icon: Globe,
-    desktopOnly: true,
-    Content: BrowserDataSection,
-  },
-  {
     id: "editor",
     labelKey: "settings.sections.editor",
     icon: Code2,
-    webOnly: true,
     Content: EditorSection,
   },
   { id: "files", labelKey: "settings.sections.files", icon: Files, Content: FilesSection },
@@ -230,17 +206,13 @@ interface HostSectionItem {
 }
 
 const HOST_SECTION_ITEMS: HostSectionItem[] = [
-  { id: "host", labelKey: "settings.hostSections.host", icon: Server },
-  { id: "projects", labelKey: "settings.hostSections.projects", icon: FolderGit2 },
-  { id: "connections", labelKey: "settings.hostSections.connections", icon: Network },
-  { id: "pair-device", labelKey: "openProject.tiles.pairDevice.title", icon: Smartphone },
-  { id: "agents", labelKey: "settings.hostSections.agents", icon: Bot },
-  { id: "metadata", labelKey: "settings.hostSections.metadata", icon: Sparkles },
-  { id: "workspaces", labelKey: "settings.hostSections.workspaces", icon: FolderGit2 },
   { id: "providers", labelKey: "settings.hostSections.providers", icon: Boxes },
-  { id: "usage", labelKey: "settings.hostSections.usage", icon: Gauge },
-  { id: "terminals", labelKey: "settings.hostSections.terminals", icon: SquareTerminal },
+  { id: "agents", labelKey: "settings.hostSections.agents", icon: Bot },
   { id: "plugins", labelKey: "settings.hostSections.plugins", icon: Blocks },
+  { id: "metadata", labelKey: "settings.hostSections.metadata", icon: Sparkles },
+  { id: "usage", labelKey: "settings.hostSections.usage", icon: Gauge },
+  { id: "projects", labelKey: "settings.hostSections.projects", icon: FolderGit2 },
+  { id: "workspaces", labelKey: "settings.hostSections.workspaces", icon: FolderGit2 },
 ];
 
 function renderHostSettingsContent(
@@ -252,8 +224,6 @@ function renderHostSettingsContent(
       return <ProjectsScreen serverId={view.serverId} />;
     case "connections":
       return <HostConnectionsPage serverId={view.serverId} />;
-    case "pair-device":
-      return <HostPairDevicePage serverId={view.serverId} />;
     case "agents":
       return <HostAgentsPage serverId={view.serverId} />;
     case "metadata":
@@ -264,8 +234,6 @@ function renderHostSettingsContent(
       return <HostProvidersPage serverId={view.serverId} />;
     case "usage":
       return <HostUsagePage serverId={view.serverId} />;
-    case "terminals":
-      return <HostTerminalsPage serverId={view.serverId} />;
     case "plugins":
       return <HostPluginsPage serverId={view.serverId} />;
     case "host":
@@ -501,7 +469,7 @@ function normalizeVersion(version: string | null | undefined): string | null {
 function ConnectedHostsSection({ clientVersion }: { clientVersion: string | null }) {
   const { t } = useTranslation();
   const hosts = useHosts();
-  if (hosts.length === 0) {
+  if (hosts.length <= 1) {
     return null;
   }
   return (
@@ -934,7 +902,6 @@ function SettingsSidebar({
   activeHostServerId,
   layout,
 }: SettingsSidebarProps) {
-  const { theme, rt } = useUnistyles();
   const { t } = useTranslation();
   const hosts = useHosts();
   const localServerId = useLocalDaemonServerId();
@@ -974,14 +941,16 @@ function SettingsSidebar({
         ))}
       </SidebarGroup>
       {hasHosts ? (
-        <SidebarGroup label={t("settings.groups.host")}>
-          <HostPicker
-            activeServerId={activeHostServerId}
-            sortedHosts={sortedHosts}
-            onSelectHost={onSelectHost}
-            onAddHost={onAddHost}
-            enableBuiltInDaemonOption={enableBuiltInDaemonOption}
-          />
+        <SidebarGroup label={sortedHosts.length > 1 ? t("settings.groups.host") : undefined}>
+          {sortedHosts.length > 1 ? (
+            <HostPicker
+              activeServerId={activeHostServerId}
+              sortedHosts={sortedHosts}
+              onSelectHost={onSelectHost}
+              onAddHost={onAddHost}
+              enableBuiltInDaemonOption={enableBuiltInDaemonOption}
+            />
+          ) : null}
           {HOST_SECTION_ITEMS.map((item) => (
             <SidebarHostSectionButton
               key={item.id}
@@ -993,44 +962,7 @@ function SettingsSidebar({
             />
           ))}
         </SidebarGroup>
-      ) : (
-        <SidebarGroup>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t("settings.addHost")}
-            onPress={onAddHost}
-            testID="settings-add-host"
-            style={sidebarItemStyle}
-          >
-            <Plus
-              size={densityIconSize(rt, "md")}
-              color={theme.colors.foregroundMuted}
-              strokeWidth={SIDEBAR_ICON_STROKE_WIDTH}
-            />
-            <Text style={sidebarStyles.label} numberOfLines={1}>
-              {t("settings.addHost")}
-            </Text>
-          </Pressable>
-          {enableBuiltInDaemonOption.visible ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t("settings.enableBuiltInDaemon")}
-              onPress={enableBuiltInDaemonOption.onPress}
-              testID="settings-enable-built-in-daemon"
-              style={sidebarItemStyle}
-            >
-              <Server
-                size={densityIconSize(rt, "md")}
-                color={theme.colors.foregroundMuted}
-                strokeWidth={SIDEBAR_ICON_STROKE_WIDTH}
-              />
-              <Text style={sidebarStyles.label} numberOfLines={1}>
-                {t("settings.enableBuiltInDaemon")}
-              </Text>
-            </Pressable>
-          ) : null}
-        </SidebarGroup>
-      )}
+      ) : null}
     </>
   );
 
@@ -1257,18 +1189,18 @@ export default function SettingsScreen({ view, openAddHostIntent = null }: Setti
 
   const handleSelectHostSection = useCallback(
     (section: HostSectionSlug) => {
-      if (!activeHostServerId) {
-        handleAddHost();
+      const targetServerId = activeHostServerId ?? localServerId ?? hosts[0]?.serverId;
+      if (!targetServerId) {
         return;
       }
-      const target = buildSettingsHostSectionRoute(activeHostServerId, section);
+      const target = buildSettingsHostSectionRoute(targetServerId, section);
       if (isCompactLayout) {
         router.push(target);
       } else {
         router.replace(target);
       }
     },
-    [activeHostServerId, handleAddHost, isCompactLayout, router],
+    [activeHostServerId, localServerId, hosts, isCompactLayout, router],
   );
 
   const handleScanQr = useCallback(() => {

@@ -13,7 +13,7 @@ import { buildSelectableProviderSelectorProviders } from "@/provider-selection/p
 import { SettingsSection } from "@/components/settings/headings/settings-section";
 import { settingsStyles } from "@/styles/settings";
 
-const METADATA_GENERATION_DOCS_URL = "https://paseo.sh/docs/metadata-generation";
+const METADATA_GENERATION_DOCS_URL = "https://github.com/NamanGaonkar/whis-desktop";
 type SelectionMode = "automatic" | "preferred";
 
 export function MetadataGenerationPage({ serverId }: { serverId: string }) {
@@ -24,8 +24,18 @@ export function MetadataGenerationPage({ serverId }: { serverId: string }) {
     () => buildSelectableProviderSelectorProviders(snapshot.entries),
     [snapshot.entries],
   );
-  const configuredProviders = config?.metadataGeneration.providers;
-  const configuredProvider = configuredProviders?.[0] ?? null;
+
+  const [timedOut, setTimedOut] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setTimedOut(true), 2500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const configuredProviders = useMemo(
+    () => config?.metadataGeneration?.providers ?? [],
+    [config?.metadataGeneration?.providers],
+  );
+  const configuredProvider = configuredProviders[0] ?? null;
   const savedMode: SelectionMode = configuredProvider ? "preferred" : "automatic";
   const [draftMode, setDraftMode] = useState<SelectionMode | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -76,7 +86,7 @@ export function MetadataGenerationPage({ serverId }: { serverId: string }) {
       setDraftMode("preferred");
       void saveProviders([
         { provider, ...(model ? { model } : {}) },
-        ...(configuredProviders?.slice(1) ?? []),
+        ...(configuredProviders.slice(1) ?? []),
       ]);
     },
     [configuredProviders, saveProviders],
@@ -99,7 +109,7 @@ export function MetadataGenerationPage({ serverId }: { serverId: string }) {
     [t],
   );
 
-  if (isConfigLoading || !config) {
+  if (isConfigLoading && !config && !timedOut) {
     return (
       <View style={styles.loading}>
         <LoadingSpinner size="large" color={styles.spinnerColor.color} />
