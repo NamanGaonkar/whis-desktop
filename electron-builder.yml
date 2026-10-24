@@ -1,0 +1,70 @@
+appId: com.whis.desktop
+productName: Whis
+copyright: Copyright © 2026 Whis Team
+
+publish:
+  provider: github
+  owner: NamanGaonkar
+  repo: whis-desktop
+
+releaseInfo:
+  releaseNotesFile: RELEASE.md
+
+# Hooks
+afterPack: tools/after-pack.cjs
+
+directories:
+  output: dist
+  buildResources: build
+
+files:
+  - out/**
+  - package.json
+  - "!**/*.{ts,tsx,map}"
+
+# Native dependencies MUST be unpacked from the .asar archive
+asarUnpack:
+  - "**/node_modules/node-pty/**"
+  - "**/node_modules/better-sqlite3/**"
+
+npmRebuild: false
+
+# ---- Windows ----
+win:
+  icon: build/icon.ico
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  artifactName: ${productName}-${version}-win-x64-setup.exe
+  shortcutName: Whis
+
+portable:
+  artifactName: ${productName}-${version}-win-x64-portable.exe
+
+# ---- macOS ----
+mac:
+  category: public.app-category.developer-tools
+  icon: build/icon.png
+  hardenedRuntime: true
+  target:
+    - target: dmg
+      arch: [universal]
+    - target: zip
+      arch: [universal]
+  artifactName: ${productName}-${version}-mac-${arch}.${ext}
+
+# ---- Linux ----
+linux:
+  category: Development
+  icon: build/icon.png
+  target:
+    - target: AppImage
+      arch: [x64]
+  artifactName: ${productName}-${version}-linux-x86_64.AppImage
