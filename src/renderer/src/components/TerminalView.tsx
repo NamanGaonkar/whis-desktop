@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
-import { WebglAddon } from '@xterm/addon-webgl';
 import '@xterm/xterm/css/xterm.css';
 import { RotateCw, Trash2, Copy, ZoomIn, ZoomOut } from 'lucide-react';
 import { useThemeStore } from '../stores/themeStore';
@@ -24,6 +23,9 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ sessionId }) => {
   useEffect(() => {
     if (!containerRef.current) return;
 
+    // Clear any previous child DOM elements to avoid duplicate xterm canvas/DOM mounts
+    containerRef.current.innerHTML = '';
+
     const currentTheme = theme === 'light' ? TERMINAL_THEMES.light : TERMINAL_THEMES.dark;
 
     const term = new Terminal({
@@ -42,15 +44,28 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ sessionId }) => {
 
     term.open(containerRef.current);
 
-    try {
-      const webgl = new WebglAddon();
-      webgl.onContextLoss(() => webgl.dispose());
-      term.loadAddon(webgl);
-    } catch {
-      // Graceful fallback to canvas/DOM renderer
-    }
+    const safeFit = () => {
+      try {
+        if (
+          containerRef.current &&
+          containerRef.current.clientWidth > 0 &&
+          containerRef.current.clientHeight > 0
+        ) {
+          fitAddon.fit();
+          if (term.cols > 0 && term.rows > 0) {
+            window.whis?.resizePty(sessionId, term.cols, term.rows);
+          }
+        }
+      } catch {
+        // Suppress layout race errors
+      }
+    };
 
-    fitAddon.fit();
+    // Initial safe fit after microtask layout
+    requestAnimationFrame(() => {
+      safeFit();
+    });
+
     termRef.current = term;
     fitAddonRef.current = fitAddon;
 
@@ -77,39 +92,54 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ sessionId }) => {
         id: sessionId,
         command: 'whis',
         cwd: cwd || undefined,
-        cols: term.cols,
-        rows: term.rows
+        cols: term.cols || 80,
+        rows: term.rows || 24
       })
       .then((res) => {
         if (!res?.success) {
-          term.writeln(`\r\n\x1b[31m[Error launching Whis CLI: ${res?.error || 'Unknown error'}]\x1b[0m\r\n`);
-          term.writeln(`\x1b[90mEnsure 'whis' is installed and in PATH or select workspace folder.\x1b[0m\r\n`);
+          term.writeln(`\r\n\x1b[31m[Whis CLI status: ${res?.error || 'Unknown error'}]\x1b[0m\r\n`);
+          term.writeln(`\x1b[90mEnsure 'whis' is installed in PATH. Use Quick Actions or type commands below.\x1b[0m\r\n`);
           setAgentStatus('idle');
         }
+      })
+      .catch((err) => {
+        term.writeln(`\r\n\x1b[31m[Terminal Error: ${err?.message || err}]\x1b[0m\r\n`);
+        setAgentStatus('idle');
       });
 
-    // Auto-fit terminal on resize
+    // Auto-fit terminal on resize with debounce
+    let resizeTimer: any = null;
     const resizeObserver = new ResizeObserver(() => {
-      try {
-        fitAddon.fit();
-        if (term.cols > 0 && term.rows > 0) {
-          window.whis?.resizePty(sessionId, term.cols, term.rows);
-        }
-      } catch {
-        // Suppress layout race errors
-      }
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        safeFit();
+      }, 50);
     });
 
     resizeObserver.observe(containerRef.current);
 
     return () => {
-      onDataDisposable.dispose();
-      unsubscribeData?.();
-      unsubscribeExit?.();
-      resizeObserver.disconnect();
-      term.dispose();
+      clearTimeout(resizeTimer);
+      try {
+        onDataDisposable.dispose();
+      } catch {}
+      try {
+        unsubscribeData?.();
+      } catch {}
+      try {
+        unsubscribeExit?.();
+      } catch {}
+      try {
+        resizeObserver.disconnect();
+      } catch {}
+      try {
+        term.dispose();
+      } catch {}
       termRef.current = null;
       fitAddonRef.current = null;
+      if (containerRef.current) {
+        containerRef.current.innerHTML = '';
+      }
     };
   }, [sessionId, cwd]);
 
@@ -127,10 +157,12 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ sessionId }) => {
     setFontSize(next);
     if (termRef.current) {
       termRef.current.options.fontSize = next;
-      fitAddonRef.current?.fit();
-      if (termRef.current.cols > 0 && termRef.current.rows > 0) {
-        window.whis?.resizePty(sessionId, termRef.current.cols, termRef.current.rows);
-      }
+      try {
+        fitAddonRef.current?.fit();
+        if (termRef.current.cols > 0 && termRef.current.rows > 0) {
+          window.whis?.resizePty(sessionId, termRef.current.cols, termRef.current.rows);
+        }
+      } catch {}
     }
   };
 
@@ -149,8 +181,8 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ sessionId }) => {
           id: sessionId,
           command: 'whis',
           cwd: cwd || undefined,
-          cols: termRef.current.cols,
-          rows: termRef.current.rows
+          cols: termRef.current.cols || 80,
+          rows: termRef.current.rows || 24
         })
         .then((res) => {
           if (!res?.success) {

@@ -1,11 +1,21 @@
 import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
 import { join } from 'node:path';
-import { existsSync } from 'node:fs';
+import { existsSync, appendFileSync, writeFileSync } from 'node:fs';
 import { spawnAgentPty, writeAgentPty, resizeAgentPty, killAgentPty, killAllPtys } from './pty';
 import { getProviders, saveProviders, setActiveProvider, getActiveProvider } from './providers';
 import { getKV, setKV, getAllSessions, saveSessionRecord, deleteSessionRecord } from './db';
 import { checkGitHubUpdate } from './updater';
 import { PtySpawnOptions, ProviderConfig, AppTheme, SessionRecord } from '../shared/types';
+
+const debugLogPath = join(app.getPath('userData'), 'whis-debug.log');
+function logDebug(...args: any[]) {
+  const line = `[${new Date().toISOString()}] ` + args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ') + '\n';
+  try {
+    appendFileSync(debugLogPath, line);
+  } catch {}
+  console.log(line);
+}
+logDebug('Main process starting up. Argv:', process.argv);
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -28,6 +38,11 @@ function createWindow(): void {
     ? (existsSync(icoPath) ? icoPath : pngPath)
     : (existsSync(pngPath) ? pngPath : icoPath);
 
+  const preloadPath = join(__dirname, '../preload/index.js');
+  const indexPath = join(__dirname, '../renderer/index.html');
+  logDebug('Preload path:', preloadPath, 'exists:', existsSync(preloadPath));
+  logDebug('Renderer index path:', indexPath, 'exists:', existsSync(indexPath));
+
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 840,
@@ -39,20 +54,43 @@ function createWindow(): void {
     icon: existsSync(windowIcon) ? windowIcon : undefined,
     show: false,
     webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
+      preload: preloadPath,
       sandbox: false,
       contextIsolation: true,
       nodeIntegration: false
     }
   });
 
-  mainWindow.on('ready-to-show', () => {
+  mainWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+    logDebug(`[Renderer Console][lvl ${level}] ${message} (${sourceId}:${line})`);
+  });
+
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+    logDebug(`[Renderer Fail Load] Code ${errorCode}: ${errorDescription} on ${validatedURL}`);
+  });
+
+  mainWindow.webContents.on('render-process-gone', (_event, details) => {
+    logDebug('[Renderer Process Gone]', details);
+  });
+
+  mainWindow.once('ready-to-show', () => {
+    logDebug('mainWindow ready-to-show triggered.');
     mainWindow?.show();
+    mainWindow?.focus();
     // Check for updates 3 seconds after startup
     setTimeout(() => {
       checkGitHubUpdate(mainWindow);
     }, 3000);
   });
+
+  // Guarantee window is displayed even if ready-to-show fires prematurely
+  setTimeout(() => {
+    if (mainWindow && !mainWindow.isVisible()) {
+      logDebug('Safety fallback: forcing mainWindow to show.');
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  }, 800);
 
   // Open external links in default browser
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -62,9 +100,13 @@ function createWindow(): void {
 
   // Load URL
   if (process.env.ELECTRON_RENDERER_URL) {
+    logDebug('Loading ELECTRON_RENDERER_URL:', process.env.ELECTRON_RENDERER_URL);
     mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
+    logDebug('Loading local file:', indexPath);
+    mainWindow.loadFile(indexPath).catch(err => {
+      logDebug('Failed to load file:', err);
+    });
   }
 }
 
