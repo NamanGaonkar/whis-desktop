@@ -1,12 +1,11 @@
 <div align="center">
-  <img src="./logo.jpg" alt="Whis Desktop Logo" width="140" style="border-radius: 22px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);" />
-  <h1>Whis Desktop</h1>
-  <p><strong>Production Desktop Terminal and Workspace for the Whis CLI Agent</strong></p>
+  <img src="./logo.jpg" alt="Whis Logo" width="140" style="border-radius: 22px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);" />
+  <h1>Whis</h1>
+  <p><strong>Orchestrate multiple coding agents from desktop, terminal, and mobile</strong></p>
   <p>
-    <a href="https://github.com/NamanGaonkar/whis-desktop/releases/latest"><img src="https://img.shields.io/github/v/release/NamanGaonkar/whis-desktop?color=%23E8BF53&label=Version" alt="Release" /></a>
-    <a href="https://github.com/NamanGaonkar/whis-desktop/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License" /></a>
+    <a href="https://github.com/NamanGaonkar/whis-desktop/releases/latest"><img src="https://img.shields.io/github/v/release/NamanGaonkar/whis-desktop?color=%23E8BF53&label=Release" alt="Release" /></a>
+    <a href="https://github.com/NamanGaonkar/whis-desktop/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0-blue.svg" alt="License" /></a>
     <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg" alt="Platforms" />
-    <img src="https://img.shields.io/badge/Theme-Light%20%26%20Dark-amber.svg" alt="Dual Themes" />
   </p>
 </div>
 
@@ -14,106 +13,141 @@
 
 ## Overview
 
-**Whis Desktop** is a sovereign, sub-second startup desktop application engineered specifically for the **Whis** CLI coding agent. It brings a bespoke developer workspace to life with genuine pseudoterminal (ConPTY) execution, seamless dual-theme styling (Light & Dark), atomic session switching, and encrypted model provider management.
+Whis is an open developer platform and desktop environment to orchestrate, supervise, and interact with local and cloud AI coding agents. Run multiple agents in parallel across separate git worktrees, stream live terminal output with full pseudoterminal fidelity, and manage LLM providers seamlessly.
 
 ---
 
-## Features
+## Supported Agents
 
-- **Whis Logo & Visual Identity**: Integrated application icon with custom taskbar and shortcut branding derived directly from the official Whis logo.
-- **Genuine Terminal Fidelity**: Full xterm-256color and truecolor emulation powered by `node-pty` / ConPTY with sub-second input-to-render streaming and automatic layout resizing.
-- **Dual Studio Themes**:
-  - **Light Mode**: Warm golden honey palette (`#E8BF53`, `#FAF3E0`, `#B87503`).
-  - **Dark Mode**: Deep obsidian background with amber glow accents (`#0F0D0B`, `#181410`, `#F5AF28`).
-- **Comprehensive Model & Provider Management**:
-  - **Anthropic Claude**: Claude 3.7 Sonnet, Claude 3.5 Sonnet, Claude 3.5 Haiku.
-  - **OpenAI**: GPT-4o, o3-mini, GPT-4.5 Preview.
-  - **Google Gemini**: Gemini 2.0 Flash, Gemini 1.5 Pro, Thinking Exp.
-  - **DeepSeek**: DeepSeek-Chat (V3), DeepSeek-Reasoner (R1).
-  - **Groq Cloud**: Llama 3.3 70B Versatile, DeepSeek R1 Distill Llama 70B.
-  - **Local Ollama / LM Studio**: Local LLMs (`http://localhost:11434`, llama3.3, qwen2.5-coder).
-  - **OpenRouter & Custom Endpoints**: Any OpenAI-compatible gateway.
-- **OS-Level Keyring Encryption**: All API keys and provider tokens are encrypted at rest via Electron's native `safeStorage` (Windows DPAPI / macOS Keychain).
-- **Zombieless Process Supervision**: Child processes and CLI sub-tasks are terminated with tree recursion (`taskkill /F /T` on Windows) on tab close, session switch, or window exit.
-- **Quick Action Bar**: One-click pills for frequent Whis commands (`whis --mini`, `/compact`, `whis models`, `git status`, `explain codebase`).
-- **Update Notifications**: Automatic background GitHub Release checker with one-click direct update notification pill.
+Whis orchestrates leading AI coding agents and CLIs:
+- Whis CLI
+- Claude Code
+- Codex
+- GitHub Copilot CLI
+- OpenCode
+- Pi
+- Antigravity
+- Ollama & local LLMs
 
 ---
 
-## Downloads & Installation
+## Desktop App
 
-Pre-built binaries for **v1.0.0** are available on the [**Releases Page**](https://github.com/NamanGaonkar/whis-desktop/releases/latest):
-
-| Package Type | File | Description |
-| :--- | :--- | :--- |
-| **Windows Setup** | `Whis-1.0.0-win-x64-setup.exe` | Standard Windows NSIS installer with desktop shortcut |
-| **Windows Portable** | `Whis-1.0.0-win-x64-portable.exe` | Zero-install standalone executable |
-| **Windows Archive** | `Whis-v1.0.0-win-x64.zip` | Portable zipped unpacked bundle |
+The desktop application provides an integrated environment with automatic daemon supervision:
+- Download the installer or portable executable from the Releases page.
+- Launch the application to start the local workspace and daemon automatically.
+- Open Settings to configure providers, API keys, or pair mobile and web clients.
 
 ---
 
-## Development Setup
+## CLI
 
-### Prerequisites
-- [Node.js](https://nodejs.org/) v20+
-- Whis CLI installed in PATH (`whis`)
+Everything you can do in the application, you can execute directly from the terminal:
 
-### Setup & Run
 ```bash
-# Clone the repository
-git clone https://github.com/NamanGaonkar/whis-desktop.git
-cd whis-desktop
+# Run an agent on a task
+whis run --provider claude/sonnet "implement authentication"
 
-# Install dependencies
-npm install
+# Run an agent in a designated worktree
+whis run --provider openai/gpt-4o --worktree feature-auth "implement feature X"
 
-# Start Electron in development mode with hot module replacement
+# List active sessions and agents
+whis ls
+
+# Stream live terminal output
+whis attach <agent-id>
+
+# Send an instruction or follow-up to a running session
+whis send <agent-id> "run tests and fix lint errors"
+```
+
+---
+
+## Server & Daemon
+
+To run the daemon on a remote workstation, VM, or headless server:
+
+```bash
+# Start the daemon
+npm start
+```
+
+The daemon provides WebSocket APIs, MCP protocol endpoints, and encrypted session relay.
+
+---
+
+## Docker
+
+Run the Whis daemon and web interface in Docker:
+
+```bash
+docker run -d --name whis \
+  -p 6767:6767 \
+  -e WHIS_PASSWORD=change-me \
+  -v "$PWD/whis-home:/home/whis" \
+  -v "$PWD:/workspace" \
+  ghcr.io/namangaonkar/whis:latest
+```
+
+---
+
+## TypeScript SDK
+
+Build integrations, dashboards, and automated services with `@whis/client`:
+
+```ts
+import { createWhisClient } from "@whis/client";
+
+const client = createWhisClient({ url: "ws://127.0.0.1:6767/ws" });
+await client.connect();
+
+const agent = await client.agents.create({
+  config: { provider: "whis" },
+  cwd: process.cwd(),
+  prompt: "Review the current diff and summarize changes."
+});
+
+const result = await agent.waitForFinish();
+console.log(result.lastMessage);
+
+await client.close();
+```
+
+---
+
+## Development
+
+Monorepo package overview:
+
+- `packages/desktop`: Electron desktop application
+- `packages/server`: Whis daemon (agent process orchestration, WebSocket API, MCP server)
+- `packages/app`: Expo cross-platform client (desktop web, iOS, Android)
+- `packages/cli`: `whis` CLI for daemon and agent workflows
+- `packages/client`: TypeScript client SDK
+- `packages/protocol`: Wire protocol contracts and schemas
+- `packages/relay`: Relay transport and encryption
+- `packages/website`: Marketing site and documentation
+
+Common commands:
+
+```bash
+# Run local development services
 npm run dev
-```
 
-### Packaging
-```bash
-# Build production bundle
-npm run build
+# Run individual packages
+npm run dev:server
+npm run dev:app
+npm run dev:desktop
 
-# Package Windows NSIS installer and portable executable
-npm run package:win
+# Build server and client packages
+npm run build:server
 
-# Deploy locally to %LOCALAPPDATA%\Programs\Whis with desktop shortcut
-npm run deploy:local
-```
-
----
-
-## Architecture
-
-```
-whis-desktop/
-├── logo.jpg                   # Official Whis brand logo
-├── src/
-│   ├── main/                  # Electron Main Process (Node 20+)
-│   │   ├── index.ts           # Window lifecycle, frameless window, IPC registry
-│   │   ├── pty.ts             # PTY supervisor (node-pty / ConPTY)
-│   │   ├── procKill.ts        # Recursive process tree supervisor
-│   │   ├── shellEnv.ts        # System & user PATH detection
-│   │   ├── db.ts              # Atomic persistent KV & session storage
-│   │   ├── providers.ts       # Secure provider & safeStorage encryption
-│   │   └── updater.ts         # GitHub Release update notifier
-│   ├── preload/               # ContextBridge safe IPC API
-│   │   ├── index.ts
-│   │   └── index.d.ts
-│   ├── renderer/              # React 18 + TypeScript + Vite
-│   │   ├── src/
-│   │   │   ├── design/        # Light & Dark design tokens
-│   │   │   ├── components/    # TitleBar, TerminalView, ProviderModal, QuickPromptBar
-│   │   │   └── stores/        # Zustand state (agentStore, providerStore, themeStore)
-│   │   └── index.html
-│   └── shared/                # Cross-process TypeScript contracts
-└── tools/                     # Packaging, PE icon patcher & local deployment scripts
+# Run type checks across monorepo
+npm run typecheck
 ```
 
 ---
 
 ## License
 
-MIT © [Whis Team](LICENSE)
+Apache-2.0 © [Whis Team](LICENSE)
