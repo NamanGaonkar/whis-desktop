@@ -483,11 +483,17 @@ function resolveListenAddress(
   cli: CliConfigOverrides | undefined,
   persisted: ReturnType<typeof loadPersistedConfig>,
 ): string {
+  const persistedListen = persisted.daemon?.listen;
+  const normalizedPersistedListen =
+    persistedListen === "127.0.0.1:6767" || persistedListen === "localhost:6767"
+      ? `127.0.0.1:${DEFAULT_PORT}`
+      : persistedListen;
+
   return (
     cli?.listen ??
     env.WHIS_LISTEN ??
     env.PASEO_LISTEN ??
-    persisted.daemon?.listen ??
+    normalizedPersistedListen ??
     `127.0.0.1:${env.WHIS_PORT ?? env.PORT ?? DEFAULT_PORT}`
   );
 }
