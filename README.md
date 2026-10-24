@@ -12,13 +12,13 @@
 
 ---
 
-## ⚡ Overview
+## Overview
 
 **Whis Desktop** is a sovereign, sub-second startup desktop application engineered specifically for the **Whis** CLI coding agent. It brings a bespoke developer workspace to life with genuine pseudoterminal (ConPTY) execution, seamless dual-theme styling (Light & Dark), atomic session switching, and encrypted model provider management.
 
 ---
 
-## ✨ Features
+## Features
 
 - **Whis Logo & Visual Identity**: Integrated application icon with custom taskbar and shortcut branding derived directly from the official Whis logo.
 - **Genuine Terminal Fidelity**: Full xterm-256color and truecolor emulation powered by `node-pty` / ConPTY with sub-second input-to-render streaming and automatic layout resizing.
@@ -40,7 +40,7 @@
 
 ---
 
-## 📥 Downloads & Installation
+## Downloads & Installation
 
 Pre-built binaries for **v1.0.0** are available on the [**Releases Page**](https://github.com/NamanGaonkar/whis-desktop/releases/latest):
 
@@ -52,7 +52,7 @@ Pre-built binaries for **v1.0.0** are available on the [**Releases Page**](https
 
 ---
 
-## 🚀 Development Setup
+## Development Setup
 
 ### Prerequisites
 - [Node.js](https://nodejs.org/) v20+
@@ -85,7 +85,7 @@ npm run deploy:local
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 whis-desktop/
@@ -114,6 +114,6 @@ whis-desktop/
 
 ---
 
-## 📄 License
+## License
 
 MIT © [Whis Team](LICENSE)
