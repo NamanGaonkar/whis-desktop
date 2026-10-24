@@ -534,7 +534,11 @@ function normalizeStoredConnection(connection: StoredHostConnection): HostConnec
   if (connection.type === "routed") return connection;
   if (connection.type === "directTcp") {
     try {
-      const endpoint = normalizeLoopbackToLocalhost(normalizeHostPort(connection.endpoint));
+      let rawEndpoint = connection.endpoint;
+      if (rawEndpoint === "localhost:6767" || rawEndpoint === "127.0.0.1:6767") {
+        rawEndpoint = "127.0.0.1:6868";
+      }
+      const endpoint = normalizeLoopbackToLocalhost(normalizeHostPort(rawEndpoint));
       const parsed = DirectTcpHostConnectionSchema.parse({
         id: `direct:${endpoint}`,
         type: "directTcp",

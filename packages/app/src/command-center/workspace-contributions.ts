@@ -545,18 +545,6 @@ function buildCreationContributions(
   ];
   const primary = source.gitActions.primary;
   if (primary) contributions.push(buildGitContribution(source, primary, 1, "always"));
-  if (source.capabilities.canOpenBrowserTabs) {
-    contributions.push(
-      buildQueryAction(source, {
-        id: "tab:new-browser",
-        rank: 3,
-        title: source.labels.newBrowser,
-        keywords: ["browser", "web", "preview"],
-        icon: source.icons.newBrowser,
-        action: { id: "workspace.browser.new", scope: "workspace" },
-      }),
-    );
-  }
   return contributions;
 }
 

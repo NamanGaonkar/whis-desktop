@@ -167,8 +167,9 @@ export function useWorkspaceTabLaunchCatalog(input: {
         label: t("workspace.tabs.fallback.browser"),
         Icon: Globe,
         shortcutActionId: "workspace-tab-target-browser",
-        disabled: false,
+        disabled: true,
         panelKind: "browser",
+        hidden: true,
         launch: launchSelection(BUILT_IN_SELECTIONS.browser),
       },
       pullRequest: {

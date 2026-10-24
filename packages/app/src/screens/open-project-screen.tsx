@@ -10,7 +10,6 @@ import { CommunityLinks } from "@/components/community-links";
 import { MenuHeader } from "@/components/headers/menu-header";
 import { useOpenAddProject } from "@/hooks/use-open-add-project";
 import { useImportSession } from "@/hooks/use-import-session";
-import { useHostChooser } from "@/hosts/host-chooser";
 import { usePanelStore } from "@/stores/panel-store";
 import {
   useIsCompactFormFactor,
@@ -30,7 +29,6 @@ export function OpenProjectScreen() {
   const openDesktopAgentList = usePanelStore((s) => s.openDesktopAgentList);
   const openProjectPicker = useOpenAddProject();
   const importSession = useImportSession();
-  const chooseHost = useHostChooser();
   const localServerId = useLocalDaemonServerId();
 
   const isCompactLayout = useIsCompactFormFactor();
@@ -46,18 +44,9 @@ export function OpenProjectScreen() {
   }, [openProjectPicker]);
 
   const handleOpenProviders = useCallback(() => {
-    const targetServerId = localServerId ?? hosts[0]?.serverId;
-    if (targetServerId) {
-      router.push(buildSettingsHostSectionRoute(targetServerId, "providers"));
-      return;
-    }
-    chooseHost({
-      title: "Choose host",
-      onChooseHost: (serverId) => {
-        router.push(buildSettingsHostSectionRoute(serverId, "providers"));
-      },
-    });
-  }, [chooseHost, hosts, localServerId, router]);
+    const targetServerId = localServerId ?? hosts[0]?.serverId ?? "local";
+    router.push(buildSettingsHostSectionRoute(targetServerId, "providers"));
+  }, [hosts, localServerId, router]);
 
   return (
     <View style={styles.container}>
