@@ -50,7 +50,7 @@ export function describeDaemonTarget(target: DaemonTarget): string {
         const routingOption =
           (parsed.kind === "ssh" && key === "daemonPort") ||
           (key === "ssl" &&
-            url.searchParams.getAll(key).every((value) => value === "true" || value === "false"));
+            url.searchParams.getAll(key).every((value: string) => value === "true" || value === "false"));
         if (!routingOption) url.searchParams.set(key, "REDACTED");
       }
       return url.toString();

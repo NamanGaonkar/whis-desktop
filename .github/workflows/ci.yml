@@ -33,7 +33,7 @@ jobs:
         run: npm run build:server
 
       - name: Lint
-        run: npx oxlint
+        run: npm run lint
 
       - name: Typecheck
         run: npm run typecheck
