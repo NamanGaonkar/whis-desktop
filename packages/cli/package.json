@@ -1,9 +1,9 @@
 {
-  "name": "@getpaseo/cli",
+  "name": "@whis/cli",
   "version": "0.13.0",
-  "description": "Paseo CLI - control your AI coding agents from the command line",
+  "description": "Whis CLI - control your AI coding agents from the command line",
   "bin": {
-    "paseo": "bin/paseo"
+    "whis": "bin/whis"
   },
   "files": [
     "bin",

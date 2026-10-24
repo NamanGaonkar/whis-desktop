@@ -49,7 +49,7 @@ mac:
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.inherit.plist
   extraResources:
-    - from: bin/paseo
+    - from: bin/whis
       to: bin/whis
     - from: assets/icon.png
       to: icon.png
@@ -63,7 +63,7 @@ linux:
   maintainer: "Whis Team <hello@whis.dev>"
   vendor: "Whis"
   extraResources:
-    - from: bin/paseo
+    - from: bin/whis
       to: bin/whis
     - from: assets/icon.png
       to: icon.png
@@ -83,17 +83,15 @@ win:
   artifactName: "Whis-Setup-${version}-${arch}.${ext}"
   icon: assets/icon.ico
   extraResources:
-    - from: bin/paseo.cmd
+    - from: bin/whis.cmd
       to: bin/whis.cmd
   target:
     - target: nsis
       arch:
         - x64
-        - arm64
     - target: zip
       arch:
         - x64
-        - arm64
 nsis:
   oneClick: false
   perMachine: false

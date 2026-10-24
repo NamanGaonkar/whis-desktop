@@ -321,27 +321,27 @@ export function buildLightSemanticColors(tint: LightThemeConfig) {
 }
 
 const lightSemanticColors = buildLightSemanticColors({
-  surface0: "#ffffff",
-  surface1: "#fafafa",
-  surface2: "#f4f4f5",
-  surface3: "#e4e4e7",
-  surface4: "#d4d4d8",
-  surfaceDiffEmpty: "#f6f6f6",
-  surfaceSidebar: "#f4f4f5",
-  foreground: "#1a1a1e",
-  foregroundMuted: "#71717a",
-  foregroundExtraMuted: "#a1a1aa",
-  border: "#e4e4e7",
-  borderAccent: "#ececf1",
-  accent: "#20744A",
-  accentBright: "#239956",
+  surface0: "#FAF3E0",
+  surface1: "#F2E4C2",
+  surface2: "#DFC37C",
+  surface3: "#D5B667",
+  surface4: "#CAA344",
+  surfaceDiffEmpty: "#F7EEDB",
+  surfaceSidebar: "#F2E4C2",
+  foreground: "#1C1405",
+  foregroundMuted: "#4A3A1C",
+  foregroundExtraMuted: "#735D33",
+  border: "#CAA344",
+  borderAccent: "#B89233",
+  accent: "#B87503",
+  accentBright: "#F5AF28",
   accentForeground: "#ffffff",
-  primary: "#18181b",
-  primaryForeground: "#fafafa",
-  destructive: "#b04138",
-  terminalBlack: "#1a1a1e",
-  terminalBrightBlack: "#3f3f46",
-  ring: "#18181b",
+  primary: "#1C1405",
+  primaryForeground: "#FAF3E0",
+  destructive: "#DC2626",
+  terminalBlack: "#14110C",
+  terminalBrightBlack: "#5E4C33",
+  ring: "#B87503",
 });
 
 // ---------------------------------------------------------------------------
@@ -457,24 +457,29 @@ export function buildDarkSemanticColors(tint: DarkThemeConfig) {
 // ---------------------------------------------------------------------------
 
 // Paseo — subtle teal-green tint (default)
-const paseoDarkColors = buildDarkSemanticColors({
-  surface0: "#181B1A",
-  surface1: "#1E2120",
-  surface2: "#272A29",
-  surface3: "#434645",
-  surface4: "#595B5B",
-  surfaceDiffEmpty: "#252827",
-  surfaceSidebar: "#141716",
-  foregroundMuted: "#A1A5A4",
-  foregroundExtraMuted: "#717574",
-  border: "#252B2A",
-  borderAccent: "#2F3534",
-  accent: "#20744A",
-  accentBright: "#7ccba0",
-  destructive: "#c64f43", // warm red, hue ~7 — reads as red (not pink) against the green tint
-  terminalBlack: "#141716",
-  terminalBrightBlack: "#434645",
+// Whis � Deep Obsidian with Warm Amber Glow (default)
+const whisDarkColors = buildDarkSemanticColors({
+  surface0: "#0F0D0B",
+  surface1: "#181410",
+  surface2: "#201A14",
+  surface3: "#2A221A",
+  surface4: "#32281E",
+  surfaceDiffEmpty: "#14110C",
+  surfaceSidebar: "#0A0907",
+  foreground: "#F8F4EA",
+  foregroundMuted: "#C8BAA5",
+  foregroundExtraMuted: "#8E7F6B",
+  border: "#33291F",
+  borderAccent: "#443729",
+  accent: "#F5AF28",
+  accentBright: "#FFD15C",
+  accentForeground: "#0A0907",
+  destructive: "#EF4444",
+  terminalBlack: "#1F1B16",
+  terminalBrightBlack: "#483C2F",
+  ring: "#F5AF28",
 });
+const paseoDarkColors = whisDarkColors;
 
 // Zinc — neutral gray, no tint
 const zincDarkColors = buildDarkSemanticColors({
@@ -784,14 +789,14 @@ export const THEME_OPTIONS = [
     group: "primary",
     unistylesName: "light",
     theme: lightTheme,
-    swatch: "#ffffff",
+    swatch: "#FAF3E0",
   },
   {
     name: "dark",
     group: "primary",
     unistylesName: "dark",
     theme: darkTheme,
-    swatch: "#2D8B62",
+    swatch: "#F5AF28",
   },
   { name: "auto", group: "primary" },
   {

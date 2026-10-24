@@ -1,7 +1,7 @@
 <div align="center">
   <img src="./logo.jpg" alt="Whis Logo" width="140" style="border-radius: 22px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);" />
   <h1>Whis</h1>
-  <p><strong>Orchestrate multiple coding agents from desktop, terminal, and mobile</strong></p>
+  <p><strong>Orchestrate multiple coding agents directly from your desktop</strong></p>
   <p>
     <a href="https://github.com/NamanGaonkar/whis-desktop/releases/latest"><img src="https://img.shields.io/github/v/release/NamanGaonkar/whis-desktop?color=%23E8BF53&label=Release" alt="Release" /></a>
     <a href="https://github.com/NamanGaonkar/whis-desktop/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0-blue.svg" alt="License" /></a>
@@ -19,8 +19,7 @@ Whis is an open developer platform and desktop environment to orchestrate, super
 
 ## Supported Agents
 
-Whis orchestrates leading AI coding agents and CLIs:
-- Whis CLI
+Whis orchestrates leading AI coding agents:
 - Claude Code
 - Codex
 - GitHub Copilot CLI
@@ -36,30 +35,13 @@ Whis orchestrates leading AI coding agents and CLIs:
 The desktop application provides an integrated environment with automatic daemon supervision:
 - Download the installer or portable executable from the Releases page.
 - Launch the application to start the local workspace and daemon automatically.
-- Open Settings to configure providers, API keys, or pair mobile and web clients.
+- Open Settings to configure providers, API keys, and workspace environments.
 
 ---
 
-## CLI
+## Mobile Application
 
-Everything you can do in the application, you can execute directly from the terminal:
-
-```bash
-# Run an agent on a task
-whis run --provider claude/sonnet "implement authentication"
-
-# Run an agent in a designated worktree
-whis run --provider openai/gpt-4o --worktree feature-auth "implement feature X"
-
-# List active sessions and agents
-whis ls
-
-# Stream live terminal output
-whis attach <agent-id>
-
-# Send an instruction or follow-up to a running session
-whis send <agent-id> "run tests and fix lint errors"
-```
+Mobile is coming soon.
 
 ---
 
@@ -121,8 +103,7 @@ Monorepo package overview:
 
 - `packages/desktop`: Electron desktop application
 - `packages/server`: Whis daemon (agent process orchestration, WebSocket API, MCP server)
-- `packages/app`: Expo cross-platform client (desktop web, iOS, Android)
-- `packages/cli`: `whis` CLI for daemon and agent workflows
+- `packages/app`: Expo desktop web client (Mobile is coming soon)
 - `packages/client`: TypeScript client SDK
 - `packages/protocol`: Wire protocol contracts and schemas
 - `packages/relay`: Relay transport and encryption
