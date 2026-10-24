@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Folder,
   Sliders,
@@ -7,21 +7,39 @@ import {
   Minus,
   Square,
   X,
-  Terminal,
-  Cpu
+  Cpu,
+  Sparkles,
+  ArrowUpCircle
 } from 'lucide-react';
 import { useThemeStore } from '../stores/themeStore';
 import { useAgentStore } from '../stores/agentStore';
 import { useProviderStore } from '../stores/providerStore';
+import { UpdateInfo } from '../../../shared/types';
+import logoImg from '../assets/logo.jpg';
 
 export const TitleBar: React.FC = () => {
   const { theme, toggleTheme } = useThemeStore();
   const { cwd, browseDirectory, agentStatus } = useAgentStore();
   const { activeProvider, openModal } = useProviderStore();
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+
+  useEffect(() => {
+    if (window.whis?.onUpdateAvailable) {
+      const unsub = window.whis.onUpdateAvailable((info) => {
+        setUpdateInfo(info);
+      });
+      return unsub;
+    }
+  }, []);
 
   const handleMinimize = () => window.whis?.minimizeWindow();
   const handleMaximize = () => window.whis?.maximizeWindow();
   const handleClose = () => window.whis?.closeWindow();
+  const handleOpenRelease = () => {
+    if (updateInfo?.url && window.whis?.openExternal) {
+      window.whis.openExternal(updateInfo.url);
+    }
+  };
 
   // Extract basename for cleaner folder display
   const folderName = cwd
@@ -50,28 +68,24 @@ export const TitleBar: React.FC = () => {
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '6px',
+            gap: '8px',
             color: 'var(--color-accent-amber)',
             fontWeight: 800,
             fontSize: '13px',
             letterSpacing: '0.08em'
           }}
         >
-          <div
+          <img
+            src={logoImg}
+            alt="Whis"
             style={{
               width: '24px',
               height: '24px',
               borderRadius: 'var(--radius-xs)',
-              backgroundColor: 'var(--color-surface-inset)',
               border: '1px solid var(--color-border)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--color-accent-amber)'
+              objectFit: 'cover'
             }}
-          >
-            <Terminal size={14} strokeWidth={2.5} />
-          </div>
+          />
           <span>WHIS</span>
         </div>
 
@@ -106,6 +120,32 @@ export const TitleBar: React.FC = () => {
           />
           <span style={{ textTransform: 'capitalize' }}>{agentStatus}</span>
         </div>
+
+        {/* Update Notification Pill (if new release available) */}
+        {updateInfo && (
+          <button
+            onClick={handleOpenRelease}
+            className="app-no-drag"
+            title={`Click to view ${updateInfo.version} release notes`}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              padding: '2px 8px',
+              borderRadius: 'var(--radius-full)',
+              backgroundColor: 'rgba(16, 185, 129, 0.2)',
+              border: '1px solid var(--color-success)',
+              color: 'var(--color-success)',
+              fontSize: '11px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              animation: 'pulse 2s infinite'
+            }}
+          >
+            <ArrowUpCircle size={12} />
+            <span>Update {updateInfo.version} Available</span>
+          </button>
+        )}
       </div>
 
       {/* Middle section: Workspace Selector & Provider Badge */}

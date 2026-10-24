@@ -1,8 +1,10 @@
 import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
 import { join } from 'node:path';
+import { existsSync } from 'node:fs';
 import { spawnAgentPty, writeAgentPty, resizeAgentPty, killAgentPty, killAllPtys } from './pty';
 import { getProviders, saveProviders, setActiveProvider, getActiveProvider } from './providers';
 import { getKV, setKV, getAllSessions, saveSessionRecord, deleteSessionRecord } from './db';
+import { checkGitHubUpdate } from './updater';
 import { PtySpawnOptions, ProviderConfig, AppTheme, SessionRecord } from '../shared/types';
 
 let mainWindow: BrowserWindow | null = null;
@@ -20,6 +22,12 @@ if (!gotTheLock) {
 }
 
 function createWindow(): void {
+  const icoPath = join(__dirname, '../../build/icon.ico');
+  const pngPath = join(__dirname, '../../build/icon.png');
+  const windowIcon = process.platform === 'win32'
+    ? (existsSync(icoPath) ? icoPath : pngPath)
+    : (existsSync(pngPath) ? pngPath : icoPath);
+
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 840,
@@ -28,6 +36,7 @@ function createWindow(): void {
     frame: false,
     titleBarStyle: 'hidden',
     backgroundColor: '#12100E',
+    icon: existsSync(windowIcon) ? windowIcon : undefined,
     show: false,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -39,6 +48,10 @@ function createWindow(): void {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show();
+    // Check for updates 3 seconds after startup
+    setTimeout(() => {
+      checkGitHubUpdate(mainWindow);
+    }, 3000);
   });
 
   // Open external links in default browser
@@ -197,5 +210,10 @@ function setupIpcHandlers(): void {
 
   ipcMain.handle('sessions:delete', (_, id: string) => {
     deleteSessionRecord(id);
+  });
+
+  // Updater
+  ipcMain.handle('updater:check', () => {
+    return checkGitHubUpdate(mainWindow);
   });
 }

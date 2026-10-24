@@ -60,7 +60,17 @@ const api: WhisAPI = {
   // History / Sessions
   getSessions: () => ipcRenderer.invoke('sessions:get'),
   saveSession: (session: SessionRecord) => ipcRenderer.invoke('sessions:save', session),
-  deleteSession: (id: string) => ipcRenderer.invoke('sessions:delete', id)
+  deleteSession: (id: string) => ipcRenderer.invoke('sessions:delete', id),
+
+  // Auto Updater
+  checkForUpdates: () => ipcRenderer.invoke('updater:check'),
+  onUpdateAvailable: (cb: (info: any) => void) => {
+    const listener = (_: any, info: any) => cb(info);
+    ipcRenderer.on('updater:available', listener);
+    return () => {
+      ipcRenderer.removeListener('updater:available', listener);
+    };
+  }
 };
 
 contextBridge.exposeInMainWorld('whis', api);

@@ -44,6 +44,14 @@ export interface SessionRecord {
   model?: string;
 }
 
+export interface UpdateInfo {
+  version: string;
+  name: string;
+  notes: string;
+  url: string;
+  publishedAt: string;
+}
+
 export interface WhisAPI {
   // PTY Controls
   spawnPty: (options: PtySpawnOptions) => Promise<{ success: boolean; pid?: number; error?: string }>;
@@ -78,4 +86,8 @@ export interface WhisAPI {
   getSessions: () => Promise<SessionRecord[]>;
   saveSession: (session: SessionRecord) => Promise<void>;
   deleteSession: (id: string) => Promise<void>;
+
+  // Auto Updater
+  checkForUpdates: () => Promise<UpdateInfo | null>;
+  onUpdateAvailable: (cb: (info: UpdateInfo) => void) => () => void;
 }
