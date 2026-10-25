@@ -175,8 +175,16 @@ function statusFromDaemonProbe(
   let status: DesktopDaemonState = "stopped";
   if (local === "not_ready") status = "starting";
   if (local === "running") status = "running";
+  let serverId = typeof payload.serverId === "string" ? payload.serverId : "";
+  if (!serverId && processAlive) {
+    try {
+      serverId = readFileSync(path.join(home, "server-id"), "utf-8").trim();
+    } catch {
+      // server-id file may not exist yet
+    }
+  }
   return {
-    serverId: typeof payload.serverId === "string" ? payload.serverId : "",
+    serverId,
     status,
     listen: typeof payload.listen === "string" ? payload.listen : null,
     hostname:
@@ -226,7 +234,8 @@ export async function resolveDesktopDaemonStatus(): Promise<DesktopDaemonStatus>
   try {
     // The app polls this while no local daemon runs. Answer that case in-process,
     // since launching the CLI once per poll keeps spawning processes while idle.
-    if (!(await readDaemonInstance(home))) {
+    const instance = await readDaemonInstance(home);
+    if (!instance) {
       return statusFromDaemonProbe({ localDaemon: "stopped" }, home);
     }
 
@@ -237,10 +246,40 @@ export async function resolveDesktopDaemonStatus(): Promise<DesktopDaemonStatus>
       home,
       "--json",
     ])) as Record<string, unknown>;
-    return statusFromDaemonProbe(payload, home);
+    const status = statusFromDaemonProbe(payload, home);
+    if (!status.serverId && instance.serverId) {
+      status.serverId = instance.serverId;
+    }
+    return status;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logDesktopDaemonLifecycle("resolveStatus failed", { error: errorMessage });
+    const instance = await readDaemonInstance(home).catch(() => null);
+    if (instance) {
+      let serverId = instance.serverId || "";
+      if (!serverId) {
+        try {
+          serverId = readFileSync(path.join(home, "server-id"), "utf-8").trim();
+        } catch {
+          // ignore
+        }
+      }
+      if (serverId) {
+        return {
+          serverId,
+          status: "running",
+          listen: instance.listen ?? "127.0.0.1:6868",
+          hostname: instance.hostname ?? null,
+          pid: instance.pid,
+          home,
+          version: resolveDesktopAppVersion(),
+          desktopManaged: instance.desktopManaged ?? true,
+          ownedByDesktop: Boolean(ownedLaunch && ownedLaunch.home === home),
+          startedAt: instance.startedAt ?? null,
+          error: null,
+        };
+      }
+    }
     return {
       serverId: "",
       status: "errored",
@@ -315,6 +354,7 @@ async function startDaemon(): Promise<DesktopDaemonStatus> {
       env: {
         ...invocation.env,
         PASEO_CLI: getBundledCliShimPath(),
+        WHIS_CLI: getBundledCliShimPath(),
         WHIS_HOME: home,
         PASEO_HOME: home,
       },
