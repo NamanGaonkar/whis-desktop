@@ -22,7 +22,7 @@
 
 Operating with a strict **Bring-Your-Own-Key (BYOK)** architecture, Whis connects directly to model providers or local models without any proprietary cloud lock-in, middleman proxy, or subscription traps.
 
-- **Desktop GUI & CLI Unified**: Single shared database (`~/.local/share/whis/opencode.db`) keeping all sessions, history, and workspace contexts synchronized across terminal and desktop.
+- **Desktop GUI & CLI Unified**: Synchronized sessions, history, and workspace contexts across terminal and desktop.
 - **Pure BYOK**: Connect your API keys directly to Anthropic, DeepSeek, OpenAI, Google Gemini, Groq, Kimi (Moonshot), MiniMax, Zhipu AI (GLM), Ollama (local and remote), OpenRouter, and more.
 - **Autonomous Tool Execution**: Read and edit files, run commands, execute bash scripts, inspect git state, and manage workspace projects.
 - **Dark Amber & Orange Mix**: Bespoke aesthetic crafted with rich dark amber (`#D97706` / `#F59E0B`) and warm orange accents over a deep `#0e0e11` obsidian canvas.
@@ -86,16 +86,6 @@ Whis does not require an external account or proxy. Simply add your API keys dir
 
 ---
 
-## Architecture & Data Storage
-
-Whis stores all runtime data locally in your user profile:
-
-- **Sessions & History**: `~/.local/share/whis/opencode.db`
-- **Configuration**: `~/.config/whis/whis.jsonc`
-- **Application State & Prompts**: `~/.local/state/whis/`
-
----
-
 ## License
 
-MIT © Whis Team
+MIT © Whis
