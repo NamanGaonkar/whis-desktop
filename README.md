@@ -1,114 +1,101 @@
 <p align="center">
-  <a href="https://opencode.ai">
-    <picture>
-      <source srcset="packages/console/app/src/asset/logo-ornate-dark.svg" media="(prefers-color-scheme: dark)">
-      <source srcset="packages/console/app/src/asset/logo-ornate-light.svg" media="(prefers-color-scheme: light)">
-      <img src="packages/console/app/src/asset/logo-ornate-light.svg" alt="OpenCode logo">
-    </picture>
-  </a>
+  <img src="logo.jpg" alt="Whis Logo" width="160" height="160" style="border-radius: 20px;">
 </p>
-<p align="center">The open source AI coding agent.</p>
+
+<h1 align="center">Whis Desktop & CLI</h1>
+
 <p align="center">
-  <a href="https://opencode.ai/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
-  <a href="https://www.npmjs.com/package/@opencode/cli"><img alt="npm" src="https://img.shields.io/npm/v/@opencode/cli?style=flat-square" /></a>
-  <a href="https://github.com/anomalyco/opencode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/anomalyco/opencode/publish.yml?style=flat-square&branch=dev" /></a>
+  <strong>The Autonomous Bring-Your-Own-Key (BYOK) AI Coding Agent & Desktop Workspace</strong>
 </p>
 
 <p align="center">
-  <a href="README.md">English</a> |
-  <a href="README.zh.md">简体中文</a> |
-  <a href="README.zht.md">繁體中文</a> |
-  <a href="README.ko.md">한국어</a> |
-  <a href="README.de.md">Deutsch</a> |
-  <a href="README.es.md">Español</a> |
-  <a href="README.fr.md">Français</a> |
-  <a href="README.it.md">Italiano</a> |
-  <a href="README.da.md">Dansk</a> |
-  <a href="README.ja.md">日本語</a> |
-  <a href="README.pl.md">Polski</a> |
-  <a href="README.ru.md">Русский</a> |
-  <a href="README.bs.md">Bosanski</a> |
-  <a href="README.ar.md">العربية</a> |
-  <a href="README.no.md">Norsk</a> |
-  <a href="README.br.md">Português (Brasil)</a> |
-  <a href="README.th.md">ไทย</a> |
-  <a href="README.tr.md">Türkçe</a> |
-  <a href="README.uk.md">Українська</a> |
-  <a href="README.bn.md">বাংলা</a> |
-  <a href="README.gr.md">Ελληνικά</a> |
-  <a href="README.vi.md">Tiếng Việt</a>
+  <img alt="Version" src="https://img.shields.io/badge/version-4.0.0--fix-amber?style=flat-square" />
+  <img alt="License" src="https://img.shields.io/badge/license-MIT-orange?style=flat-square" />
+  <img alt="Platform" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-black?style=flat-square" />
 </p>
 
-[![OpenCode Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://opencode.ai)
+---
+
+## Overview
+
+**Whis** is an autonomous AI coding agent and interactive workspace designed for engineers who want powerful agentic coding with complete control over their models and API keys.
+
+Operating with a strict **Bring-Your-Own-Key (BYOK)** architecture, Whis connects directly to model providers or local models without any proprietary cloud lock-in, middleman proxy, or subscription traps.
+
+- **Desktop GUI & CLI Unified**: Single shared database (`~/.local/share/whis/opencode.db`) keeping all sessions, history, and workspace contexts synchronized across terminal and desktop.
+- **Pure BYOK**: Connect your API keys directly to Anthropic, DeepSeek, OpenAI, Google Gemini, Groq, Kimi (Moonshot), MiniMax, Zhipu AI (GLM), Ollama (local and remote), OpenRouter, and more.
+- **Autonomous Tool Execution**: Read and edit files, run commands, execute bash scripts, inspect git state, and manage workspace projects.
+- **Dark Amber & Orange Mix**: Bespoke aesthetic crafted with rich dark amber (`#D97706` / `#F59E0B`) and warm orange accents over a deep `#0e0e11` obsidian canvas.
+- **Local Memory & Workspace Context**: Persistent memory and workspace configurations stored locally on your machine.
 
 ---
 
-### Installation
+## Getting Started
+
+### Prerequisites
+
+- [Bun](https://bun.sh/) (v1.2+)
+- [Node.js](https://nodejs.org/) (v20+)
+
+### Building from Source
+
+Clone the repository and install dependencies:
 
 ```bash
-# YOLO
-curl -fsSL https://opencode.ai/v2/install | bash
-
-# Package managers
-npm i -g @opencode/cli@latest      # or bun/pnpm/yarn
-brew install anomalyco/tap/opencode-v2 # macOS and Linux (recommended, always up to date)
-brew install opencode              # macOS and Linux (official brew formula, updated less)
-sudo pacman -S opencode            # Arch Linux (Stable)
-paru -S opencode-beta              # Arch Linux (Latest from AUR)
-mise use -g opencode               # Any OS
-nix run github:anomalyco/opencode  # Nix
+git clone https://github.com/naman-whis/whis-desktop.git
+cd "whis-desktop"
+bun install
 ```
 
-> [!TIP]
-> Remove versions older than 0.1.x before installing.
-
-### Desktop App (BETA)
-
-OpenCode is also available as a desktop application. Download it from [opencode.ai/download](https://opencode.ai/download).
-
-| Platform              | Download                           |
-| --------------------- | ---------------------------------- |
-| macOS (Apple Silicon) | `opencode-desktop-mac-arm64.dmg`   |
-| macOS (Intel)         | `opencode-desktop-mac-x64.dmg`     |
-| Windows               | `opencode-desktop-win-x64.exe`     |
-| Linux                 | `.deb`, `.rpm`, or `.AppImage`     |
+### Running the Desktop App in Development
 
 ```bash
-# macOS (Homebrew)
-brew install --cask opencode-desktop
+bun --cwd packages/desktop dev
 ```
 
-#### Installation Directory
+### Packaging for Windows
 
-The install script installs OpenCode to `$HOME/.opencode/bin`.
+```bash
+# Build desktop packages
+bun --cwd packages/desktop build
 
-### Agents
+# Package unpacked Windows binary
+npx electron-builder --win --dir
+```
 
-OpenCode includes two built-in agents you can switch between with the `Tab` key.
-
-- **build** - Default, full-access agent for development work
-- **plan** - Read-only agent for analysis and code exploration
-  - Denies file edits by default
-  - Asks permission before running bash commands
-  - Ideal for exploring unfamiliar codebases or planning changes
-
-Also included is a **general** subagent for complex searches and multistep tasks.
-This is used internally and can be invoked using `@general` in messages.
-
-Learn more about [agents](https://opencode.ai/v2/docs/agents).
-
-### Documentation
-
-For more info on how to configure OpenCode, [**head over to our docs**](https://opencode.ai/v2/docs).
-
-### Contributing
-
-If you're interested in contributing to OpenCode, please read our [contributing docs](./CONTRIBUTING.md) before submitting a pull request.
-
-### Building on OpenCode
-
-If you are working on a project that's related to OpenCode and is using "opencode" as part of its name, for example "opencode-dashboard" or "opencode-mobile", please add a note to your README to clarify that it is not built by the OpenCode team and is not affiliated with us in any way.
+The output application will be located at:
+`packages/desktop/dist/win-unpacked/Whis.exe`
 
 ---
 
-**Join our community** [Discord](https://discord.gg/opencode) | [X.com](https://x.com/opencode)
+## Bring Your Own Key (BYOK)
+
+Whis does not require an external account or proxy. Simply add your API keys directly in the **Providers** settings panel or export them in your shell environment:
+
+| Provider | Environment Variable | Models Supported |
+| :--- | :--- | :--- |
+| **DeepSeek** | `DEEPSEEK_API_KEY` | DeepSeek-V3, DeepSeek-R1 |
+| **Anthropic** | `ANTHROPIC_API_KEY` | Claude 3.7 Sonnet, Claude 3.5 Sonnet, Claude 3.5 Haiku |
+| **OpenAI** | `OPENAI_API_KEY` | GPT-4o, o1, o3-mini |
+| **Google Gemini** | `GEMINI_API_KEY` | Gemini 2.5 Pro, Gemini 2.0 Flash |
+| **Ollama** | `OLLAMA_API_BASE` | Qwen 2.5 Coder, DeepSeek-R1, Llama 3.3, local models |
+| **OpenRouter** | `OPENROUTER_API_KEY` | Aggregated multi-model endpoints |
+| **Moonshot (Kimi)** | `MOONSHOT_API_KEY` | Kimi K2, Kimi K2.5 |
+| **MiniMax** | `MINIMAX_API_KEY` | MiniMax-M2.5, MiniMax-M2.7 |
+| **Zhipu AI (GLM)** | `ZHIPU_API_KEY` | GLM-4.5, GLM-5 |
+
+---
+
+## Architecture & Data Storage
+
+Whis stores all runtime data locally in your user profile:
+
+- **Sessions & History**: `~/.local/share/whis/opencode.db`
+- **Configuration**: `~/.config/whis/whis.jsonc`
+- **Application State & Prompts**: `~/.local/state/whis/`
+
+---
+
+## License
+
+MIT © Whis Team

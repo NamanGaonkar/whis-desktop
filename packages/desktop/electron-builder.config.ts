@@ -108,7 +108,7 @@ const getBase = (appId: string): Configuration => {
       {
         from: "resources/",
         to: "",
-        filter: ["opencode-cli", "opencode-cli.exe", "opencode-cli.version", "whis-cli", "whis-cli.exe", "whis-cli.version"],
+        filter: ["opencode-cli", "opencode-cli.exe", "opencode-cli.version", "whis-cli", "whis-cli.exe", "whis-cli.version", "icons/**/*"],
       },
     ],
     afterPack: async (context) => {

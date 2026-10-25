@@ -20,7 +20,7 @@ const GO_UPSELL_ACCOUNT_RATE_LIMIT_DONT_SHOW = "go_upsell_account_rate_limit_don
 
 const GO_UPSELL_WINDOW = 86_400_000 // 24 hrs
 
-const GO_UPSELL_PROVIDERS = new Set(["opencode", "opencode-go"])
+const GO_UPSELL_PROVIDERS = new Set<string>()
 
 const GO_URL = "https://opencode.ai/go"
 
