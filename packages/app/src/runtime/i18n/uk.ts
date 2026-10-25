@@ -406,7 +406,7 @@ export const dict = {
   "error.chain.responseBody": "Тіло відповіді:\n{{body}}",
   "error.chain.didYouMean": "Можливо, ви мали на увазі: {{suggestions}}",
   "error.chain.modelNotFound": "Модель не знайдено: {{provider}}/{{model}}",
-  "error.chain.checkConfig": "Перевірте назви провайдерів/моделей у конфігурації (opencode.json)",
+  "error.chain.checkConfig": "Перевірте назви провайдерів/моделей у конфігурації (whis.json)",
   "error.chain.mcpFailed":
     'Сервер MCP "{{name}}" не працює. Зверніть увагу, OpenCode ще не підтримує автентифікацію MCP.',
   "error.chain.providerAuthFailed": "Автентифікація провайдера не вдалася ({{provider}}): {{message}}",
@@ -709,7 +709,7 @@ export const dict = {
   "settings.extensions.tab.mcps": "МКП",
   "settings.extensions.tab.skills": "Навички",
   "settings.extensions.availableAll": "Доступно для всіх проектів",
-  "settings.extensions.manageConfig": "Керуйте в opencode.json",
+  "settings.extensions.manageConfig": "Керуйте в whis.json",
   "settings.extensions.addSkills": "Як додати навички",
   "project.settings.extensions.description": "Переглянути розширення, доступні для цього проекту",
   "project.settings.extensions.tab.lsps": "LSP",

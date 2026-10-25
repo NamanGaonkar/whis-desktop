@@ -389,7 +389,7 @@ export const dict = {
   "error.chain.responseBody": "Isi respons:\n{{body}}",
   "error.chain.didYouMean": "Maksud Anda: {{suggestions}}",
   "error.chain.modelNotFound": "Model tidak ditemukan: {{provider}}/{{model}}",
-  "error.chain.checkConfig": "Periksa nama penyedia/model di konfigurasi Anda (opencode.json)",
+  "error.chain.checkConfig": "Periksa nama penyedia/model di konfigurasi Anda (whis.json)",
   "error.chain.mcpFailed": 'Server MCP "{{name}}" gagal. Catatan: OpenCode belum mendukung autentikasi MCP.',
   "error.chain.providerAuthFailed": "Autentikasi penyedia gagal ({{provider}}): {{message}}",
   "error.chain.providerInitFailed":
@@ -522,7 +522,7 @@ export const dict = {
   "settings.extensions.tab.mcps": "MCP",
   "settings.extensions.tab.skills": "Keahlian",
   "settings.extensions.availableAll": "Tersedia untuk semua proyek",
-  "settings.extensions.manageConfig": "Kelola di opencode.json",
+  "settings.extensions.manageConfig": "Kelola di whis.json",
   "settings.extensions.addSkills": "Cara menambahkan keahlian",
 
   "project.settings.extensions.description": "Lihat ekstensi yang tersedia untuk proyek ini",

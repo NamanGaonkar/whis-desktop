@@ -340,7 +340,7 @@ export const dict = {
   "error.chain.responseBody": "Trupi i përgjigjes:\n{{body}}",
   "error.chain.didYouMean": "A do të thuash: {{suggestions}}",
   "error.chain.modelNotFound": "Modeli nuk u gjet: {{provider}}/{{model}}",
-  "error.chain.checkConfig": "Kontrolloni emrat e ofruesit/modelit tuaj të konfigurimit (opencode.json).",
+  "error.chain.checkConfig": "Kontrolloni emrat e ofruesit/modelit tuaj të konfigurimit (whis.json).",
   "error.chain.mcpFailed": 'Serveri MCP "{{name}}" dështoi. Shënim, OpenCode nuk e mbështet ende vërtetimin MCP.',
   "error.chain.providerAuthFailed": "Autentifikimi i ofruesit dështoi ({{provider}}): {{message}}",
   "error.chain.providerInitFailed":
@@ -645,7 +645,7 @@ export const dict = {
   "settings.extensions.tab.mcps": "MCP-të",
   "settings.extensions.tab.skills": "Aftësitë",
   "settings.extensions.availableAll": "Në dispozicion për të gjitha projektet",
-  "settings.extensions.manageConfig": "Menaxho në opencode.json",
+  "settings.extensions.manageConfig": "Menaxho në whis.json",
   "settings.extensions.addSkills": "Si të shtoni aftësi",
   "project.settings.extensions.description": "Shikoni zgjerimet e disponueshme për këtë projekt",
   "project.settings.extensions.tab.lsps": "LSP-të",

@@ -339,7 +339,7 @@ export const dict = {
   "error.chain.responseBody": "Svarstovnur:\n{{body}}",
   "error.chain.didYouMean": "Meinti tú: {{suggestions}}",
   "error.chain.modelNotFound": "Fyrimynd ikki funnið: {{provider}}/{{model}}",
-  "error.chain.checkConfig": "Kanna tíni uppseting (opencode.json) veitara/modell nøvn",
+  "error.chain.checkConfig": "Kanna tíni uppseting (whis.json) veitara/modell nøvn",
   "error.chain.mcpFailed": 'MCP ambætarin "{{name}}" miseydnaðist. Viðmæli, OpenCode stuðlar ikki MCP sannroynd enn.',
   "error.chain.providerAuthFailed": "Veitaragóðkenning miseydnaðist ({{provider}}): {{message}}",
   "error.chain.providerInitFailed":
@@ -644,7 +644,7 @@ export const dict = {
   "settings.extensions.tab.mcps": "MCP-ar",
   "settings.extensions.tab.skills": "Førleikar",
   "settings.extensions.availableAll": "Tøkt fyri allar verkætlanir",
-  "settings.extensions.manageConfig": "Umsit í opencode.json",
+  "settings.extensions.manageConfig": "Umsit í whis.json",
   "settings.extensions.addSkills": "Hvussu førleikar verða lagdir afturat",
   "project.settings.extensions.description": "Vís víðkanir, sum eru tøkar fyri hesa verkætlanina",
   "project.settings.extensions.tab.lsps": "LSP-ar",

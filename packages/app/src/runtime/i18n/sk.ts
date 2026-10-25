@@ -364,7 +364,7 @@ export const dict = {
   "error.chain.responseBody": "Telo odpovede:\n{{body}}",
   "error.chain.didYouMean": "Mysleli ste: {{suggestions}}",
   "error.chain.modelNotFound": "Model nenájdený: {{provider}}/{{model}}",
-  "error.chain.checkConfig": "Skontrolujte názvy poskytovateľa/modelu v konfigurácii (opencode.json)",
+  "error.chain.checkConfig": "Skontrolujte názvy poskytovateľa/modelu v konfigurácii (whis.json)",
   "error.chain.mcpFailed": "MCP server „{{name}}“ zlyhal. Poznámka: OpenCode zatiaľ nepodporuje MCP autentifikáciu.",
   "error.chain.providerAuthFailed": "Autentifikácia poskytovateľa zlyhala ({{provider}}): {{message}}",
   "error.chain.providerInitFailed":
@@ -639,7 +639,7 @@ export const dict = {
   "settings.extensions.tab.mcps": "MCP",
   "settings.extensions.tab.skills": "Zručnosti",
   "settings.extensions.availableAll": "Dostupné pre všetky projekty",
-  "settings.extensions.manageConfig": "Spravujte v opencode.json",
+  "settings.extensions.manageConfig": "Spravujte v whis.json",
   "settings.extensions.addSkills": "Ako pridať zručnosti",
   "project.settings.extensions.description": "Zobraziť rozšírenia dostupné pre tento projekt",
   "project.settings.extensions.tab.lsps": "LSP",

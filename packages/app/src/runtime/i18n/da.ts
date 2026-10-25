@@ -501,7 +501,7 @@ export const dict = {
   "error.chain.responseBody": "Svarindhold:\n{{body}}",
   "error.chain.didYouMean": "Mente du: {{suggestions}}",
   "error.chain.modelNotFound": "Model ikke fundet: {{provider}}/{{model}}",
-  "error.chain.checkConfig": "Kontrollér udbyder- og modelnavnene i din konfiguration (opencode.json)",
+  "error.chain.checkConfig": "Kontrollér udbyder- og modelnavnene i din konfiguration (whis.json)",
   "error.chain.mcpFailed": 'MCP-server "{{name}}" fejlede. Bemærk, OpenCode understøtter ikke MCP-godkendelse endnu.',
   "error.chain.providerAuthFailed": "Udbydergodkendelse mislykkedes ({{provider}}): {{message}}",
   "error.chain.providerInitFailed":
@@ -881,7 +881,7 @@ export const dict = {
   "settings.extensions.tab.mcps": "MCP'er",
   "settings.extensions.tab.skills": "Færdigheder",
   "settings.extensions.availableAll": "Tilgængelig til alle projekter",
-  "settings.extensions.manageConfig": "Administrer i opencode.json",
+  "settings.extensions.manageConfig": "Administrer i whis.json",
   "settings.extensions.addSkills": "Sådan tilføjer du færdigheder",
   "project.settings.extensions.description": "Se tilgængelige udvidelser til dette projekt",
   "project.settings.extensions.tab.lsps": "LSP'er",

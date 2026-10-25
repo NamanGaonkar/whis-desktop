@@ -340,7 +340,7 @@ export const dict = {
   "error.chain.responseBody": "Тяло на отговора:\n{{body}}",
   "error.chain.didYouMean": "Може би имахте предвид: {{suggestions}}",
   "error.chain.modelNotFound": "Моделът не е намерен: {{provider}}/{{model}}",
-  "error.chain.checkConfig": "Проверете имената на доставчика/модела на вашата конфигурация (opencode.json).",
+  "error.chain.checkConfig": "Проверете имената на доставчика/модела на вашата конфигурация (whis.json).",
   "error.chain.mcpFailed":
     'MCP сървър "{{name}}" не успя. Имайте предвид, че OpenCode все още не поддържа MCP удостоверяване.',
   "error.chain.providerAuthFailed": "Неуспешно удостоверяване на доставчика ({{provider}}): {{message}}",
@@ -620,7 +620,7 @@ export const dict = {
   "settings.extensions.tab.mcps": "MCPs",
   "settings.extensions.tab.skills": "Умения",
   "settings.extensions.availableAll": "Предлага се за всички проекти",
-  "settings.extensions.manageConfig": "Управление в opencode.json",
+  "settings.extensions.manageConfig": "Управление в whis.json",
   "settings.extensions.addSkills": "Как да добавите умения",
   "project.settings.extensions.description": "Вижте разширенията, налични за този проект",
   "project.settings.extensions.tab.lsps": "LSPs",

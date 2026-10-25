@@ -353,7 +353,7 @@ export const dict = {
   "error.chain.responseBody": "ལན་འདེབས་ཕུང་པོ།:\n{{body}}",
   "error.chain.didYouMean": "ཁྱོད་ཀྱིས་: {{suggestions}} ཟེར་སླབ་དགོཔ་ཨིན་ན?",
   "error.chain.modelNotFound": "དཔེ་ཚད་འཚོལ་མ་ཐོབ།: {{provider}}/{{model}}",
-  "error.chain.checkConfig": "ཁྱོད་ཀྱི་རིམ་སྒྲིག་ (opencode.json) བྱིན་མི་/དཔེ་ཚད་མིང་ཚུ་ཞིབ་དཔྱད་འབད།",
+  "error.chain.checkConfig": "ཁྱོད་ཀྱི་རིམ་སྒྲིག་ (whis.json) བྱིན་མི་/དཔེ་ཚད་མིང་ཚུ་ཞིབ་དཔྱད་འབད།",
   "error.chain.mcpFailed":
     'MCP སར་བར་ "{{name}}" འཐུས་ཤོར་བྱུང་ཡོདཔ། དྲན་འཛིན་ OpenCode གིས་ ད་ལྟོ་ཡང་ MCP བདེན་བཤད་ལུ་རྒྱབ་སྐྱོར་མི་འབད།',
   "error.chain.providerAuthFailed": "བྱིན་མི་བདེན་བཤད་འཐུས་ཤོར་བྱུང་ཡོདཔ།({{provider}}): {{message}}",
@@ -649,7 +649,7 @@ export const dict = {
   "settings.extensions.tab.mcps": "MCPs",
   "settings.extensions.tab.skills": "རིག་རྩལ་ཚུ།",
   "settings.extensions.availableAll": "ལས་གཞི་ཆ་མཉམ་ལུ་འཐོབ་ཚུགས།",
-  "settings.extensions.manageConfig": "opencode.json ནང་འཛིན་སྐྱོང་འཐབ།",
+  "settings.extensions.manageConfig": "whis.json ནང་འཛིན་སྐྱོང་འཐབ།",
   "settings.extensions.addSkills": "རིག་རྩལ་ཚུ་ག་དེ་སྦེ་ཁ་སྐོང་རྐྱབ་ནི་ཨིན་ན།",
   "project.settings.extensions.description": "ལས་གཞི་འདི་ལུ་འཐོབ་ཚུགས་པའི་རྒྱ་བསྐྱེད་ཚུ་བལྟ།",
   "project.settings.extensions.tab.lsps": "LSPs",

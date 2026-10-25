@@ -340,7 +340,7 @@ export const dict = {
   "error.chain.responseBody": "Atbildes saturs:\n{{body}}",
   "error.chain.didYouMean": "Vai domājāt: {{suggestions}}",
   "error.chain.modelNotFound": "Modelis nav atrasts: {{provider}}/{{model}}",
-  "error.chain.checkConfig": "Pārbaudiet konfigurāciju (opencode.json) pakalpojuma/modela nosaukumus",
+  "error.chain.checkConfig": "Pārbaudiet konfigurāciju (whis.json) pakalpojuma/modela nosaukumus",
   "error.chain.mcpFailed":
     'MCP serveris "{{name}}" neizdevās. Ņemiet vērā, OpenCode vēl neatbalsta MCP autentifikāciju.',
   "error.chain.providerAuthFailed": "Pakalpojuma autentifikācija neizdevās ({{provider}}): {{message}}",
@@ -650,7 +650,7 @@ export const dict = {
   "settings.extensions.tab.mcps": "MCP",
   "settings.extensions.tab.skills": "Prasmes",
   "settings.extensions.availableAll": "Pieejams visiem projektiem",
-  "settings.extensions.manageConfig": "Pārvaldīt failā opencode.json",
+  "settings.extensions.manageConfig": "Pārvaldīt failā whis.json",
   "settings.extensions.addSkills": "Kā pievienot prasmes",
   "project.settings.extensions.description": "Skatiet šim projektam pieejamos paplašinājumus",
   "project.settings.extensions.tab.lsps": "LSP",

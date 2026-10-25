@@ -564,7 +564,7 @@ export const dict = {
   "error.chain.responseBody": "Corps de la réponse :\n{{body}}",
   "error.chain.didYouMean": "Vouliez-vous dire : {{suggestions}}",
   "error.chain.modelNotFound": "Modèle introuvable : {{provider}}/{{model}}",
-  "error.chain.checkConfig": "Vérifiez les noms de fournisseur et de modèle dans votre configuration (opencode.json)",
+  "error.chain.checkConfig": "Vérifiez les noms de fournisseur et de modèle dans votre configuration (whis.json)",
   "error.chain.mcpFailed":
     "Le serveur MCP \"{{name}}\" a échoué. Notez qu'OpenCode ne prend pas encore en charge l'authentification MCP.",
   "error.chain.providerAuthFailed": "Échec de l'authentification du fournisseur ({{provider}}) : {{message}}",
@@ -859,7 +859,7 @@ export const dict = {
   "settings.extensions.tab.mcps": "MCP",
   "settings.extensions.tab.skills": "Compétences",
   "settings.extensions.availableAll": "Disponible pour tous les projets",
-  "settings.extensions.manageConfig": "Gérer dans opencode.json",
+  "settings.extensions.manageConfig": "Gérer dans whis.json",
   "settings.extensions.addSkills": "Comment ajouter des compétences",
   "project.settings.extensions.description": "Afficher les extensions disponibles pour ce projet",
   "project.settings.extensions.tab.lsps": "LSP",

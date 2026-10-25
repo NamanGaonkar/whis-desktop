@@ -338,7 +338,7 @@ export const dict = {
   "error.chain.responseBody": "Vastuse keha:\n{{body}}",
   "error.chain.didYouMean": "Kas mõtlesite: {{suggestions}}",
   "error.chain.modelNotFound": "Mudelit ei leitud: {{provider}}/{{model}}",
-  "error.chain.checkConfig": "Kontrollige oma konfiguratsiooni (opencode.json) pakkuja/mudeli nimesid",
+  "error.chain.checkConfig": "Kontrollige oma konfiguratsiooni (whis.json) pakkuja/mudeli nimesid",
   "error.chain.mcpFailed": 'MCP server "{{name}}" ebaõnnestus. Pange tähele, OpenCode ei toeta veel MCP autentimist.',
   "error.chain.providerAuthFailed": "Pakkuja autentimine ebaõnnestus ({{provider}}): {{message}}",
   "error.chain.providerInitFailed":
@@ -640,7 +640,7 @@ export const dict = {
   "settings.extensions.tab.mcps": "MCP-d",
   "settings.extensions.tab.skills": "Oskused",
   "settings.extensions.availableAll": "Saadaval kõigile projektidele",
-  "settings.extensions.manageConfig": "Halda failis opencode.json",
+  "settings.extensions.manageConfig": "Halda failis whis.json",
   "settings.extensions.addSkills": "Kuidas oskusi lisada",
   "project.settings.extensions.description": "Vaadake selle projekti jaoks saadaolevaid laiendusi",
   "project.settings.extensions.tab.lsps": "LSP-d",

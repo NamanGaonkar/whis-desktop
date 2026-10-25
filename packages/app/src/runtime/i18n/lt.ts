@@ -352,7 +352,7 @@ export const dict = {
   "error.chain.responseBody": "Atsakymo turinys:\n{{body}}",
   "error.chain.didYouMean": "Ar turėjote omenyje: {{suggestions}}",
   "error.chain.modelNotFound": "Modelis nerastas: {{provider}}/{{model}}",
-  "error.chain.checkConfig": "Patikrinkite konfigūracijos (opencode.json) teikėjo / modelio pavadinimus",
+  "error.chain.checkConfig": "Patikrinkite konfigūracijos (whis.json) teikėjo / modelio pavadinimus",
   "error.chain.mcpFailed":
     "MCP serveris „{{name}}“ nepavyko. Atminkite, kad OpenCode dar nepalaiko MCP autentifikavimo.",
   "error.chain.providerAuthFailed": "Teikėjo autentifikavimas nepavyko ({{provider}}): {{message}}",
@@ -665,7 +665,7 @@ export const dict = {
   "settings.extensions.tab.mcps": "MCP",
   "settings.extensions.tab.skills": "Įgūdžiai",
   "settings.extensions.availableAll": "Pasiekiama visiems projektams",
-  "settings.extensions.manageConfig": "Tvarkyti faile opencode.json",
+  "settings.extensions.manageConfig": "Tvarkyti faile whis.json",
   "settings.extensions.addSkills": "Kaip pridėti įgūdžių",
   "project.settings.extensions.description": "Peržiūrėkite šiam projektui pasiekiamus plėtinius",
   "project.settings.extensions.tab.lsps": "LSP",

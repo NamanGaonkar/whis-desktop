@@ -6,7 +6,7 @@ const raw = import.meta.env.OPENCODE_CHANNEL ?? import.meta.env.WHIS_CHANNEL
 
 export const CHANNEL: Channel = raw === "local" || raw === "dev" || raw === "beta" || raw === "prod" ? raw : "prod"
 
-export const VERSION = app.isPackaged ? app.getVersion() : (process.env.WHIS_VERSION ?? process.env.OPENCODE_VERSION ?? "4.0.5")
+export const VERSION = app.isPackaged ? app.getVersion() : (process.env.WHIS_VERSION ?? process.env.OPENCODE_VERSION ?? "4.0.6")
 
 const appNames: Record<string, string> = {
   dev: "Whis Dev",

@@ -338,7 +338,7 @@ export const dict = {
   "error.chain.responseBody": "Răspuns:\n{{body}}",
   "error.chain.didYouMean": "Ai vrut să scrii: {{suggestions}}",
   "error.chain.modelNotFound": "Modelul nu a fost găsit: {{provider}}/{{model}}",
-  "error.chain.checkConfig": "Verifică numele provider/model în config (opencode.json)",
+  "error.chain.checkConfig": "Verifică numele provider/model în config (whis.json)",
   "error.chain.mcpFailed": 'Serverul MCP "{{name}}" a eșuat. Atenție, OpenCode nu suportă încă autentificarea MCP.',
   "error.chain.providerAuthFailed": "Autentificarea providerului a eșuat ({{provider}}): {{message}}",
   "error.chain.providerInitFailed":
@@ -649,7 +649,7 @@ export const dict = {
   "settings.extensions.tab.mcps": "MCP-uri",
   "settings.extensions.tab.skills": "Abilități",
   "settings.extensions.availableAll": "Disponibil pentru toate proiectele",
-  "settings.extensions.manageConfig": "Gestionează în opencode.json",
+  "settings.extensions.manageConfig": "Gestionează în whis.json",
   "settings.extensions.addSkills": "Cum se adaugă abilități",
   "project.settings.extensions.description": "Vezi extensiile disponibile pentru acest proiect",
   "project.settings.extensions.tab.lsps": "LSP-uri",

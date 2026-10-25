@@ -482,7 +482,7 @@ export const dict = {
   "error.chain.responseBody": "Response body:\n{{body}}",
   "error.chain.didYouMean": "Did you mean: {{suggestions}}",
   "error.chain.modelNotFound": "Model not found: {{provider}}/{{model}}",
-  "error.chain.checkConfig": "Check your config (opencode.json) provider/model names",
+  "error.chain.checkConfig": "Check your config (whis.json) provider/model names",
   "error.chain.mcpFailed": 'MCP server "{{name}}" failed. Note, OpenCode does not support MCP authentication yet.',
   "error.chain.providerAuthFailed": "Provider authentication failed ({{provider}}): {{message}}",
   "error.chain.providerInitFailed":
@@ -737,7 +737,7 @@ export const dict = {
   "settings.extensions.tab.mcps": "MCPs",
   "settings.extensions.tab.skills": "Skills",
   "settings.extensions.availableAll": "Available to all projects",
-  "settings.extensions.manageConfig": "Manage in opencode.json",
+  "settings.extensions.manageConfig": "Manage in whis.json",
   "settings.extensions.addSkills": "How to add skills",
   "project.settings.title": "Edit project",
   "project.settings.autoAccept.description": "Approve this project's permission requests without asking",

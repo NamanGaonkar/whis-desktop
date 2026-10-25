@@ -351,7 +351,7 @@ export const dict = {
   "error.chain.responseBody": "Svarhluti:\n{{body}}",
   "error.chain.didYouMean": "Áttirðu við: {{suggestions}}",
   "error.chain.modelNotFound": "Gerð fannst ekki: {{provider}}/{{model}}",
-  "error.chain.checkConfig": "Athugaðu stillingar (opencode.json) þjónustuveitu/módelheiti",
+  "error.chain.checkConfig": "Athugaðu stillingar (whis.json) þjónustuveitu/módelheiti",
   "error.chain.mcpFailed": "MCP þjónn „{{name}}“ mistókst. Athugið, OpenCode styður ekki MCP auðkenningu ennþá.",
   "error.chain.providerAuthFailed": "Auðkenning veitu mistókst ({{provider}}): {{message}}",
   "error.chain.providerInitFailed":
@@ -654,7 +654,7 @@ export const dict = {
   "settings.extensions.tab.mcps": "MCP",
   "settings.extensions.tab.skills": "Færni",
   "settings.extensions.availableAll": "Tiltækt fyrir öll verkefni",
-  "settings.extensions.manageConfig": "Stjórna í opencode.json",
+  "settings.extensions.manageConfig": "Stjórna í whis.json",
   "settings.extensions.addSkills": "Hvernig bæta á við færni",
   "project.settings.extensions.description": "Skoðaðu viðbætur sem eru tiltækar fyrir þetta verkefni",
   "project.settings.extensions.tab.lsps": "LSP",

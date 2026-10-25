@@ -351,7 +351,7 @@ export const dict = {
   "error.chain.responseBody": "Válasz törzse:\n{{body}}",
   "error.chain.didYouMean": "Erre gondolt: {{suggestions}}?",
   "error.chain.modelNotFound": "A modell nem található: {{provider}}/{{model}}",
-  "error.chain.checkConfig": "Ellenőrizze a konfigurációs (opencode.json) szolgáltató/modell nevét",
+  "error.chain.checkConfig": "Ellenőrizze a konfigurációs (whis.json) szolgáltató/modell nevét",
   "error.chain.mcpFailed":
     'A "{{name}}" MCP szerver meghibásodott. Megjegyzés: a OpenCode még nem támogatja a MCP hitelesítést.',
   "error.chain.providerAuthFailed": "A szolgáltató hitelesítése nem sikerült ({{provider}}): {{message}}",
@@ -661,7 +661,7 @@ export const dict = {
   "settings.extensions.tab.mcps": "MCP-k",
   "settings.extensions.tab.skills": "Készségek",
   "settings.extensions.availableAll": "Minden projekt számára elérhető",
-  "settings.extensions.manageConfig": "Kezelés az opencode.json fájlban",
+  "settings.extensions.manageConfig": "Kezelés az whis.json fájlban",
   "settings.extensions.addSkills": "Készségek hozzáadása",
   "project.settings.extensions.description": "A projekthez elérhető bővítmények megtekintése",
   "project.settings.extensions.tab.lsps": "LSP-k",

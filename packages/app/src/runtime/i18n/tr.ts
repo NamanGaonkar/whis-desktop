@@ -379,7 +379,7 @@ export const dict = {
   "error.chain.responseBody": "Yanıt gövdesi:\n{{body}}",
   "error.chain.didYouMean": "Bunu mu demek istediniz: {{suggestions}}",
   "error.chain.modelNotFound": "Model bulunamadı: {{provider}}/{{model}}",
-  "error.chain.checkConfig": "Yapılandırma dosyanızdaki (opencode.json) sağlayıcı/model adlarını kontrol edin",
+  "error.chain.checkConfig": "Yapılandırma dosyanızdaki (whis.json) sağlayıcı/model adlarını kontrol edin",
   "error.chain.mcpFailed":
     'MCP sunucusu "{{name}}" çalıştırılamadı. Not: OpenCode henüz MCP kimlik doğrulamasını desteklemiyor.',
   "error.chain.providerAuthFailed": "Sağlayıcı kimlik doğrulaması başarısız ({{provider}}): {{message}}",
@@ -716,7 +716,7 @@ export const dict = {
   "settings.extensions.tab.mcps": "MCP'ler",
   "settings.extensions.tab.skills": "Beceriler",
   "settings.extensions.availableAll": "Tüm projelerde kullanılabilir",
-  "settings.extensions.manageConfig": "opencode.json içinde yönet",
+  "settings.extensions.manageConfig": "whis.json içinde yönet",
   "settings.extensions.addSkills": "Beceri ekleme",
   "project.settings.extensions.description": "Bu projede kullanılabilen uzantıları görüntüleyin",
   "project.settings.extensions.tab.lsps": "LSP'ler",

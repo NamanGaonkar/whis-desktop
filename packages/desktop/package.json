@@ -1,7 +1,7 @@
 {
   "name": "@whis/desktop",
   "private": true,
-  "version": "4.0.5",
+  "version": "4.0.6",
   "type": "module",
   "license": "MIT",
   "homepage": "https://github.com/NamanGaonkar/whis-desktop",

@@ -560,7 +560,7 @@ export const dict = {
   "error.chain.responseBody": "Responsinnhold:\n{{body}}",
   "error.chain.didYouMean": "Mente du: {{suggestions}}",
   "error.chain.modelNotFound": "Modell ikke funnet: {{provider}}/{{model}}",
-  "error.chain.checkConfig": "Sjekk leverandør-/modellnavnene i konfigurasjonen din (opencode.json)",
+  "error.chain.checkConfig": "Sjekk leverandør-/modellnavnene i konfigurasjonen din (whis.json)",
   "error.chain.mcpFailed": 'MCP-server "{{name}}" mislyktes. Merk at OpenCode ikke støtter MCP-autentisering ennå.',
   "error.chain.providerAuthFailed": "Leverandørautentisering mislyktes ({{provider}}): {{message}}",
   "error.chain.providerInitFailed":
@@ -889,7 +889,7 @@ export const dict = {
   "settings.extensions.tab.mcps": "MCP-er",
   "settings.extensions.tab.skills": "Ferdigheter",
   "settings.extensions.availableAll": "Tilgjengelig for alle prosjekter",
-  "settings.extensions.manageConfig": "Administrer i opencode.json",
+  "settings.extensions.manageConfig": "Administrer i whis.json",
   "settings.extensions.addSkills": "Hvordan legge til ferdigheter",
   "project.settings.extensions.description": "Se utvidelser som er tilgjengelige for dette prosjektet",
   "project.settings.extensions.tab.lsps": "LSP-er",

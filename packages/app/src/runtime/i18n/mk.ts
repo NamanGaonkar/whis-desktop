@@ -340,7 +340,7 @@ export const dict = {
   "error.chain.responseBody": "Тело за одговор:\n{{body}}",
   "error.chain.didYouMean": "Дали сакаше да каже: {{suggestions}}",
   "error.chain.modelNotFound": "Моделот не е пронајден: {{provider}}/{{model}}",
-  "error.chain.checkConfig": "Проверете ги имињата на давателот/моделот за конфигурација (opencode.json).",
+  "error.chain.checkConfig": "Проверете ги имињата на давателот/моделот за конфигурација (whis.json).",
   "error.chain.mcpFailed":
     "MCP серверот „{{name}}“ не успеа. Забелешка, OpenCode сè уште не поддржува автентикација MCP.",
   "error.chain.providerAuthFailed": "Неуспешна автентикација на провајдерот ({{provider}}): {{message}}",
@@ -616,7 +616,7 @@ export const dict = {
   "settings.extensions.tab.mcps": "MCPs",
   "settings.extensions.tab.skills": "Вештини",
   "settings.extensions.availableAll": "Достапно за сите проекти",
-  "settings.extensions.manageConfig": "Управувајте во opencode.json",
+  "settings.extensions.manageConfig": "Управувајте во whis.json",
   "settings.extensions.addSkills": "Како да додадете вештини",
   "project.settings.extensions.description": "Погледнете ги наставките достапни за овој проект",
   "project.settings.extensions.tab.lsps": "LSPs",

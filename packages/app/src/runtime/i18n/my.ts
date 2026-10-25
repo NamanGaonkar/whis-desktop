@@ -350,7 +350,7 @@ export const dict = {
   "error.chain.responseBody": "တုံ့ပြန်မှုကိုယ်ထည်-\n{{body}}",
   "error.chain.didYouMean": "ဆိုလိုတာက {{suggestions}}",
   "error.chain.modelNotFound": "မော်ဒယ်ကို ရှာမတွေ့ပါ- {{provider}}/{{model}}",
-  "error.chain.checkConfig": "သင်၏ config (opencode.json) ဝန်ဆောင်မှုပေးသူ/မော်ဒယ်အမည်များကို စစ်ဆေးပါ။",
+  "error.chain.checkConfig": "သင်၏ config (whis.json) ဝန်ဆောင်မှုပေးသူ/မော်ဒယ်အမည်များကို စစ်ဆေးပါ။",
   "error.chain.mcpFailed":
     'MCP ဆာဗာ "{{name}}" မအောင်မြင်ပါ။ မှတ်ချက်၊ OpenCode သည် MCP စစ်မှန်ကြောင်းအထောက်အထားမခိုင်လုံသေးပါ။',
   "error.chain.providerAuthFailed": "ပံ့ပိုးသူ စစ်မှန်ကြောင်း အထောက်အထား မအောင်မြင်ပါ ({{provider}}): {{message}}",
@@ -470,7 +470,7 @@ export const dict = {
   "settings.extensions.tab.mcps": "MCPs",
   "settings.extensions.tab.skills": "ကျွမ်းကျင်မှုများ",
   "settings.extensions.availableAll": "ပရောဂျက်အားလုံးတွင် အသုံးပြုနိုင်သည်",
-  "settings.extensions.manageConfig": "opencode.json တွင် စီမံပါ",
+  "settings.extensions.manageConfig": "whis.json တွင် စီမံပါ",
   "settings.extensions.addSkills": "ကျွမ်းကျင်မှုများ ထည့်နည်း",
   "project.settings.extensions.description": "ဤပရောဂျက်အတွက် ရနိုင်သော တိုးချဲ့မှုများကို ကြည့်ပါ",
   "project.settings.extensions.tab.lsps": "LSPs",

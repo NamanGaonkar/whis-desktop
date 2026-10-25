@@ -352,7 +352,7 @@ export const dict = {
   "error.chain.responseBody": "Тело одговора:\n{{body}}",
   "error.chain.didYouMean": "Да ли сте мислили: {{suggestions}}",
   "error.chain.modelNotFound": "Модел није пронађен: {{provider}}/{{model}}",
-  "error.chain.checkConfig": "Проверите имена добављача/модела конфигурације (opencode.json).",
+  "error.chain.checkConfig": "Проверите имена добављача/модела конфигурације (whis.json).",
   "error.chain.mcpFailed":
     "MCP сервер „{{name}}“ није успео. Напомена, OpenCode још увек не подржава MCP аутентификацију.",
   "error.chain.providerAuthFailed": "аутентификација добављача није успела ({{provider}}): {{message}}",

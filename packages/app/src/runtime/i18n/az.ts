@@ -344,7 +344,7 @@ export const dict = {
   "error.chain.responseBody": "Cavab gövdəsi:\n{{body}}",
   "error.chain.didYouMean": "Bunu nəzərdə tuturdunuz: {{suggestions}}",
   "error.chain.modelNotFound": "Model tapılmadı: {{provider}}/{{model}}",
-  "error.chain.checkConfig": "Konfiqurasiyanızdakı (opencode.json) provayder/model adlarını yoxlayın",
+  "error.chain.checkConfig": "Konfiqurasiyanızdakı (whis.json) provayder/model adlarını yoxlayın",
   "error.chain.mcpFailed":
     'MCP server "{{name}}" uğursuz oldu. Qeyd: OpenCode hələ MCP autentifikasiyasını dəstəkləmir.',
   "error.chain.providerAuthFailed": "Provayder autentifikasiyası uğursuz oldu ({{provider}}): {{message}}",
@@ -619,7 +619,7 @@ export const dict = {
   "settings.extensions.tab.mcps": "MCP-lər",
   "settings.extensions.tab.skills": "Bacarıqlar",
   "settings.extensions.availableAll": "Bütün layihələr üçün mövcuddur",
-  "settings.extensions.manageConfig": "opencode.json-da idarə edin",
+  "settings.extensions.manageConfig": "whis.json-da idarə edin",
   "settings.extensions.addSkills": "Bacarıqları necə əlavə etməli",
   "project.settings.extensions.description": "Bu layihə üçün mövcud genişləndirmələrə baxın",
   "project.settings.extensions.tab.lsps": "LSP-lər",

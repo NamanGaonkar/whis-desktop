@@ -554,7 +554,7 @@ export const dict = {
   "error.chain.responseBody": "Antwoordtekst:\n{{body}}",
   "error.chain.didYouMean": "Bedoelde je: {{suggestions}}",
   "error.chain.modelNotFound": "Model niet gevonden: {{provider}}/{{model}}",
-  "error.chain.checkConfig": "Controleer de provider- en modelnamen in je configuratie (opencode.json)",
+  "error.chain.checkConfig": "Controleer de provider- en modelnamen in je configuratie (whis.json)",
   "error.chain.mcpFailed": 'MCP-server "{{name}}" is mislukt. Let op: OpenCode ondersteunt nog geen MCP-authenticatie.',
   "error.chain.providerAuthFailed": "Authenticatie bij aanbieder mislukt ({{provider}}): {{message}}",
   "error.chain.providerInitFailed":
@@ -831,7 +831,7 @@ export const dict = {
   "settings.extensions.tab.mcps": "MCP's",
   "settings.extensions.tab.skills": "Vaardigheden",
   "settings.extensions.availableAll": "Beschikbaar voor alle projecten",
-  "settings.extensions.manageConfig": "Beheer in opencode.json",
+  "settings.extensions.manageConfig": "Beheer in whis.json",
   "settings.extensions.addSkills": "Hoe vaardigheden toe te voegen",
   "project.settings.extensions.description": "Bekijk de extensies die beschikbaar zijn voor dit project",
   "project.settings.extensions.tab.lsps": "LSP's",

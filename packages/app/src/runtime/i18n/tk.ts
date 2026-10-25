@@ -339,7 +339,7 @@ export const dict = {
   "error.chain.responseBody": "Jogap beriji organ:\n{{body}}",
   "error.chain.didYouMean": "Diýjek bolduňmy: {{suggestions}}",
   "error.chain.modelNotFound": "Model tapylmady: {{provider}} / {{model}}",
-  "error.chain.checkConfig": "Konfigurasiýaňyzy (opencode.json) üpjün edijiniň / model atlaryny barlaň",
+  "error.chain.checkConfig": "Konfigurasiýaňyzy (whis.json) üpjün edijiniň / model atlaryny barlaň",
   "error.chain.mcpFailed": 'MCP serweri "{{name}}" şowsuz. Üns beriň, OpenCode entek MCP tassyklamasyny goldamaýar.',
   "error.chain.providerAuthFailed": "Prowaýderiň tassyklamasy şowsuz ({{provider}}): {{message}}",
   "error.chain.providerInitFailed":
@@ -611,7 +611,7 @@ export const dict = {
   "settings.extensions.tab.mcps": "MCP-ler",
   "settings.extensions.tab.skills": "Başarnyklar",
   "settings.extensions.availableAll": "Ähli taslamalar üçin elýeterli",
-  "settings.extensions.manageConfig": "opencode.json-da dolandyryň",
+  "settings.extensions.manageConfig": "whis.json-da dolandyryň",
   "settings.extensions.addSkills": "Başarnyklary nädip goşmaly",
   "project.settings.extensions.description": "Bu taslama üçin elýeterli giňeltmeleri görüň",
   "project.settings.extensions.tab.lsps": "LSP-ler",

@@ -547,7 +547,7 @@ export const dict = {
   "error.chain.responseBody": "Svarstext:\n{{body}}",
   "error.chain.didYouMean": "Menade du: {{suggestions}}",
   "error.chain.modelNotFound": "Modellen hittades inte: {{provider}}/{{model}}",
-  "error.chain.checkConfig": "Kontrollera leverantörs- och modellnamnen i konfigurationen (opencode.json)",
+  "error.chain.checkConfig": "Kontrollera leverantörs- och modellnamnen i konfigurationen (whis.json)",
   "error.chain.mcpFailed": 'MCP-servern "{{name}}" misslyckades. Obs, OpenCode stöder inte MCP-autentisering ännu.',
   "error.chain.providerAuthFailed": "Leverantörsautentisering misslyckades ({{provider}}): {{message}}",
   "error.chain.providerInitFailed":
@@ -821,7 +821,7 @@ export const dict = {
   "settings.extensions.tab.mcps": "MCP:er",
   "settings.extensions.tab.skills": "Färdigheter",
   "settings.extensions.availableAll": "Tillgänglig för alla projekt",
-  "settings.extensions.manageConfig": "Hantera i opencode.json",
+  "settings.extensions.manageConfig": "Hantera i whis.json",
   "settings.extensions.addSkills": "Hur man lägger till färdigheter",
   "project.settings.extensions.description": "Visa tillägg som är tillgängliga för detta projekt",
   "project.settings.extensions.tab.lsps": "LSP:er",
