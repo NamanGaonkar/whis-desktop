@@ -4,7 +4,11 @@ import { useTranslation } from "react-i18next";
 import type { AgentProvider, ProviderSnapshotEntry } from "@getpaseo/protocol/agent-types";
 import type { DaemonClient } from "@getpaseo/client/internal/daemon-client";
 import { useRetainedPanelActive } from "@/components/retained-panel";
-import { useHostRuntimeClient, useHostRuntimeIsConnected } from "@/runtime/host-runtime";
+import {
+  getHostRuntimeStore,
+  useHostRuntimeClient,
+  useHostRuntimeIsConnected,
+} from "@/runtime/host-runtime";
 import { useSessionStore } from "@/stores/session-store";
 import { useReplicaQuery } from "@/data/query";
 import { queryClient as singletonQueryClient } from "@/data/query-client";
@@ -65,41 +69,57 @@ export function useProvidersSnapshot(
   options: UseProvidersSnapshotOptions = {},
 ): UseProvidersSnapshotResult {
   const { t } = useTranslation();
+  const store = getHostRuntimeStore();
+  const resolvedServerId = store.resolveServerId(serverId ?? "");
   const retainedPanelActive = useRetainedPanelActive();
   const queryClient = useQueryClient();
-  const client = useHostRuntimeClient(serverId ?? "");
+  const client = useHostRuntimeClient(resolvedServerId);
   const enabled = (options.enabled ?? true) && retainedPanelActive;
-  const isConnected = useHostRuntimeIsConnected(serverId ?? "");
+  const isConnected = useHostRuntimeIsConnected(resolvedServerId);
   const cwd = normalizeProvidersSnapshotCwd(options.cwd);
-  const supportsSnapshot = useSessionStore(
-    (state) => state.sessions[serverId ?? ""]?.serverInfo?.features?.providersSnapshot === true,
-  );
+  const supportsSnapshot = useSessionStore((state) => {
+    const session =
+      state.sessions[resolvedServerId] ??
+      (resolvedServerId === "local" || !resolvedServerId || Object.keys(state.sessions).length === 1
+        ? Object.values(state.sessions)[0]
+        : undefined);
+    return session?.serverInfo?.features?.providersSnapshot === true;
+  });
 
-  const queryKey = useMemo(() => providersSnapshotQueryKey(serverId, cwd), [cwd, serverId]);
+  const queryKey = useMemo(
+    () => providersSnapshotQueryKey(resolvedServerId, cwd),
+    [cwd, resolvedServerId],
+  );
 
   const snapshotQuery = useReplicaQuery({
     queryKey,
     // The content-hash cache already owns catalog and model identity.
     structuralSharing: false,
-    enabled: Boolean(enabled && supportsSnapshot && serverId && client && isConnected),
+    enabled: Boolean(enabled && supportsSnapshot && resolvedServerId && client && isConnected),
     pushEvent: "providers_snapshot_update",
     queryFn: async ({ signal }) => {
-      if (!client || !serverId) {
+      if (!client || !resolvedServerId) {
         throw new Error(t("workspace.terminal.hostDisconnected"));
       }
-      return fetchProvidersSnapshot({ client, serverId, cwd, queryClient, signal });
+      return fetchProvidersSnapshot({
+        client,
+        serverId: resolvedServerId,
+        cwd,
+        queryClient,
+        signal,
+      });
     },
   });
 
   const refreshMutation = useMutation({
     mutationFn: async (providers?: AgentProvider[]) => {
-      if (!client || !serverId) {
+      if (!client || !resolvedServerId) {
         return;
       }
       await refreshAndApplyProvidersSnapshot({
         client,
         queryClient,
-        serverId,
+        serverId: resolvedServerId,
         cwd,
         providers,
       });

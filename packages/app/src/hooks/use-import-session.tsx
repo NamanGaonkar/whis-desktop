@@ -67,7 +67,10 @@ export function useImportSession({
 
   const open = useCallback(() => {
     const effectiveServerId =
-      (serverId && serverId !== "local" ? serverId : null) ?? localServerId ?? hosts[0]?.serverId;
+      localServerId ??
+      (serverId && serverId !== "local" ? serverId : null) ??
+      hosts[0]?.serverId ??
+      "local";
     if (effectiveServerId) {
       openForHost(effectiveServerId);
       return;

@@ -10,7 +10,7 @@ import {
   type PressableStateCallbackType,
 } from "react-native";
 import { StyleSheet, useUnistyles } from "react-native-unistyles";
-import { useIsCompactFormFactor } from "@/constants/layout";
+import { useIsCompactFormFactor, getIsElectronRuntime } from "@/constants/layout";
 import { useToast } from "@/contexts/toast-api-context";
 import { settingsStyles } from "@/styles/settings";
 import { useHostRuntimeIsConnected, useHosts } from "@/runtime/host-runtime";
@@ -332,9 +332,7 @@ export function ProvidersSection({ serverId }: ProvidersSectionProps) {
   const hosts = useHosts();
   const localServerId = useLocalDaemonServerId();
   const effectiveServerId =
-    !serverId || serverId === "local"
-      ? (localServerId ?? hosts[0]?.serverId ?? serverId)
-      : serverId;
+    !serverId || serverId === "local" ? (localServerId ?? hosts[0]?.serverId ?? "local") : serverId;
   const isConnected = useHostRuntimeIsConnected(effectiveServerId);
   const supportsHopliteProvider = useHostFeature(effectiveServerId, "hopliteProvider");
   const supportsProviderRemoval = useHostFeature(effectiveServerId, "providerRemoval");
@@ -348,6 +346,11 @@ export function ProvidersSection({ serverId }: ProvidersSectionProps) {
 
   const providerDefinitions = useMemo(() => buildProviderDefinitions(entries), [entries]);
   const hasServer = effectiveServerId.length > 0;
+  const isEffectiveConnected = isConnected || getIsElectronRuntime();
+  const showUnavailable = !hasServer || !isEffectiveConnected;
+  const showLoading = hasServer && isEffectiveConnected && isLoading;
+  const showList =
+    hasServer && isEffectiveConnected && !isLoading && providerDefinitions.length > 0;
 
   /** Config owns derived providers and opt-in bundled catalog providers. */
   const isConfigOwnedProvider = useCallback(
@@ -441,17 +444,17 @@ export function ProvidersSection({ serverId }: ProvidersSectionProps) {
         testID="host-page-providers-card"
         style={styles.sectionSpacing}
       >
-        {!hasServer || !isConnected ? (
+        {showUnavailable ? (
           <View style={[settingsStyles.card, styles.emptyCard]}>
             <Text style={styles.emptyText}>{t("settings.providers.unavailable")}</Text>
           </View>
         ) : null}
-        {hasServer && isConnected && isLoading ? (
+        {showLoading ? (
           <View style={[settingsStyles.card, styles.emptyCard]}>
             <Text style={styles.emptyText}>{t("settings.providers.loading")}</Text>
           </View>
         ) : null}
-        {hasServer && isConnected && !isLoading && providerDefinitions.length > 0 ? (
+        {showList ? (
           <View style={settingsStyles.card}>
             {providerDefinitions.map((def, index) => {
               const entry = entries?.find((candidate) => candidate.provider === def.id);
@@ -481,14 +484,14 @@ export function ProvidersSection({ serverId }: ProvidersSectionProps) {
         ) : null}
       </SettingsSection>
 
-      {hasServer && isConnected ? (
+      {hasServer && isEffectiveConnected ? (
         <SettingsSection
           title={t("settings.providers.addProvider")}
           testID="host-page-add-provider-card"
           style={styles.addProviderSection}
         >
           <ProviderCatalogList
-            serverId={serverId}
+            serverId={effectiveServerId}
             installingProviderId={installingProviderId}
             onInstall={handleInstall}
           />

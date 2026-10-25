@@ -37,6 +37,7 @@ import { startDesktopDaemon, stopDesktopDaemon } from "@/desktop/daemon/desktop-
 import { LocalDaemonSection } from "@/desktop/components/desktop-updates-section";
 import { useDaemonStatus } from "@/desktop/hooks/use-daemon-status";
 import { useDesktopSettings } from "@/desktop/settings/desktop-settings";
+import { getIsElectronRuntime } from "@/constants/layout";
 import { PairDeviceModal } from "@/desktop/components/pair-device-modal";
 import { useDaemonConfig } from "@/hooks/use-daemon-config";
 import { useIsLocalDaemon, useLocalDaemonServerId } from "@/hooks/use-is-local-daemon";
@@ -55,7 +56,8 @@ import { HostAppearanceSection } from "@/screens/settings/host-appearance-sectio
 import { SettingsSection } from "@/components/settings/headings/settings-section";
 import { useSessionStore } from "@/stores/session-store";
 import { settingsStyles } from "@/styles/settings";
-import type { HostConnection, HostProfile } from "@/types/host-connection";
+import { defaultLifecycle, type HostConnection, type HostProfile } from "@/types/host-connection";
+import { defaultHostAppearance } from "@/hosts/appearance";
 import { confirmDialog } from "@/utils/confirm-dialog";
 import { isVersionMismatch } from "@/desktop/updates/desktop-updates";
 import { resolveAppVersion } from "@/utils/app-version";
@@ -166,7 +168,22 @@ function useHostProfile(serverId: string): HostProfile | null {
     const match = daemons.find((entry) => entry.serverId === localServerId);
     if (match) return match;
   }
-  return daemons[0] ?? null;
+  if (daemons.length > 0) {
+    return daemons[0];
+  }
+  if (getIsElectronRuntime() || localServerId) {
+    return {
+      serverId: localServerId ?? "local",
+      label: "Local",
+      appearance: defaultHostAppearance(),
+      lifecycle: defaultLifecycle(),
+      connections: [],
+      preferredConnectionId: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+  }
+  return null;
 }
 
 function HostNotFound() {
@@ -291,6 +308,7 @@ export function HostAgentsPage({ serverId }: { serverId: string }) {
   const host = useHostProfile(serverId);
   const effectiveServerId = host?.serverId ?? serverId;
   const isConnected = useHostRuntimeIsConnected(effectiveServerId);
+  const isEffectiveConnected = isConnected || getIsElectronRuntime();
 
   if (!host) {
     return <HostNotFound />;
@@ -298,7 +316,7 @@ export function HostAgentsPage({ serverId }: { serverId: string }) {
 
   return (
     <View>
-      {isConnected ? (
+      {isEffectiveConnected ? (
         <SettingsSection title={t("settings.hostSections.agents")}>
           <InjectPaseoToolsCard serverId={effectiveServerId} />
           <BrowserToolsOptInCard serverId={effectiveServerId} />
@@ -320,6 +338,7 @@ export function HostWorkspacesPage({ serverId }: { serverId: string }) {
   const host = useHostProfile(serverId);
   const effectiveServerId = host?.serverId ?? serverId;
   const isConnected = useHostRuntimeIsConnected(effectiveServerId);
+  const isEffectiveConnected = isConnected || getIsElectronRuntime();
 
   if (!host) {
     return <HostNotFound />;
@@ -327,7 +346,7 @@ export function HostWorkspacesPage({ serverId }: { serverId: string }) {
 
   return (
     <View>
-      {isConnected ? (
+      {isEffectiveConnected ? (
         <SettingsSection title={t("settings.hostSections.workspaces")}>
           <AutoArchiveMergedWorkspacesCard serverId={effectiveServerId} />
         </SettingsSection>

@@ -32,6 +32,7 @@ import { openPluginInstallForm } from "@/screens/settings/plugin-install-form-mo
 import { pluginRegistry, useInstalledPlugins } from "@/plugins/registry";
 import { settingsStyles } from "@/styles/settings";
 import { confirmDialog } from "@/utils/confirm-dialog";
+import { getIsElectronRuntime } from "@/constants/layout";
 
 const pluginQueryKey = (serverId: string) => ["plugins", serverId] as const;
 const PLUGIN_SOURCE_DOCS_URL = "https://paseo.sh/docs/plugins/reference#plugin-sources";
@@ -271,7 +272,7 @@ function resolveEffectiveServerId(
   hosts: readonly { serverId: string }[],
 ): string {
   if (!serverId || serverId === "local") {
-    return localServerId ?? hosts[0]?.serverId ?? serverId;
+    return localServerId ?? hosts[0]?.serverId ?? "local";
   }
   return serverId;
 }
@@ -502,7 +503,7 @@ export function HostPluginsPage({ serverId }: { serverId: string }) {
   }, [refetchPlugins]);
   const closeLogs = useCallback(() => setLogsPluginId(null), []);
 
-  if (pageState === "offline") {
+  if (pageState === "offline" && !getIsElectronRuntime()) {
     return (
       <Alert
         size="md"
@@ -512,7 +513,7 @@ export function HostPluginsPage({ serverId }: { serverId: string }) {
       />
     );
   }
-  if (pageState === "unsupported") {
+  if (pageState === "unsupported" && !getIsElectronRuntime()) {
     return <Alert size="md" variant="warning" title={t("settings.plugins.states.updateTitle")} />;
   }
 

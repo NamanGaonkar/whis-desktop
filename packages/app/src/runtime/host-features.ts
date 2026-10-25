@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useShallow } from "zustand/shallow";
 import type { DaemonServerInfo } from "@/stores/session-store";
 import { useSessionStore } from "@/stores/session-store";
+import { getIsElectronRuntime } from "@/constants/layout";
 
 export type HostFeatureName = keyof NonNullable<DaemonServerInfo["features"]>;
 
@@ -27,7 +28,18 @@ export function selectHostFeature(
   serverId: string,
   feature: HostFeatureName,
 ): boolean {
-  return hostSupportsFeature(state.sessions[serverId]?.serverInfo, feature);
+  const session =
+    state.sessions[serverId] ??
+    (serverId === "local" || !serverId || Object.keys(state.sessions).length === 1
+      ? Object.values(state.sessions)[0]
+      : undefined);
+  if (session?.serverInfo) {
+    return hostSupportsFeature(session.serverInfo, feature);
+  }
+  if (getIsElectronRuntime() || serverId === "local" || !serverId) {
+    return true;
+  }
+  return false;
 }
 
 export function useHostFeature(

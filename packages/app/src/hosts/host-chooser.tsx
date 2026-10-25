@@ -17,6 +17,7 @@ import { Server } from "lucide-react-native";
 import { create } from "zustand";
 import { StyleSheet, useUnistyles } from "react-native-unistyles";
 import { HostStatusDotSlot } from "@/components/hosts/host-picker";
+import { getIsElectronRuntime } from "@/constants/layout";
 import { isWeb } from "@/constants/platform";
 import { useLocalDaemonServerId } from "@/hooks/use-is-local-daemon";
 import {
@@ -82,6 +83,10 @@ export function useHostChooser() {
       );
 
       if (availableHosts.length === 0) {
+        if (getIsElectronRuntime() || localServerId) {
+          void input.onChooseHost(localServerId ?? hosts[0]?.serverId ?? "local");
+          return true;
+        }
         (
           input.onNoHosts ??
           (() => {
@@ -92,7 +97,7 @@ export function useHostChooser() {
         return false;
       }
 
-      if (availableHosts.length === 1) {
+      if (availableHosts.length === 1 || getIsElectronRuntime()) {
         void input.onChooseHost(availableHosts[0].serverId);
         return true;
       }

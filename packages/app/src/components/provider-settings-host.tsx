@@ -4,6 +4,7 @@ import { OverlayLayerProvider } from "@/lib/overlay-root";
 import { useProviderSettingsStore } from "@/stores/provider-settings-store";
 import { useHosts } from "@/runtime/host-runtime";
 import { useLocalDaemonServerId } from "@/hooks/use-is-local-daemon";
+import { getIsElectronRuntime } from "@/constants/layout";
 
 export function ProviderSettingsHost() {
   const serverId = useProviderSettingsStore((state) => state.serverId);
@@ -15,7 +16,7 @@ export function ProviderSettingsHost() {
   const localServerId = useLocalDaemonServerId();
   const effectiveServerId =
     !serverId || serverId === "local"
-      ? (localServerId ?? hosts[0]?.serverId ?? serverId)
+      ? (localServerId ?? hosts[0]?.serverId ?? (getIsElectronRuntime() ? "local" : serverId))
       : serverId;
 
   const handleClose = useCallback(() => {

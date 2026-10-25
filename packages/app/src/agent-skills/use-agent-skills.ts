@@ -7,6 +7,7 @@ import type {
   AgentSkillsStatus,
 } from "@getpaseo/protocol/messages";
 import { useToast } from "@/contexts/toast-context";
+import { getIsElectronRuntime } from "@/constants/layout";
 import { useFetchQuery } from "@/data/query";
 import { useHostFeature } from "@/runtime/host-features";
 import { useHostRuntimeClient, useHostRuntimeIsConnected } from "@/runtime/host-runtime";
@@ -94,9 +95,11 @@ export function useAgentSkills(serverId: string) {
       saveAsync({ selection, confirmedRemovals }),
     [saveAsync],
   );
+  const isEffectiveConnected = connected || getIsElectronRuntime();
+  const isEffectiveSupported = supported || getIsElectronRuntime();
   return {
-    connected,
-    supported,
+    connected: isEffectiveConnected,
+    supported: isEffectiveSupported,
     status: query.data ?? null,
     isLoading: query.isLoading,
     isWorking,

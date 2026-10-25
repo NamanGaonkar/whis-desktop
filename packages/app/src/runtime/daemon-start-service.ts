@@ -20,17 +20,11 @@ export async function upsertDesktopDaemonConnection(
   store: DaemonConnectionStore,
   daemon: DesktopDaemonStatus,
 ): Promise<DaemonStartResult> {
-  const serverId = daemon.serverId.trim();
-  if (!serverId) {
-    return { ok: false, error: "Desktop daemon did not return a server id." };
-  }
+  const serverId = daemon.serverId.trim() || "local";
   if (store.getHosts().some((host) => host.serverId === serverId)) {
     return { ok: true };
   }
-  const listenAddress = daemon.listen?.trim() ?? "";
-  if (!listenAddress) {
-    return { ok: false, error: "Desktop daemon did not return a listen address." };
-  }
+  const listenAddress = daemon.listen?.trim() || "127.0.0.1:6868";
   if (!connectionFromListen(listenAddress)) {
     return {
       ok: false,

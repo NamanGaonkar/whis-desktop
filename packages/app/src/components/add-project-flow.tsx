@@ -344,36 +344,50 @@ export function AddProjectFlow({ request, onClose }: AddProjectFlowProps) {
   // COMPAT(projectCreateDirectory): added in v0.1.108, remove gate after 2027-01-15.
   const createDirectoryByHost = useHostFeatureMap(hostIds, "projectCreateDirectory");
   const localServerId = useLocalDaemonServerId();
-  const availableHosts = useMemo<AddProjectHost[]>(
-    () =>
-      hosts.flatMap((host) => {
-        if (connectionStatuses.get(host.serverId) !== "online") return [];
-        const canAddProject =
-          projectAddByHost.get(host.serverId) === true &&
-          stableProjectIdentityByHost.get(host.serverId) === true;
-        return [
-          {
-            serverId: host.serverId,
-            label: host.label,
-            canAddProject,
-            canBrowse: canAddProject && getIsElectronRuntime() && localServerId === host.serverId,
-            canCloneGithubRepositories: githubCloneByHost.get(host.serverId) === true,
-            canSearchGithubRepositories: githubSearchByHost.get(host.serverId) === true,
-            canCreateDirectory: createDirectoryByHost.get(host.serverId) === true,
-          },
-        ];
-      }),
-    [
-      connectionStatuses,
-      createDirectoryByHost,
-      githubCloneByHost,
-      githubSearchByHost,
-      hosts,
-      localServerId,
-      projectAddByHost,
-      stableProjectIdentityByHost,
-    ],
-  );
+  const availableHosts = useMemo<AddProjectHost[]>(() => {
+    const online = hosts.flatMap((host) => {
+      if (connectionStatuses.get(host.serverId) !== "online") return [];
+      const canAddProject =
+        projectAddByHost.get(host.serverId) === true &&
+        stableProjectIdentityByHost.get(host.serverId) === true;
+      return [
+        {
+          serverId: host.serverId,
+          label: host.label,
+          canAddProject,
+          canBrowse: canAddProject && getIsElectronRuntime() && localServerId === host.serverId,
+          canCloneGithubRepositories: githubCloneByHost.get(host.serverId) === true,
+          canSearchGithubRepositories: githubSearchByHost.get(host.serverId) === true,
+          canCreateDirectory: createDirectoryByHost.get(host.serverId) === true,
+        },
+      ];
+    });
+    if (online.length > 0) return online;
+    if (getIsElectronRuntime() || localServerId) {
+      const id = localServerId ?? hosts[0]?.serverId ?? "local";
+      return [
+        {
+          serverId: id,
+          label: "Local",
+          canAddProject: true,
+          canBrowse: true,
+          canCloneGithubRepositories: true,
+          canSearchGithubRepositories: true,
+          canCreateDirectory: true,
+        },
+      ];
+    }
+    return online;
+  }, [
+    connectionStatuses,
+    createDirectoryByHost,
+    githubCloneByHost,
+    githubSearchByHost,
+    hosts,
+    localServerId,
+    projectAddByHost,
+    stableProjectIdentityByHost,
+  ]);
   const effectivePreferredHostId = request.preferredHostId ?? localServerId ?? hosts[0]?.serverId;
   const [state, setState] = useState(() =>
     openAddProjectFlow({

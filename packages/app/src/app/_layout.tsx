@@ -73,6 +73,7 @@ import {
 } from "@/navigation/host-runtime-bootstrap";
 import { registerWorkspaceRouteNavigationRef } from "@/navigation/workspace-route-navigation";
 import { ThemedStack } from "@/navigation/themed-stack";
+import { useLocalDaemonServerId } from "@/hooks/use-is-local-daemon";
 import { shouldUseDesktopDaemon } from "@/desktop/daemon/desktop-daemon";
 import { AgentNavigationListener } from "@/desktop/agent-navigation";
 import { LegacyAgentSkillsMigration } from "@/agent-skills/legacy-migration";
@@ -656,6 +657,8 @@ let nextOpenProjectRequestId = 1;
 function OpenProjectListener() {
   const chooseHost = useHostChooser();
   const hostRegistryLoaded = useHostRegistryLoaded();
+  const hosts = useHosts();
+  const localServerId = useLocalDaemonServerId();
   const [request, setRequest] = useState<PendingOpenProjectRequest | null>(null);
   const [pendingPath, setPendingPath] = useState<string | null>(null);
   const openProject = useOpenProject(request?.serverId ?? null);
@@ -672,6 +675,15 @@ function OpenProjectListener() {
         return;
       }
 
+      if (shouldUseDesktopDaemon() || localServerId) {
+        setRequest({
+          id: nextOpenProjectRequestId++,
+          serverId: localServerId ?? hosts[0]?.serverId ?? "local",
+          path: nextPath,
+        });
+        return;
+      }
+
       chooseHost({
         title: "Choose host",
         onChooseHost: (serverId) => {
@@ -683,7 +695,7 @@ function OpenProjectListener() {
         },
       });
     },
-    [chooseHost, hostRegistryLoaded],
+    [chooseHost, hostRegistryLoaded, hosts, localServerId],
   );
 
   useEffect(() => {

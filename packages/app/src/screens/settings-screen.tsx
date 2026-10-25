@@ -908,9 +908,9 @@ function SettingsSidebar({
   const hosts = useHosts();
   const localServerId = useLocalDaemonServerId();
   const sortedHosts = useSortedHosts(hosts, localServerId);
-  const hasHosts = sortedHosts.length > 0;
-  const enableBuiltInDaemonOption = useEnableBuiltInDaemonOption();
   const isDesktopApp = isElectronRuntime();
+  const hasHosts = sortedHosts.length > 0 || isDesktopApp;
+  const enableBuiltInDaemonOption = useEnableBuiltInDaemonOption();
   const items = SIDEBAR_SECTION_ITEMS.filter((item) => isSectionAvailable(item, isDesktopApp));
   const insets = useSafeAreaInsets();
   const isDesktop = layout === "desktop";
@@ -1066,9 +1066,10 @@ export default function SettingsScreen({ view, openAddHostIntent = null }: Setti
         localServerId,
         hosts,
         orderedHosts: sortedHosts,
-      })
+      }) ??
+      (isDesktopApp ? "local" : null)
     );
-  }, [view, selectedSettingsHostServerId, localServerId, hosts, sortedHosts]);
+  }, [view, selectedSettingsHostServerId, localServerId, hosts, sortedHosts, isDesktopApp]);
 
   const handleLanguageChange = useCallback(
     (language: AppLanguage) => {
@@ -1200,7 +1201,11 @@ export default function SettingsScreen({ view, openAddHostIntent = null }: Setti
 
   const handleSelectHostSection = useCallback(
     (section: HostSectionSlug) => {
-      const targetServerId = activeHostServerId ?? localServerId ?? hosts[0]?.serverId;
+      const targetServerId =
+        activeHostServerId ??
+        localServerId ??
+        hosts[0]?.serverId ??
+        (isDesktopApp ? "local" : null);
       if (!targetServerId) {
         return;
       }
@@ -1211,7 +1216,7 @@ export default function SettingsScreen({ view, openAddHostIntent = null }: Setti
         router.replace(target);
       }
     },
-    [activeHostServerId, localServerId, hosts, isCompactLayout, router],
+    [activeHostServerId, localServerId, hosts, isDesktopApp, isCompactLayout, router],
   );
 
   const handleScanQr = useCallback(() => {

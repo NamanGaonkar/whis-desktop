@@ -2165,13 +2165,10 @@ export class HostRuntimeStore {
     hostname: string | null;
   }): Promise<HostProfile> {
     const normalizedListenAddress = input.listenAddress.trim();
-    const serverId = input.serverId.trim();
+    const serverId = input.serverId?.trim() || "local";
     const connection = connectionFromListen(normalizedListenAddress);
     if (!connection) {
       throw new Error(`Unsupported listen address: ${input.listenAddress}`);
-    }
-    if (!serverId) {
-      throw new Error("Desktop daemon did not return a server id.");
     }
     return this.upsertHostConnection({
       serverId,
@@ -2662,12 +2659,46 @@ export class HostRuntimeStore {
     return directory;
   }
 
+  resolveServerId(serverId?: string | null): string {
+    const trimmed = serverId?.trim();
+    if (trimmed && this.controllers.has(trimmed)) {
+      return trimmed;
+    }
+    if (this.controllers.size === 1) {
+      return this.controllers.keys().next().value!;
+    }
+    for (const host of this.hosts) {
+      if (this.controllers.has(host.serverId)) {
+        return host.serverId;
+      }
+    }
+    const firstActive = this.controllers.keys().next().value;
+    if (firstActive) {
+      return firstActive;
+    }
+    if (this.hosts.length > 0) {
+      return this.hosts[0].serverId;
+    }
+    return trimmed || "local";
+  }
+
+  private resolveController(serverId?: string | null): HostRuntimeController | null {
+    const resolved = this.resolveServerId(serverId);
+    const controller = this.controllers.get(resolved);
+    if (controller) return controller;
+    if (this.controllers.size === 1) {
+      return this.controllers.values().next().value ?? null;
+    }
+    return null;
+  }
+
   getSnapshot(serverId: string): HostRuntimeSnapshot | null {
-    return this.controllers.get(serverId)?.getSnapshot() ?? null;
+    return this.resolveController(serverId)?.getSnapshot() ?? null;
   }
 
   getConnectionStatusSince(serverId: string): number | null {
-    return this.connectionStatusStartedAtByServer.get(serverId) ?? null;
+    const resolved = this.resolveServerId(serverId);
+    return this.connectionStatusStartedAtByServer.get(resolved) ?? null;
   }
 
   getVersion(): number {
@@ -2675,21 +2706,22 @@ export class HostRuntimeStore {
   }
 
   getClient(serverId: string): DaemonClient | null {
-    return this.controllers.get(serverId)?.getClient() ?? null;
+    return this.resolveController(serverId)?.getClient() ?? null;
   }
 
   subscribe(serverId: string, listener: () => void): () => void {
-    const existing = this.serverListeners.get(serverId) ?? new Set<() => void>();
+    const resolved = this.resolveServerId(serverId);
+    const existing = this.serverListeners.get(resolved) ?? new Set<() => void>();
     existing.add(listener);
-    this.serverListeners.set(serverId, existing);
+    this.serverListeners.set(resolved, existing);
     return () => {
-      const set = this.serverListeners.get(serverId);
+      const set = this.serverListeners.get(resolved);
       if (!set) {
         return;
       }
       set.delete(listener);
       if (set.size === 0) {
-        this.serverListeners.delete(serverId);
+        this.serverListeners.delete(resolved);
       }
     };
   }
@@ -2831,14 +2863,16 @@ export class HostRuntimeStore {
   private emit(serverId: string): void {
     this.version += 1;
     const listeners = this.serverListeners.get(serverId);
-    if (!listeners) {
-      for (const listener of this.globalListeners) {
+    if (listeners) {
+      for (const listener of listeners) {
         listener();
       }
-      return;
     }
-    for (const listener of listeners) {
-      listener();
+    const localListeners = this.serverListeners.get("local");
+    if (localListeners && serverId !== "local") {
+      for (const listener of localListeners) {
+        listener();
+      }
     }
     for (const listener of this.globalListeners) {
       listener();
@@ -2871,37 +2905,41 @@ export function getHostRuntimeConnectionStatusSince(serverId: string): number | 
 
 export function useHostRuntimeSnapshot(serverId: string): HostRuntimeSnapshot | null {
   const store = getHostRuntimeStore();
+  const resolvedServerId = store.resolveServerId(serverId);
   return useSyncExternalStore(
-    (onStoreChange) => store.subscribe(serverId, onStoreChange),
-    () => store.getSnapshot(serverId),
-    () => store.getSnapshot(serverId),
+    (onStoreChange) => store.subscribe(resolvedServerId, onStoreChange),
+    () => store.getSnapshot(resolvedServerId),
+    () => store.getSnapshot(resolvedServerId),
   );
 }
 
 export function useHostRuntimeClient(serverId: string): DaemonClient | null {
   const store = getHostRuntimeStore();
+  const resolvedServerId = store.resolveServerId(serverId);
   return useSyncExternalStore(
-    (onStoreChange) => store.subscribe(serverId, onStoreChange),
-    () => store.getSnapshot(serverId)?.client ?? null,
-    () => store.getSnapshot(serverId)?.client ?? null,
+    (onStoreChange) => store.subscribe(resolvedServerId, onStoreChange),
+    () => store.getSnapshot(resolvedServerId)?.client ?? null,
+    () => store.getSnapshot(resolvedServerId)?.client ?? null,
   );
 }
 
 export function useHostRuntimeIsConnected(serverId: string): boolean {
   const store = getHostRuntimeStore();
+  const resolvedServerId = store.resolveServerId(serverId);
   return useSyncExternalStore(
-    (onStoreChange) => store.subscribe(serverId, onStoreChange),
-    () => isHostRuntimeConnected(store.getSnapshot(serverId)),
-    () => isHostRuntimeConnected(store.getSnapshot(serverId)),
+    (onStoreChange) => store.subscribe(resolvedServerId, onStoreChange),
+    () => isHostRuntimeConnected(store.getSnapshot(resolvedServerId)),
+    () => isHostRuntimeConnected(store.getSnapshot(resolvedServerId)),
   );
 }
 
 export function useHostRuntimeConnectionStatus(serverId: string): HostRuntimeConnectionStatus {
   const store = getHostRuntimeStore();
+  const resolvedServerId = store.resolveServerId(serverId);
   return useSyncExternalStore(
-    (onStoreChange) => store.subscribe(serverId, onStoreChange),
-    () => store.getSnapshot(serverId)?.connectionStatus ?? "connecting",
-    () => store.getSnapshot(serverId)?.connectionStatus ?? "connecting",
+    (onStoreChange) => store.subscribe(resolvedServerId, onStoreChange),
+    () => store.getSnapshot(resolvedServerId)?.connectionStatus ?? "connecting",
+    () => store.getSnapshot(resolvedServerId)?.connectionStatus ?? "connecting",
   );
 }
 

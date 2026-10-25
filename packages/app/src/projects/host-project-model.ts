@@ -99,6 +99,9 @@ function getHostProjectPlacement(
   for (const host of project.hosts) {
     if (host.serverId === serverId) return host;
   }
+  if (serverId === "local" || !serverId || project.hosts.length === 1) {
+    return project.hosts[0] ?? null;
+  }
   return null;
 }
 

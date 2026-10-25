@@ -13,12 +13,15 @@ import { useImportSession } from "@/hooks/use-import-session";
 import { usePanelStore } from "@/stores/panel-store";
 import {
   useIsCompactFormFactor,
+  getIsElectronRuntime,
   HEADER_INNER_HEIGHT,
   HEADER_INNER_HEIGHT_MOBILE,
   HEADER_TOP_PADDING_MOBILE,
 } from "@/constants/layout";
+import { pickDirectory } from "@/desktop/pick-directory";
+import { useOpenProject } from "@/hooks/use-open-project";
 import { useLocalDaemonServerId } from "@/hooks/use-is-local-daemon";
-import { buildSettingsHostSectionRoute } from "@/utils/host-routes";
+import { buildNewWorkspaceRoute, buildSettingsHostSectionRoute } from "@/utils/host-routes";
 
 const WINDOW_CONTENT_DATASET = { "window-content": "" };
 
@@ -30,9 +33,11 @@ export function OpenProjectScreen() {
   const openProjectPicker = useOpenAddProject();
   const localServerId = useLocalDaemonServerId();
   const effectiveServerId = localServerId ?? hosts[0]?.serverId;
+  const openProject = useOpenProject(effectiveServerId ?? "local");
   const importSession = useImportSession({ serverId: effectiveServerId ?? undefined });
 
   const isCompactLayout = useIsCompactFormFactor();
+  const isRowLayout = getIsElectronRuntime() || !isCompactLayout;
 
   useEffect(() => {
     if (!isCompactLayout) {
@@ -40,9 +45,36 @@ export function OpenProjectScreen() {
     }
   }, [isCompactLayout, openDesktopAgentList]);
 
-  const handleOpenPicker = useCallback(() => {
+  const handleOpenPicker = useCallback(async () => {
+    if (getIsElectronRuntime()) {
+      try {
+        const path = await pickDirectory();
+        if (path) {
+          const result = await openProject(path);
+          if (result.ok) {
+            usePanelStore.getState().showMobileAgent();
+            router.push(
+              buildNewWorkspaceRoute({
+                serverId: effectiveServerId ?? "local",
+                projectId: result.project.projectId,
+                sourceDirectory: result.project.projectRootPath,
+                displayName: result.project.projectDisplayName,
+              }),
+            );
+            return;
+          }
+          if (result.error) {
+            console.error("Open project failed:", result.error);
+          }
+        }
+        return;
+      } catch (err) {
+        console.error("Direct folder pick error", err);
+        return;
+      }
+    }
     void openProjectPicker(effectiveServerId ?? undefined);
-  }, [openProjectPicker, effectiveServerId]);
+  }, [effectiveServerId, openProject, openProjectPicker, router]);
 
   const handleOpenProviders = useCallback(() => {
     const targetServerId = effectiveServerId ?? "local";
@@ -64,7 +96,7 @@ export function OpenProjectScreen() {
           {hosts.map((host) => (
             <HostError key={host.serverId} serverId={host.serverId} label={host.label} />
           ))}
-          <View style={styles.tiles}>
+          <View style={[styles.tiles, isRowLayout && styles.tilesRow]}>
             <HomeTile
               icon={FolderOpen}
               title={t("openProject.tiles.addProject.title")}
@@ -72,6 +104,7 @@ export function OpenProjectScreen() {
               onPress={handleOpenPicker}
               testID="open-project-submit"
               accent
+              isRow={isRowLayout}
             />
             <HomeTile
               icon={Inbox}
@@ -79,6 +112,7 @@ export function OpenProjectScreen() {
               description={t("openProject.tiles.importSession.description")}
               onPress={importSession.open}
               testID="open-project-import-session"
+              isRow={isRowLayout}
             />
             <HomeTile
               icon={Plug}
@@ -86,6 +120,7 @@ export function OpenProjectScreen() {
               description={t("openProject.tiles.setupProviders.description")}
               onPress={handleOpenProviders}
               testID="open-project-setup-providers"
+              isRow={isRowLayout}
             />
           </View>
         </View>
@@ -114,9 +149,18 @@ interface HomeTileProps {
   onPress: () => void;
   testID?: string;
   accent?: boolean;
+  isRow?: boolean;
 }
 
-function HomeTile({ icon: Icon, title, description, onPress, testID, accent }: HomeTileProps) {
+function HomeTile({
+  icon: Icon,
+  title,
+  description,
+  onPress,
+  testID,
+  accent,
+  isRow,
+}: HomeTileProps) {
   // useUnistyles is acceptable here: leaf component, off the hot path (home screen renders once).
   const { theme } = useUnistyles();
   const [hovered, setHovered] = useState(false);
@@ -128,10 +172,11 @@ function HomeTile({ icon: Icon, title, description, onPress, testID, accent }: H
   const pressableStyle = useCallback(
     ({ pressed }: { pressed: boolean }) => [
       styles.tile,
+      isRow && styles.tileRow,
       hovered && styles.tileHovered,
       pressed && styles.tilePressed,
     ],
-    [hovered],
+    [hovered, isRow],
   );
 
   return (
@@ -185,22 +230,33 @@ const styles = StyleSheet.create((theme) => ({
   tiles: {
     marginTop: { xs: theme.spacing[6], md: theme.spacing[12] },
     width: "100%",
-    maxWidth: { xs: 452, md: 740 },
+    maxWidth: { xs: 452, md: 780 },
     flexDirection: "row",
     flexWrap: { xs: "wrap", md: "nowrap" },
-    justifyContent: "flex-start",
+    justifyContent: "center",
     gap: theme.spacing[3],
+  },
+  tilesRow: {
+    flexDirection: "row" as const,
+    flexWrap: "nowrap" as const,
+    maxWidth: 840,
+    width: "100%",
   },
   tile: {
     width: { xs: "100%", md: 230 },
     flex: { xs: undefined, md: 1 },
-    minHeight: { xs: 0, md: 132 },
+    minHeight: { xs: 0, md: 120 },
     padding: theme.spacing[4],
     backgroundColor: theme.colors.surface1,
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.borderRadius.xl,
     gap: theme.spacing[3],
+  },
+  tileRow: {
+    flex: 1,
+    width: "auto" as const,
+    minWidth: 180,
   },
   tileHovered: {
     backgroundColor: theme.colors.surface2,

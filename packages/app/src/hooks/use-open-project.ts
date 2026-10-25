@@ -2,6 +2,7 @@ import { getHostRuntimeStore } from "@/runtime/host-runtime";
 import { useCallback } from "react";
 import { useHostRuntimeClient, useHostRuntimeIsConnected } from "@/runtime/host-runtime";
 import { useSessionStore } from "@/stores/session-store";
+import { getIsElectronRuntime } from "@/constants/layout";
 import {
   cloneGithubProjectDirectly,
   openProjectDirectly,
@@ -12,15 +13,23 @@ import {
 export function useOpenProject(
   serverId: string | null,
 ): (path: string) => Promise<OpenProjectResult> {
-  const normalizedServerId = serverId?.trim() ?? "";
+  const store = getHostRuntimeStore();
+  const normalizedServerId = store.resolveServerId(serverId ?? "");
   const client = useHostRuntimeClient(normalizedServerId);
   const isConnected = useHostRuntimeIsConnected(normalizedServerId);
-  const canAddProject = useSessionStore((state) =>
-    normalizedServerId
-      ? state.sessions[normalizedServerId]?.serverInfo?.features?.projectAdd === true &&
-        state.sessions[normalizedServerId]?.serverInfo?.features?.stableProjectIdentity === true
-      : false,
-  );
+  const canAddProject = useSessionStore((state) => {
+    const session =
+      state.sessions[normalizedServerId] ??
+      (normalizedServerId === "local" ||
+      !normalizedServerId ||
+      Object.keys(state.sessions).length === 1
+        ? Object.values(state.sessions)[0]
+        : undefined);
+    return (
+      session?.serverInfo?.features?.projectAdd === true &&
+      session?.serverInfo?.features?.stableProjectIdentity === true
+    );
+  });
   const upsertProject = useCallback(
     (
       targetServerId: string,
@@ -34,25 +43,21 @@ export function useOpenProject(
 
   return useCallback(
     async (path: string) => {
+      const activeServerId = store.resolveServerId(serverId ?? "");
+      const liveClient = client ?? store.getClient(activeServerId);
+      const liveConnected = isConnected || liveClient !== null || getIsElectronRuntime();
       const result = await openProjectDirectly({
-        serverId: normalizedServerId,
+        serverId: activeServerId,
         projectPath: path,
-        isConnected,
-        canAddProject,
-        client,
+        isConnected: liveConnected,
+        canAddProject: getIsElectronRuntime() || canAddProject,
+        client: liveClient,
         upsertProject,
         setHasHydratedWorkspaces,
       });
       return result;
     },
-    [
-      upsertProject,
-      canAddProject,
-      client,
-      isConnected,
-      normalizedServerId,
-      setHasHydratedWorkspaces,
-    ],
+    [store, serverId, upsertProject, canAddProject, client, isConnected, setHasHydratedWorkspaces],
   );
 }
 
