@@ -39,11 +39,7 @@ function fail(message: string) {
 /** The default registration file. */
 export function fallback() {
   const base = process.env["XDG_STATE_HOME"] ?? join(homedir(), ".local", "state")
-  const whisPath = join(base, "whis", "service.json")
-  if (existsSync(whisPath)) return whisPath
-  const opencodePath = join(base, "opencode", "service.json")
-  if (existsSync(opencodePath)) return opencodePath
-  return opencodePath
+  return join(base, "whis", "service.json")
 }
 
 /** Whether two registrations describe the same service instance. */
@@ -55,7 +51,7 @@ export function same(left: Info, right: Info) {
 export async function probeResult(info: Info, timeout = defaultEnsureTiming.requestTimeout) {
   const endpoint = {
     url: info.url,
-    auth: info.password === undefined ? undefined : { type: "basic", username: "opencode", password: info.password },
+    auth: info.password === undefined ? undefined : { type: "basic", username: "whis", password: info.password },
   } satisfies Endpoint
   const signal = AbortSignal.timeout(timeout)
   const result = await fetch(new URL("/api/info", info.url), { headers: headers(endpoint), signal })

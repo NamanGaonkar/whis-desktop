@@ -1,22 +1,21 @@
 #!/usr/bin/env bun
 import { $ } from "bun"
-
+import path from "node:path"
 import { copyBuiltCliToResources, downloadCliToResources, resolveChannel } from "./utils"
 
 const channel = resolveChannel()
-
-if (channel === "prod" && !Bun.env.OPENCODE_CLI_DIST) {
-  throw new Error("OPENCODE_CLI_DIST is required for production desktop builds")
-}
 
 await $`bun ./scripts/copy-icons.ts ${channel}`
 
 await $`bun ./scripts/copy-metainfo.ts ${channel}`
 
-if (channel === "dev") await downloadCliToResources()
+const localCliDist = path.resolve(import.meta.dirname, "../../cli/dist")
+const dist =
+  Bun.env.OPENCODE_CLI_DIST ??
+  ((await Bun.file(path.join(localCliDist, "cli-windows-x64", "package.json")).exists()) ? localCliDist : undefined)
 
-if ((channel === "beta" || channel === "prod") && Bun.env.OPENCODE_CLI_DIST) {
-  await copyBuiltCliToResources(Bun.env.OPENCODE_CLI_DIST)
+if (dist) {
+  await copyBuiltCliToResources(dist)
+} else if (channel === "dev") {
+  await downloadCliToResources()
 }
-
-if (channel === "beta" && !Bun.env.OPENCODE_CLI_DIST) await downloadCliToResources("beta")

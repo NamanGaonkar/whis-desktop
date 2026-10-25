@@ -39,8 +39,15 @@ export const Plugin = define({
       const project = discovery.project && FSUtil.contains(root, start)
       const stop = FSUtil.contains(home, start) ? home : root
       const globalFile = yield* fs.resolve(join(global.config, "AGENTS.md"))
-      const userProfileFile = yield* fs.resolve(join(global.home, ".whis", "memory", "user_profile.md"))
-      const globalProjectContext = yield* fs.resolve(join(global.home, ".whis", "memory", "project_context.md"))
+      const globalMemoryFiles = [
+        join(global.home, ".whis", "memory", "user_profile.md"),
+        join(global.home, ".whis", "memory", "user_preferences.md"),
+        join(global.config, "memory", "user_profile.md"),
+        join(global.config, "memory", "user_preferences.md"),
+        join(global.home, ".whis", "memory", "project_context.md"),
+        join(global.config, "memory", "project_context.md"),
+      ]
+      const resolvedGlobalMemory = yield* Effect.forEach(globalMemoryFiles, (file) => fs.resolve(file))
       const loaded: { current: Loaded } = { current: { type: "available", files: [] } }
       const configured: { sources: string[]; remote: Map<string, InstructionDiscovery.File> } = {
         sources: [],
@@ -51,7 +58,7 @@ export const Plugin = define({
       // The ancestor walk can reach the global file when the location sits
       // beneath the global config dir; global: false excludes it there too.
       const candidates = [
-        ...(discovery.global ? [globalFile, userProfileFile, globalProjectContext] : []),
+        ...(discovery.global ? [globalFile, ...resolvedGlobalMemory] : []),
         ...(project
           ? ancestorDirectories(start, stop)
               .flatMap((directory) => [
@@ -84,10 +91,14 @@ export const Plugin = define({
       const globalSource = Effect.fn("ConfigInstructionPlugin.globalSource")(function* () {
         if (!discovery.global) return []
         const files: InstructionDiscovery.File[] = []
-        for (const candidate of [globalFile, userProfileFile, globalProjectContext]) {
+        const seen = new Set<string>()
+        for (const candidate of [globalFile, ...resolvedGlobalMemory]) {
           if (yield* fs.isFile(candidate)) {
             const file = yield* read(candidate)
-            if (file instanceof InstructionDiscovery.File) files.push(file)
+            if (file instanceof InstructionDiscovery.File && !seen.has(file.path)) {
+              seen.add(file.path)
+              files.push(file)
+            }
           }
         }
         return files

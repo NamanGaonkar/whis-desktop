@@ -103,7 +103,13 @@ export async function downloadCliToResources(version = CLI_VERSION, dest = windo
 export async function copyBuiltCliToResources(root: string, dest = windowsify("resources/opencode-cli")) {
   const cli = getCurrentCli()
   const directory = cli.package.replace("@opencode/", "")
-  await copyCliToResources(join(root, directory), dest)
+  const candidate = (await Bun.file(join(root, directory, "package.json")).exists())
+    ? join(root, directory)
+    : join(root, "cli-windows-x64")
+  await copyCliToResources(candidate, windowsify("resources/whis-cli"))
+  await copyCliToResources(candidate, windowsify("resources/opencode-cli"))
+  await Bun.write("resources/whis-cli.version", "4.0.2")
+  await Bun.write("resources/opencode-cli.version", "4.0.2")
 }
 
 // The package directory is an npm package: its package.json version is the string the executable

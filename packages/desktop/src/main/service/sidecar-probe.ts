@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import path from "node:path"
 import { app } from "electron"
 import type { Endpoint } from "@opencode/client/service"
@@ -26,7 +26,10 @@ export function sidecarProbe() {
 
 function bundledVersion() {
   try {
-    return readFileSync(path.join(process.resourcesPath, "opencode-cli.version"), "utf8").trim()
+    const file = existsSync(path.join(process.resourcesPath, "whis-cli.version"))
+      ? "whis-cli.version"
+      : "opencode-cli.version"
+    return readFileSync(path.join(process.resourcesPath, file), "utf8").trim()
   } catch {
     return ""
   }
