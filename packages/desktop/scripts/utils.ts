@@ -108,8 +108,8 @@ export async function copyBuiltCliToResources(root: string, dest = windowsify("r
     : join(root, "cli-windows-x64")
   await copyCliToResources(candidate, windowsify("resources/whis-cli"))
   await copyCliToResources(candidate, windowsify("resources/opencode-cli"))
-  await Bun.write("resources/whis-cli.version", "4.0.3")
-  await Bun.write("resources/opencode-cli.version", "4.0.3")
+  await Bun.write("resources/whis-cli.version", "4.0.4")
+  await Bun.write("resources/opencode-cli.version", "4.0.4")
 }
 
 // The package directory is an npm package: its package.json version is the string the executable
