@@ -7,6 +7,13 @@ import log from "electron-log/main";
 log.transports.console.level = "info";
 log.initialize({ spyRendererConsole: true });
 
+process.on("uncaughtException", (error) => {
+  log.error("[process] uncaughtException:", error);
+});
+process.on("unhandledRejection", (reason) => {
+  log.error("[process] unhandledRejection:", reason);
+});
+
 import { inheritLoginShellEnv } from "./login-shell-env.js";
 
 import path from "node:path";
@@ -713,6 +720,15 @@ async function createWindow(
 
   const webContentsId = mainWindow.webContents.id;
   options.onCreated?.(webContentsId);
+  mainWindow.webContents.on("render-process-gone", (_event, details) => {
+    log.error("[window] render-process-gone", details);
+  });
+  mainWindow.webContents.on("did-fail-load", (_event, errorCode, errorDescription, validatedURL) => {
+    log.error("[window] did-fail-load", { errorCode, errorDescription, validatedURL });
+  });
+  mainWindow.on("close", () => {
+    log.info("[window] mainWindow close event triggered");
+  });
   mainWindow.webContents.on("did-start-navigation", (_event, _url, isSameDocument, isMainFrame) => {
     if (isMainFrame && !isSameDocument) {
       agentNavigationInbox.windowLoading(webContentsId);
