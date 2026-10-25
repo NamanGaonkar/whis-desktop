@@ -28,7 +28,7 @@ export function createWebPlatform(version: string) {
 
       const notification = new Notification(title, {
         body: description ?? "",
-        icon: "https://opencode.ai/favicon-96x96-v3.png",
+        icon: "https://raw.githubusercontent.com/NamanGaonkar/whis-desktop/main/packages/desktop/icons/dev/128x128.png",
       })
 
       notification.onclick = () => {
