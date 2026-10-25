@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs"
+import { existsSync, readdirSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
 import type { DiscoverOptions, Endpoint, Info } from "./service.js"
@@ -39,7 +39,17 @@ function fail(message: string) {
 /** The default registration file. */
 export function fallback() {
   const base = process.env["XDG_STATE_HOME"] ?? join(homedir(), ".local", "state")
-  return join(base, "whis", "service.json")
+  const dir = join(base, "whis")
+  const direct = join(dir, "service.json")
+  if (existsSync(direct)) return direct
+  const main = join(dir, "service-main.json")
+  if (existsSync(main)) return main
+  try {
+    const files = readdirSync(dir)
+    const found = files.find((f) => f.startsWith("service") && f.endsWith(".json"))
+    if (found) return join(dir, found)
+  } catch {}
+  return direct
 }
 
 /** Whether two registrations describe the same service instance. */

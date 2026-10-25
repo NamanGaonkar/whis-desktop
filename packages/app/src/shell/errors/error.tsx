@@ -1,6 +1,12 @@
+const WHIS_ART = `██╗    ██╗██╗  ██╗██╗███████╗
+██║    ██║██║  ██║██║██╔════╝
+██║ █╗ ██║███████║██║███████╗
+██║███╗██║██╔══██║██║╚════██║
+╚███╔███╔╝██║  ██║██║███████║
+ ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝╚══════╝`
+
 import { TextField } from "@opencode/ui/text-field"
 import type { captureException } from "@sentry/solid"
-import { Logo } from "@opencode/ui/logo"
 import { Button } from "@opencode/ui/button"
 import { Component, createSignal, onCleanup, onMount, Show } from "solid-js"
 import { createStore } from "solid-js/store"
@@ -333,7 +339,22 @@ export const ErrorPage: Component<ErrorPageProps> = (props) => {
       data-tauri-drag-region
     >
       <div class="w-full max-w-3xl flex flex-col items-center justify-center gap-6 sm:gap-8 my-auto">
-        <Logo class="w-48 sm:w-58.5 opacity-12 shrink-0" />
+        <div
+          data-component="error-wordmark"
+          aria-hidden="true"
+          class="pointer-events-none mx-auto w-full flex flex-col items-center justify-center text-center select-none shrink-0"
+        >
+          <pre
+            class="font-mono text-amber-500 dark:text-amber-400 text-xs sm:text-sm md:text-base leading-[1.18] font-bold text-center whitespace-pre inline-block select-none drop-shadow-[0_0_16px_rgba(245,158,11,0.35)]"
+            style={{
+              "font-family": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Courier New', monospace",
+              "text-align": "center",
+              "margin": "0 auto",
+            }}
+          >
+            {WHIS_ART}
+          </pre>
+        </div>
         <div class="flex flex-col items-center gap-2 text-center">
           <h1 class="text-lg font-medium text-text-strong">
             {language.t(status() ? "error.page.title.status" : "error.page.title")}
