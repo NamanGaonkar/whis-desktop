@@ -2183,6 +2183,7 @@ export const ja: TranslationResources = {
     sections: {
       general: "一般",
       chat: "チャット",
+      memory: "メモリ",
       appearance: "外観",
       sidebar: "サイドバー",
       terminal: "ターミナル",

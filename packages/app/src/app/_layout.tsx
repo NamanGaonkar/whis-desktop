@@ -16,6 +16,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
 } from "react";
@@ -730,6 +731,9 @@ function OpenProjectListener() {
     };
   }, [openProject, request]);
 
+  const openPathRef = useRef(openPathOnChosenHost);
+  openPathRef.current = openPathOnChosenHost;
+
   useEffect(() => {
     let disposed = false;
     let unlisten: (() => void) | null = null;
@@ -737,7 +741,7 @@ function OpenProjectListener() {
       ?.getPendingOpenProject?.()
       ?.then((pending) => {
         if (!disposed && pending) {
-          openPathOnChosenHost(pending);
+          openPathRef.current(pending);
         }
         return;
       })
@@ -749,7 +753,7 @@ function OpenProjectListener() {
         return;
       }
       const nextPath = typeof payload?.path === "string" ? payload.path.trim() : "";
-      openPathOnChosenHost(nextPath);
+      openPathRef.current(nextPath);
     })
       .then((dispose) => {
         if (disposed) {
@@ -765,7 +769,7 @@ function OpenProjectListener() {
       disposed = true;
       unlisten?.();
     };
-  }, [openPathOnChosenHost]);
+  }, []);
 
   return null;
 }

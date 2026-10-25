@@ -3,7 +3,9 @@ import type { PluginLifecycle } from "../plugins/lifecycle/index.js";
 import { describeHookAgent, publishAgentStream } from "../plugins/lifecycle/index.js";
 import type { PluginSessionOpenRequest } from "@getpaseo/plugin/server";
 import { randomUUID } from "node:crypto";
-import { basename, resolve } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { basename, join, resolve } from "node:path";
 import { stat } from "node:fs/promises";
 import {
   AGENT_LIFECYCLE_STATUSES,
@@ -5311,14 +5313,37 @@ export class AgentManager {
   }
 
   private applyDaemonAppendSystemPrompt(config: AgentSessionConfig): AgentSessionConfig {
-    const daemonAppendSystemPrompt = this.appendSystemPrompt.trim();
+    let combinedPrompt = this.appendSystemPrompt.trim();
+    try {
+      const memoryDir = join(homedir(), ".whis", "memory");
+      const userProfilePath = join(memoryDir, "user_profile.md");
+      if (existsSync(userProfilePath)) {
+        const profile = readFileSync(userProfilePath, "utf-8").trim();
+        if (profile) {
+          combinedPrompt = combinedPrompt
+            ? `${combinedPrompt}\n\n# User Profile & Persistent Memory\n${profile}`
+            : `# User Profile & Persistent Memory\n${profile}`;
+        }
+      }
+      const projectContextPath = join(memoryDir, "project_context.md");
+      if (existsSync(projectContextPath)) {
+        const projectContext = readFileSync(projectContextPath, "utf-8").trim();
+        if (projectContext) {
+          combinedPrompt = combinedPrompt
+            ? `${combinedPrompt}\n\n# Project Context Memory\n${projectContext}`
+            : `# Project Context Memory\n${projectContext}`;
+        }
+      }
+    } catch {
+      // ignore memory read error
+    }
     const next = { ...config };
     delete next.daemonAppendSystemPrompt;
 
-    return daemonAppendSystemPrompt
+    return combinedPrompt
       ? {
           ...next,
-          daemonAppendSystemPrompt,
+          daemonAppendSystemPrompt: combinedPrompt,
         }
       : next;
   }

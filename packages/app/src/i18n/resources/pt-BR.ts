@@ -2195,6 +2195,7 @@ export const ptBR: TranslationResources = {
     sections: {
       general: "Geral",
       chat: "Chat",
+      memory: "Memória",
       appearance: "Aparência",
       sidebar: "Barra lateral",
       terminal: "Terminal",

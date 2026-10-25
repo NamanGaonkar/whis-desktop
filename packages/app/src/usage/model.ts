@@ -1,5 +1,6 @@
 import type { TFunction } from "i18next";
 import { i18n } from "@/i18n/i18next";
+import { getIsElectronRuntime } from "@/constants/layout";
 import { usageCopy } from "./copy";
 import type { UsageDisplayAs } from "./preferences";
 import type { UsageReport, UsageReportEntry, UsageView, UsageWindow } from "./types";
@@ -114,12 +115,12 @@ export function resolveUsageView(
   t: TFunction = i18n.t,
 ): UsageView {
   const { hostLabel, isConnected, supportsUsage, query } = input;
-  if (!isConnected)
+  if (!isConnected && !getIsElectronRuntime())
     return {
       kind: "unavailable",
       message: t("providerUsage.hostUnavailable", { host: hostLabel }),
     };
-  if (!supportsUsage) {
+  if (!supportsUsage && !getIsElectronRuntime()) {
     return {
       kind: "unavailable",
       message: t("providerUsage.hostUpgradeRequired", { host: hostLabel }),
@@ -129,10 +130,16 @@ export function resolveUsageView(
     return { kind: "ready", reports: query.data, isRefreshing: query.isFetching };
   }
   if (query?.error) {
+    if (getIsElectronRuntime()) {
+      return { kind: "ready", reports: [], isRefreshing: false };
+    }
     return {
       kind: "error",
       message: query.error instanceof Error ? query.error.message : String(query.error),
     };
+  }
+  if (getIsElectronRuntime() && !query?.isFetching) {
+    return { kind: "ready", reports: [], isRefreshing: false };
   }
   return { kind: "loading" };
 }

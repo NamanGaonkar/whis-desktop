@@ -1,4 +1,9 @@
-import { useHosts, useHostRuntimeLastError } from "@/runtime/host-runtime";
+import {
+  useHosts,
+  useHostRuntimeLastError,
+  getHostRuntimeStore,
+  useHostRuntimeClient,
+} from "@/runtime/host-runtime";
 import { useCallback, useEffect, useState, type ComponentType } from "react";
 import { useTranslation } from "react-i18next";
 import { View, Text, Pressable, ScrollView } from "react-native";
@@ -21,7 +26,13 @@ import {
 import { pickDirectory } from "@/desktop/pick-directory";
 import { useOpenProject } from "@/hooks/use-open-project";
 import { useLocalDaemonServerId } from "@/hooks/use-is-local-daemon";
-import { buildNewWorkspaceRoute, buildSettingsHostSectionRoute } from "@/utils/host-routes";
+import {
+  buildHostWorkspaceRoute,
+  buildNewWorkspaceRoute,
+  buildSettingsHostSectionRoute,
+} from "@/utils/host-routes";
+import { navigateToWorkspace } from "@/stores/navigation-active-workspace-store";
+import { normalizeWorkspaceDescriptor, useSessionStore } from "@/stores/session-store";
 
 const WINDOW_CONTENT_DATASET = { "window-content": "" };
 
@@ -52,10 +63,45 @@ export function OpenProjectScreen() {
         if (path) {
           const result = await openProject(path);
           if (result.ok) {
+            const targetServerId = effectiveServerId ?? "local";
+            const liveClient = getHostRuntimeStore().getClient(targetServerId);
+            const session = useSessionStore.getState().sessions[targetServerId];
+            let workspace = session?.workspaces
+              ? Array.from(session.workspaces.values()).find(
+                  (w) =>
+                    w.workspaceDirectory === result.project.projectRootPath ||
+                    w.projectId === result.project.projectId,
+                )
+              : undefined;
+
+            if (!workspace && liveClient) {
+              try {
+                const created = await liveClient.createWorkspace({
+                  source: {
+                    kind: "directory",
+                    path: result.project.projectRootPath,
+                    projectId: result.project.projectId,
+                  },
+                });
+                if (created.workspace) {
+                  workspace = normalizeWorkspaceDescriptor(created.workspace);
+                  useSessionStore.getState().mergeWorkspaces(targetServerId, [workspace]);
+                }
+              } catch (createErr) {
+                console.error("Auto create workspace failed:", createErr);
+              }
+            }
+
             usePanelStore.getState().showMobileAgent();
+            if (workspace) {
+              navigateToWorkspace({ serverId: targetServerId, workspaceId: workspace.id });
+              router.push(buildHostWorkspaceRoute(targetServerId, workspace.id));
+              return;
+            }
+
             router.push(
               buildNewWorkspaceRoute({
-                serverId: effectiveServerId ?? "local",
+                serverId: targetServerId,
                 projectId: result.project.projectId,
                 sourceDirectory: result.project.projectRootPath,
                 displayName: result.project.projectDisplayName,
@@ -230,21 +276,21 @@ const styles = StyleSheet.create((theme) => ({
   tiles: {
     marginTop: { xs: theme.spacing[6], md: theme.spacing[12] },
     width: "100%",
-    maxWidth: { xs: 452, md: 780 },
-    flexDirection: "row",
-    flexWrap: { xs: "wrap", md: "nowrap" },
+    maxWidth: 880,
+    flexDirection: "row" as const,
+    flexWrap: "nowrap" as const,
     justifyContent: "center",
     gap: theme.spacing[3],
   },
   tilesRow: {
     flexDirection: "row" as const,
     flexWrap: "nowrap" as const,
-    maxWidth: 840,
+    maxWidth: 880,
     width: "100%",
   },
   tile: {
-    width: { xs: "100%", md: 230 },
-    flex: { xs: undefined, md: 1 },
+    flex: 1,
+    minWidth: 0,
     minHeight: { xs: 0, md: 120 },
     padding: theme.spacing[4],
     backgroundColor: theme.colors.surface1,
@@ -255,8 +301,7 @@ const styles = StyleSheet.create((theme) => ({
   },
   tileRow: {
     flex: 1,
-    width: "auto" as const,
-    minWidth: 180,
+    minWidth: 0,
   },
   tileHovered: {
     backgroundColor: theme.colors.surface2,

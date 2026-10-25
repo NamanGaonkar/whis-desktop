@@ -2210,6 +2210,7 @@ export const es: TranslationResources = {
     sections: {
       general: "General",
       chat: "Chat",
+      memory: "Memoria",
       appearance: "Apariencia",
       sidebar: "Barra lateral",
       terminal: "Terminal",

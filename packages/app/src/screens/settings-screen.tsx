@@ -36,6 +36,7 @@ import {
   PanelLeft,
   MessageSquare,
   ChevronRight,
+  Brain,
 } from "lucide-react-native";
 import { DropdownTrigger } from "@/components/ui/dropdown-trigger";
 import { ComboboxTrigger } from "@/components/ui/combobox-trigger";
@@ -46,6 +47,7 @@ import { SettingsSection } from "@/components/settings/headings/settings-section
 import { AppearanceSection } from "@/screens/settings/appearance/appearance-section";
 import { OpenLocationSection } from "@/screens/settings/open-location/open-location-section";
 import { ChatSection } from "@/screens/settings/chat/chat-section";
+import { MemorySection } from "@/screens/settings/memory/memory-section";
 import { SidebarNavSection } from "@/screens/settings/sidebar/sidebar-nav-section";
 import { SendingSection } from "@/screens/settings/general/sending-section";
 import {
@@ -156,6 +158,12 @@ const SIDEBAR_SECTION_ITEMS: SidebarSectionItem[] = [
     Content: SidebarNavSection,
   },
   { id: "chat", labelKey: "settings.sections.chat", icon: MessageSquare, Content: ChatSection },
+  {
+    id: "memory",
+    labelKey: "settings.sections.memory",
+    icon: Brain,
+    Content: MemorySection,
+  },
   {
     id: "editor",
     labelKey: "settings.sections.editor",

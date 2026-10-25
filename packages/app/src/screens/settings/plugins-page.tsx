@@ -360,12 +360,16 @@ export function HostPluginsPage({ serverId }: { serverId: string }) {
   const localServerId = useLocalDaemonServerId();
   const effectiveServerId = resolveEffectiveServerId(serverId, localServerId, hosts);
   const client = useHostRuntimeClient(effectiveServerId);
+  const isDesktop = getIsElectronRuntime();
   const connected = useHostRuntimeIsConnected(effectiveServerId);
   const supported = useHostFeature(effectiveServerId, "pluginManagement");
+  const isEffectiveConnected = connected || isDesktop;
+  const isEffectiveSupported = supported || isDesktop;
   // COMPAT(pluginSourceInstallation): added in v0.8.0; remove gate after 2027-03-16 once daemon floor supports source identifiers.
-  const sourceInstallSupported = useHostFeature(effectiveServerId, "pluginSourceInstallation");
+  const sourceInstallSupported =
+    isDesktop || useHostFeature(effectiveServerId, "pluginSourceInstallation");
   // COMPAT(pluginLogs): added in v0.4.0, remove gate after 2027-08-16.
-  const logsSupported = useHostFeature(effectiveServerId, "pluginLogs");
+  const logsSupported = isDesktop || useHostFeature(effectiveServerId, "pluginLogs");
   const { config, patchConfig } = useDaemonConfig(effectiveServerId);
   const refreshQueue = useRef(Promise.resolve());
   useInstalledPlugins();
@@ -396,7 +400,7 @@ export function HostPluginsPage({ serverId }: { serverId: string }) {
       if (!client) throw new Error("Plugin host is offline");
       return client.listPlugins();
     },
-    enabled: Boolean(client && connected && supported),
+    enabled: Boolean(client && isEffectiveConnected && isEffectiveSupported),
     dataShape: "list",
     staleTimeMs: 1_000,
   });
@@ -492,8 +496,8 @@ export function HostPluginsPage({ serverId }: { serverId: string }) {
     [mutation, patchConfig, t],
   );
   const pageState = resolvePluginPageState({
-    connected,
-    supported,
+    connected: isEffectiveConnected,
+    supported: isEffectiveSupported,
     loading: plugins.isLoading,
     error: plugins.isError,
     pluginCount: plugins.data?.length ?? 0,

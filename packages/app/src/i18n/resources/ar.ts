@@ -2197,6 +2197,7 @@ export const ar: TranslationResources = {
     sections: {
       general: "عام",
       chat: "الدردشة",
+      memory: "الذاكرة",
       appearance: "مظهر",
       sidebar: "الشريط الجانبي",
       terminal: "الطرفية",

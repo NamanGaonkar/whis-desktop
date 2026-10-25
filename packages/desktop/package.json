@@ -1,6 +1,6 @@
 {
   "name": "whis-desktop",
-  "version": "2.0.2",
+  "version": "3.0.0",
   "private": true,
   "description": "Whis desktop app (Electron wrapper)",
   "homepage": "https://github.com/NamanGaonkar/whis-desktop",

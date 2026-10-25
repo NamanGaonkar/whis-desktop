@@ -2172,6 +2172,7 @@ export const ko: TranslationResources = {
     sections: {
       general: "일반",
       chat: "채팅",
+      memory: "메모리",
       appearance: "모양",
       sidebar: "사이드바",
       terminal: "터미널",

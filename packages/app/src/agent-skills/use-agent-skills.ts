@@ -34,7 +34,7 @@ export function useAgentSkills(serverId: string) {
       if (!client) throw new Error(t("settings.host.skills.unavailable"));
       return client.getAgentSkillsStatus();
     },
-    enabled: supported && client !== null,
+    enabled: Boolean((supported || getIsElectronRuntime()) && client !== null),
     retry: false,
     dataShape: "value",
     staleTimeMs: 0,
@@ -42,8 +42,8 @@ export function useAgentSkills(serverId: string) {
   useEffect(() => {
     if (!query.error || query.error === reportedQueryError.current) return;
     reportedQueryError.current = query.error;
-    report(t("settings.host.skills.statusFailed"), query.error);
-  }, [query.error, report, t]);
+    console.warn(`[Agent skills: ${serverId}]`, query.error);
+  }, [query.error, serverId]);
   const setStatus = useCallback(
     (status: AgentSkillsStatus) => queryClient.setQueryData(queryKey, status),
     [queryClient, queryKey],

@@ -1,4 +1,5 @@
 import { watchdog } from "@/watchdog";
+import { getIsElectronRuntime } from "@/constants/layout";
 import { createHostChannelTransport } from "@getpaseo/client/internal/hosts";
 import type { OwnedSubscription } from "@getpaseo/client";
 import type { HostDirectory } from "@getpaseo/protocol/hosts";
@@ -1758,7 +1759,11 @@ export class HostRuntimeStore {
           shouldPersistHosts = true;
         }
       }
-      this.hosts = profiles;
+      this.hosts = profiles.map((h) =>
+        !h.label || h.label.toLowerCase() === "naman" || h.label.toLowerCase() === "localhost"
+          ? { ...h, label: "Whis" }
+          : h,
+      );
       this.replicaCache.setHosts(profiles.map((profile) => profile.serverId));
       projectIconCache.setHosts(profiles.map((profile) => profile.serverId));
       await projectIconCache.restore();
@@ -2170,9 +2175,13 @@ export class HostRuntimeStore {
     if (!connection) {
       throw new Error(`Unsupported listen address: ${input.listenAddress}`);
     }
+    const effectiveLabel =
+      getIsElectronRuntime() || !input.hostname || input.hostname.toLowerCase() === "naman"
+        ? "Whis"
+        : input.hostname;
     return this.upsertHostConnection({
       serverId,
-      label: input.hostname ?? undefined,
+      label: effectiveLabel,
       connection,
     });
   }
@@ -2329,8 +2338,13 @@ export class HostRuntimeStore {
       >;
     },
   ): void {
-    this.hosts = hosts;
-    this.syncHosts(hosts, options);
+    const normalizedHosts = hosts.map((h) =>
+      !h.label || h.label.toLowerCase() === "naman" || h.label.toLowerCase() === "localhost"
+        ? { ...h, label: "Whis" }
+        : h,
+    );
+    this.hosts = normalizedHosts;
+    this.syncHosts(normalizedHosts, options);
     this.emitHostList();
   }
 

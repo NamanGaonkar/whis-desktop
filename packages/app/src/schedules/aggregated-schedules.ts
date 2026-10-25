@@ -116,7 +116,7 @@ export async function fetchAggregatedSchedules(
     throw new Error(ALL_SCHEDULE_HOSTS_FAILED_MESSAGE);
   }
 
-  if (schedules.length === 0 && hasSettlingHost) {
+  if (connectedAttempts === 0 && schedules.length === 0 && hasSettlingHost) {
     return { status: "connecting" };
   }
 
@@ -126,8 +126,5 @@ export async function fetchAggregatedSchedules(
 function isScheduleHostConnectionSettling(
   snapshot: ScheduleRuntimeSnapshot | null | undefined,
 ): boolean {
-  if (!snapshot) {
-    return true;
-  }
-  return snapshot.connectionStatus === "connecting" || snapshot.connectionStatus === "idle";
+  return snapshot?.connectionStatus === "connecting";
 }

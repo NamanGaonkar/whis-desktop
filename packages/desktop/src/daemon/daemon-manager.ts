@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { app, ipcMain, powerMonitor } from "electron";
 import log from "electron-log/main";
@@ -516,6 +517,41 @@ export function createDaemonCommandHandlers(): Record<string, DesktopCommandHand
     get_cli_install_status: () => getCliInstallStatus(),
     read_legacy_skill_selection: () => readLegacySkillSelection(),
     delete_legacy_skill_selection: () => deleteLegacySkillSelection(),
+    read_memory: async () => {
+      const memoryDir = path.join(os.homedir(), ".whis", "memory");
+      const userProfilePath = path.join(memoryDir, "user_profile.md");
+      const projectContextPath = path.join(memoryDir, "project_context.md");
+      let userProfile = "";
+      let projectContext = "";
+      try {
+        if (existsSync(userProfilePath)) {
+          userProfile = readFileSync(userProfilePath, "utf-8");
+        }
+      } catch {}
+      try {
+        if (existsSync(projectContextPath)) {
+          projectContext = readFileSync(projectContextPath, "utf-8");
+        }
+      } catch {}
+      return { userProfile, projectContext };
+    },
+    write_memory: async (args) => {
+      const memoryDir = path.join(os.homedir(), ".whis", "memory");
+      if (!existsSync(memoryDir)) {
+        mkdirSync(memoryDir, { recursive: true });
+      }
+      const { userProfile, projectContext } = (args || {}) as {
+        userProfile?: string;
+        projectContext?: string;
+      };
+      if (typeof userProfile === "string") {
+        writeFileSync(path.join(memoryDir, "user_profile.md"), userProfile, "utf-8");
+      }
+      if (typeof projectContext === "string") {
+        writeFileSync(path.join(memoryDir, "project_context.md"), projectContext, "utf-8");
+      }
+      return { ok: true };
+    },
   };
 }
 

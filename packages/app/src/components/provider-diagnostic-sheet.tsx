@@ -26,6 +26,8 @@ import { resolveProviderLabel } from "@/utils/provider-definitions";
 import { compareMatchScores, scoreTextFields } from "@getpaseo/protocol/search/text-match";
 import type { AgentModelDefinition, AgentProvider } from "@getpaseo/protocol/agent-types";
 import type { ProviderProfileModel } from "@getpaseo/protocol/provider-config";
+import type { MutableDaemonConfig, MutableDaemonConfigPatch } from "@getpaseo/protocol/messages";
+import { ProviderByokConfigCard } from "./provider-byok-config-card";
 import {
   resolveProviderDiscoveredModels,
   type ProviderDiscoveredModelsCache,
@@ -394,6 +396,12 @@ function DiagnosticSubSheet({
 }
 
 interface ProviderModalBodyProps {
+  provider: string;
+  serverId: string;
+  config: MutableDaemonConfig | null;
+  patchConfig: (patch: MutableDaemonConfigPatch) => Promise<MutableDaemonConfig | undefined>;
+  refresh: (providers?: string[]) => Promise<void>;
+  additionalModels: ProviderProfileModel[];
   discoveredCount: number;
   additionalCount: number;
   providerSnapshotRefreshing: boolean;
@@ -493,6 +501,12 @@ function ProviderUpdatedLabel({
 function ProviderModalBody(props: ProviderModalBodyProps) {
   const { t } = useTranslation();
   const {
+    provider,
+    serverId,
+    config,
+    patchConfig,
+    refresh,
+    additionalModels,
     discoveredCount,
     additionalCount,
     providerSnapshotRefreshing,
@@ -507,16 +521,17 @@ function ProviderModalBody(props: ProviderModalBodyProps) {
     theme,
   } = props;
 
+  let modelContent: React.ReactNode = null;
+
   if (discoveredCount === 0 && additionalCount === 0 && providerSnapshotRefreshing) {
-    return (
+    modelContent = (
       <View style={sheetStyles.emptyState}>
         <LoadingSpinner size="small" color={theme.colors.foregroundMuted} />
         <Text style={sheetStyles.mutedText}>{t("settings.providers.models.loading")}</Text>
       </View>
     );
-  }
-  if (discoveredCount === 0 && additionalCount === 0 && providerErrorMessage) {
-    return (
+  } else if (discoveredCount === 0 && additionalCount === 0 && providerErrorMessage) {
+    modelContent = (
       <View style={sheetStyles.emptyState}>
         <AlertTriangle size={theme.iconSize.md} color={theme.colors.foregroundMuted} />
         <Text style={sheetStyles.mutedText}>{providerErrorMessage}</Text>
@@ -527,54 +542,67 @@ function ProviderModalBody(props: ProviderModalBodyProps) {
         </Button>
       </View>
     );
-  }
-  if (filteredDiscovered.length === 0 && filteredCustom.length === 0 && searchActive) {
-    return (
+  } else if (filteredDiscovered.length === 0 && filteredCustom.length === 0 && searchActive) {
+    modelContent = (
       <View style={sheetStyles.emptyState}>
         <Text style={sheetStyles.mutedText}>{t("settings.providers.models.noSearchMatches")}</Text>
       </View>
     );
-  }
-  if (discoveredCount === 0 && additionalCount === 0) {
-    return (
+  } else if (discoveredCount === 0 && additionalCount === 0) {
+    modelContent = (
       <View style={sheetStyles.emptyState}>
         <Text style={sheetStyles.mutedText}>{t("settings.providers.models.noneDetected")}</Text>
       </View>
     );
+  } else {
+    modelContent = (
+      <>
+        {filteredDiscovered.length > 0 ? (
+          <View style={sheetStyles.section}>
+            <SectionHeader
+              title={t("settings.providers.models.discovered")}
+              count={filteredDiscovered.length}
+            />
+            <View style={settingsStyles.card}>
+              {filteredDiscovered.map((model) => (
+                <DiscoveredModelRow key={model.id} model={model} />
+              ))}
+            </View>
+          </View>
+        ) : null}
+        {filteredCustom.length > 0 ? (
+          <View style={sheetStyles.section}>
+            <SectionHeader
+              title={t("settings.providers.models.custom")}
+              count={filteredCustom.length}
+            />
+            <View style={settingsStyles.card}>
+              {filteredCustom.map((model) => (
+                <CustomModelRow
+                  key={model.id}
+                  model={model}
+                  deleting={deletingModelId === model.id}
+                  onDelete={onDeleteCustom}
+                />
+              ))}
+            </View>
+          </View>
+        ) : null}
+      </>
+    );
   }
+
   return (
     <>
-      {filteredDiscovered.length > 0 ? (
-        <View style={sheetStyles.section}>
-          <SectionHeader
-            title={t("settings.providers.models.discovered")}
-            count={filteredDiscovered.length}
-          />
-          <View style={settingsStyles.card}>
-            {filteredDiscovered.map((model) => (
-              <DiscoveredModelRow key={model.id} model={model} />
-            ))}
-          </View>
-        </View>
-      ) : null}
-      {filteredCustom.length > 0 ? (
-        <View style={sheetStyles.section}>
-          <SectionHeader
-            title={t("settings.providers.models.custom")}
-            count={filteredCustom.length}
-          />
-          <View style={settingsStyles.card}>
-            {filteredCustom.map((model) => (
-              <CustomModelRow
-                key={model.id}
-                model={model}
-                deleting={deletingModelId === model.id}
-                onDelete={onDeleteCustom}
-              />
-            ))}
-          </View>
-        </View>
-      ) : null}
+      <ProviderByokConfigCard
+        provider={provider}
+        serverId={serverId}
+        config={config}
+        patchConfig={patchConfig}
+        refresh={refresh}
+        additionalModels={additionalModels}
+      />
+      {modelContent}
     </>
   );
 }
@@ -698,6 +726,12 @@ export function ProviderDiagnosticSheet({
         snapPoints={MAIN_SNAP_POINTS}
       >
         <ProviderModalBody
+          provider={provider}
+          serverId={serverId}
+          config={config}
+          patchConfig={patchConfig}
+          refresh={refresh}
+          additionalModels={additionalModels}
           discoveredCount={discoveredModels.length}
           additionalCount={additionalModels.length}
           providerSnapshotRefreshing={providerSnapshotRefreshing}

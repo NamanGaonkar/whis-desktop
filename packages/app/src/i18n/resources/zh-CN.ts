@@ -2140,6 +2140,7 @@ export const zhCN: TranslationResources = {
     sections: {
       general: "通用",
       chat: "聊天",
+      memory: "记忆",
       appearance: "外观",
       sidebar: "侧边栏",
       terminal: "终端",

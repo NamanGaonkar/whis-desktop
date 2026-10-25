@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { getIsElectronRuntime } from "@/constants/layout";
 import { supportsUsageReports } from "@getpaseo/client/internal/daemon-client";
 import { useCallback, useMemo } from "react";
 import {
@@ -133,8 +134,10 @@ function toQueryState(query: {
 /** Usage reports for one host, as shown on its settings page. */
 export function useHostUsage(serverId: string): { view: UsageView; refresh: () => void } {
   const queryClient = useQueryClient();
-  const isConnected = useHostRuntimeIsConnected(serverId);
-  const isSupported = useSessionStore((state) => supportsUsage(state.sessions[serverId]));
+  const isDesktop = getIsElectronRuntime();
+  const isConnected = useHostRuntimeIsConnected(serverId) || isDesktop;
+  const isSupported =
+    useSessionStore((state) => supportsUsage(state.sessions[serverId])) || isDesktop;
   const query = useFetchQuery({
     queryKey: usageReportsQueryKey(serverId),
     queryFn: () => listReports(queryClient, serverId),
@@ -146,7 +149,7 @@ export function useHostUsage(serverId: string): { view: UsageView; refresh: () =
     void refreshReports(queryClient, serverId).catch(() => undefined);
   }, [queryClient, serverId]);
   const { t } = useTranslation();
-  const hostLabel = useHosts().find((host) => host.serverId === serverId)?.label ?? serverId;
+  const hostLabel = useHosts().find((host) => host.serverId === serverId)?.label ?? "Whis";
   const view = resolveUsageView(
     {
       hostLabel,

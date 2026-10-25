@@ -2195,6 +2195,7 @@ export const ru: TranslationResources = {
     sections: {
       general: "Основные",
       chat: "Чат",
+      memory: "Память",
       appearance: "Оформление",
       sidebar: "Боковая панель",
       terminal: "Терминал",

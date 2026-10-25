@@ -98,7 +98,13 @@ import { useRecommendedProjectPaths } from "@/stores/session-store-hooks";
 import type { AddProjectFlowRequest } from "@/stores/add-project-flow-store";
 import type { Theme } from "@/styles/theme";
 import { shortenPath } from "@/utils/shorten-path";
-import { buildNewWorkspaceRoute, buildSettingsAddHostRoute } from "@/utils/host-routes";
+import {
+  buildHostWorkspaceRoute,
+  buildNewWorkspaceRoute,
+  buildSettingsAddHostRoute,
+} from "@/utils/host-routes";
+import { navigateToWorkspace } from "@/stores/navigation-active-workspace-store";
+import { normalizeWorkspaceDescriptor } from "@/stores/session-store";
 
 interface AddProjectFlowProps {
   request: AddProjectFlowRequest;
@@ -488,12 +494,46 @@ export function AddProjectFlow({ request, onClose }: AddProjectFlowProps) {
   }, [onClose]);
 
   const openNewWorkspaceForProject = useCallback(
-    (serverId: string, project: WorkspaceProjectDescriptorPayload) => {
+    async (serverId: string, project: WorkspaceProjectDescriptorPayload) => {
       onClose();
       usePanelStore.getState().showMobileAgent();
+      const targetServerId = serverId || "local";
+      const liveClient = getHostRuntimeStore().getClient(targetServerId);
+      const session = useSessionStore.getState().sessions[targetServerId];
+      let workspace = session?.workspaces
+        ? Array.from(session.workspaces.values()).find(
+            (w) =>
+              w.workspaceDirectory === project.projectRootPath || w.projectId === project.projectId,
+          )
+        : undefined;
+
+      if (!workspace && liveClient) {
+        try {
+          const created = await liveClient.createWorkspace({
+            source: {
+              kind: "directory",
+              path: project.projectRootPath,
+              projectId: project.projectId,
+            },
+          });
+          if (created.workspace) {
+            workspace = normalizeWorkspaceDescriptor(created.workspace);
+            useSessionStore.getState().mergeWorkspaces(targetServerId, [workspace]);
+          }
+        } catch (createErr) {
+          console.error("Auto create workspace failed:", createErr);
+        }
+      }
+
+      if (workspace) {
+        navigateToWorkspace({ serverId: targetServerId, workspaceId: workspace.id });
+        router.push(buildHostWorkspaceRoute(targetServerId, workspace.id));
+        return;
+      }
+
       router.push(
         buildNewWorkspaceRoute({
-          serverId,
+          serverId: targetServerId,
           projectId: project.projectId,
           sourceDirectory: project.projectRootPath,
           displayName: project.projectDisplayName,
