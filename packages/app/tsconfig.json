@@ -1,17 +1,35 @@
 {
-  "extends": "expo/tsconfig.base",
+  "$schema": "https://json.schemastore.org/tsconfig",
   "compilerOptions": {
+    "types": ["bun", "node"],
+    "composite": true,
+    "target": "ESNext",
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js",
+    "allowJs": true,
+    "resolveJsonModule": true,
     "strict": true,
+    "noUnusedLocals": true,
+    "noEmit": false,
+    "emitDeclarationOnly": true,
+    "rootDir": "..",
+    "outDir": "node_modules/.ts-dist",
+    "isolatedModules": true,
     "paths": {
       "@/*": ["./src/*"]
     }
   },
   "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    ".expo/types/**/*.ts",
-    "expo-env.d.ts",
-    "nativewind-env.d.ts",
-    "react-native-web.d.ts"
-  ]
+    "src",
+    "component-tests",
+    "playwright.components.config.ts",
+    "../storybook/playwright/*.ts",
+    "package.json"
+  ],
+  "exclude": ["dist", "ts-dist"]
 }

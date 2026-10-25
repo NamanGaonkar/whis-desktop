@@ -1,53 +1,87 @@
-import { defineConfig, devices } from "@playwright/test";
+import { defineConfig, devices } from "@playwright/test"
 
-// E2E_METRO_PORT is set dynamically by global-setup.ts after finding a free port
-// This allows multiple test runs in parallel across different worktrees
-const baseURL =
-  process.env.E2E_BASE_URL ?? `http://localhost:${process.env.E2E_METRO_PORT ?? "8081"}`;
-const relayDeploymentSpec = "**/relay-deployment-reconnect.real.spec.ts";
+const port = Number(process.env.PLAYWRIGHT_PORT ?? 3000)
 
-function videoMode(): "on" | "on-first-retry" | "retain-on-failure" {
-  if (process.env.E2E_RECORD_VIDEO === "1") return "on";
-  if (process.env.CI) return "on-first-retry";
-  return "retain-on-failure";
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${port}`
+
+const url = new URL(baseURL)
+
+if (url.protocol !== "http:") throw new Error("E2E fixtures require an http:// app URL")
+
+const built = !!process.env.CI || process.env.PLAYWRIGHT_BUILD === "1"
+
+// Production connects to its own origin, so fixture URLs must match the static server.
+if (built) {
+  process.env.PLAYWRIGHT_SERVER_HOST = url.hostname
+  process.env.PLAYWRIGHT_SERVER_PORT = url.port || "80"
 }
 
+const serverHost = process.env.PLAYWRIGHT_SERVER_HOST ?? "127.0.0.1"
+
+const serverPort = process.env.PLAYWRIGHT_SERVER_PORT ?? "4096"
+
+const command = built
+  ? `bun run build && bun e2e/utils/serve.ts --host 127.0.0.1 --port ${port}`
+  : `bun run dev -- --host 127.0.0.1 --port ${port} --strictPort`
+
+const workers = Number(process.env.PLAYWRIGHT_WORKERS ?? (process.env.CI ? 5 : 0)) || undefined
+
+const touchScroll = /mobile-timeline-scroll\.spec\.ts/
+
 export default defineConfig({
-  testDir: "./e2e/browser",
-  globalSetup: "./e2e/support/global-setup.ts",
+  testDir: "./e2e",
+  testIgnore: [
+    "service-worker/**",
+    process.env.OPENCODE_PERFORMANCE === "1" ? "performance/**/*.test.ts" : "performance/**",
+  ],
+  outputDir: "./e2e/test-results",
   timeout: 60_000,
   expect: {
     timeout: 10_000,
   },
-  // Files run concurrently, while each worker owns its daemon state. Keeping a
-  // spec on one worker avoids repeating its file-level setup across daemons.
-  fullyParallel: false,
-  workers: Number(process.env.E2E_WORKERS ?? (process.env.CI ? "2" : "1")),
-  retries: process.env.CI ? 1 : 0,
-  reporter: [["list"]],
+  fullyParallel: process.env.PLAYWRIGHT_FULLY_PARALLEL === "1",
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  workers,
+  reporter: [["html", { outputFolder: "e2e/playwright-report", open: "never" }], ["line"]],
+  webServer: process.env.PLAYWRIGHT_BASE_URL
+    ? undefined
+    : {
+        command,
+        url: baseURL,
+        reuseExistingServer: !built,
+        timeout: 120_000,
+        env: {
+          VITE_OPENCODE_TEST_FIXTURES: "1",
+          VITE_OPENCODE_SERVER_HOST: serverHost,
+          VITE_OPENCODE_SERVER_PORT: serverPort,
+        },
+      },
   use: {
     baseURL,
-    trace: process.env.CI ? "on-first-retry" : "retain-on-failure",
+    trace: "on-first-retry",
     screenshot: "only-on-failure",
-    video: videoMode(),
+    // CI retries failures, so the retry records the video; local runs have no retries.
+    video: process.env.CI ? "on-first-retry" : "retain-on-failure",
+    // The PWA worker precaches the whole build in every test; e2e/service-worker covers it.
+    serviceWorkers: "block",
   },
+  // The touch-scroll project exists only for scheduling: in the chromium project, mobile-timeline-scroll
+  // is one long serial group that ends up running alone on a single worker. Projects queue in
+  // declaration order, so this one runs the file's tests after every chromium group, spread across all
+  // workers. `--project chromium`, UI mode and the VS Code extension's default first-project selection
+  // therefore skip the file.
   projects: [
     {
-      name: "browser",
-      testIgnore: ["**/*.real.spec.ts"],
+      name: "chromium",
       use: { ...devices["Desktop Chrome"] },
+      grepInvert: touchScroll,
     },
     {
-      name: "real-provider",
-      testMatch: ["**/*.real.spec.ts"],
-      testIgnore: [relayDeploymentSpec],
+      name: "chromium-touch-scroll",
       use: { ...devices["Desktop Chrome"] },
-    },
-    {
-      name: "relay-deployment",
-      testMatch: [relayDeploymentSpec],
-      use: { ...devices["Desktop Chrome"] },
+      grep: touchScroll,
+      fullyParallel: true,
     },
   ],
-  // Note: Metro is started by global-setup.ts on a dynamic port to allow parallel test runs
-});
+})

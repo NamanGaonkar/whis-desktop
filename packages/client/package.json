@@ -1,60 +1,63 @@
 {
-  "name": "@getpaseo/client",
-  "version": "3.0.0",
-  "description": "Paseo client SDK package",
-  "files": [
-    "dist",
-    "!dist/**/*.map",
-    "README.md"
-  ],
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "@opencode/client",
+  "version": "2.1.4",
   "type": "module",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    },
-    "./internal/daemon-client": {
-      "types": "./dist/daemon-client.d.ts",
-      "default": "./dist/daemon-client.js"
-    },
-    "./internal/daemon-client-transport-types": {
-      "types": "./dist/daemon-client-transport-types.d.ts",
-      "default": "./dist/daemon-client-transport-types.js"
-    },
-    "./internal/daemon-client-websocket-transport": {
-      "types": "./dist/daemon-client-websocket-transport.d.ts",
-      "default": "./dist/daemon-client-websocket-transport.js"
-    },
-    "./node": {
-      "types": "./dist/node/index.d.ts",
-      "default": "./dist/node/index.js"
-    },
-    "./internal/hosts": {
-      "types": "./dist/hosts/index.d.ts",
-      "default": "./dist/hosts/index.js"
-    }
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/anomalyco/opencode.git",
+    "directory": "packages/client"
   },
   "publishConfig": {
     "access": "public"
   },
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": "./src/promise/index.ts",
+    "./promise": "./src/promise/index.ts",
+    "./promise/api": "./src/promise/api.ts",
+    "./service": "./src/promise/service.ts",
+    "./solid": "./src/solid/index.ts",
+    "./effect": "./src/effect/index.ts",
+    "./effect/api": "./src/effect/api.ts",
+    "./effect/service": "./src/effect/service.ts",
+    "./mcp": "./src/mcp.ts"
+  },
   "scripts": {
-    "clean": "node ../../scripts/clean-package-dist.mjs",
-    "build": "npm run build --workspace=@getpaseo/protocol && npm run build --workspace=@getpaseo/relay && tsc -p tsconfig.json --incremental false",
-    "build:clean": "npm run clean && npm run build",
-    "prepack": "npm run build:clean",
-    "typecheck": "tsgo --noEmit",
-    "typecheck:examples": "tsgo -p tsconfig.examples.json --noEmit",
-    "test": "vitest run"
+    "build": "bun run script/build-package.ts",
+    "generate": "bun run script/build.ts",
+    "check:generated": "bun run generate && git diff --exit-code -- src/promise/generated src/effect/generated src/effect/api",
+    "test": "bun test --timeout 5000",
+    "typecheck": "bun check --no-script",
+    "typecheck:tsc": "tsc --noEmit"
   },
   "dependencies": {
-    "@getpaseo/protocol": "2.0.2",
-    "@getpaseo/relay": "2.0.2",
-    "ws": "^8.20.0",
-    "zod": "^4.4.3"
+    "@opencode/schema": "workspace:*",
+    "@opencode/protocol": "workspace:*"
+  },
+  "peerDependencies": {
+    "effect": "catalog:",
+    "solid-js": ">=1.9.0"
+  },
+  "peerDependenciesMeta": {
+    "effect": {
+      "optional": true
+    },
+    "solid-js": {
+      "optional": true
+    }
   },
   "devDependencies": {
-    "@types/node": "^20.9.0",
-    "typescript": "^5.2.2",
-    "vitest": "^4.1.6"
+    "@effect/platform-node": "catalog:",
+    "@modelcontextprotocol/client": "2.3.1",
+    "@opencode/httpapi-codegen": "workspace:*",
+    "@tsconfig/bun": "catalog:",
+    "@types/bun": "catalog:",
+    "@typescript/native": "catalog:",
+    "effect": "catalog:",
+    "solid-js": "catalog:"
   }
 }

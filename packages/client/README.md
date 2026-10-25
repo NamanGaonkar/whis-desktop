@@ -1,44 +1,27 @@
-# @getpaseo/client
+# @opencode/client
 
-TypeScript SDK for building integrations on top of a Paseo daemon.
+Private generation target for clients derived directly from OpenCode's authoritative Effect `HttpApi`.
 
-```bash
-npm install @getpaseo/client
-```
+## Entrypoints
+
+- `@opencode/client`: zero-Effect Promise client using `fetch`.
+- `@opencode/client/effect`: rich Effect network client using an environment-provided `HttpClient`.
+
+The generated surface includes every standard HTTP group from Server's concrete API. The build compiler reads `@opencode/server/api`; the generated Effect runtime imports a client-local projection built from Protocol, with a generation-equivalence test preventing transport drift. Custom transports such as the PTY WebSocket connection remain outside the generic HTTP client. Run `bun run generate` after changing the contract and `bun run check:generated` to detect committed-output drift.
+
+The Effect entrypoint uses canonical decoded values such as `Session.ID`, `Location.Ref`, and `Prompt`. These datatypes come from the lightweight `@opencode/schema` package and are re-exported so callers depend only on the client surface. Protocol owns endpoint construction and middleware placement; Server supplies the concrete middleware keys used by the build-time API.
+
+The Promise root remains structural and has no Core or Effect runtime dependency. `/effect` depends only on Effect, Schema, and Protocol and is browser-bundle safe. Bundle-boundary tests enforce both import graphs.
+
+Effect consumers construct canonical decoded inputs:
 
 ```ts
-import { createPaseoClient } from "@getpaseo/client";
+import { AbsolutePath, Location, OpenCode, Prompt } from "@opencode/client/effect"
 
-const client = createPaseoClient({ url: "ws://127.0.0.1:6767/ws" });
-await client.connect();
-
-const agent = await client.agents.create({
-  config: { provider: "codex/gpt-5.5" },
-  cwd: "/Users/me/dev/storefront",
-  prompt: "Review the current diff and name the riskiest change.",
-});
-
-const result = await agent.waitForFinish();
-console.log(result.lastMessage);
-
-await client.close();
+const client = yield * OpenCode.make({ baseUrl: "https://opencode.example" })
+yield *
+  client.sessions.create({
+    location: Location.Ref.make({ directory: AbsolutePath.make("/workspace") }),
+  })
+yield * client.sessions.prompt({ sessionID, prompt: Prompt.make({ text: "Hello" }) })
 ```
-
-The public API is the package root. Imports under `@getpaseo/client/internal/*` are unsupported implementation details used by Paseo's own packages.
-
-Read the [SDK documentation](https://paseo.sh/docs/sdk) for agents, workspaces, terminals, provider discovery, events, recipes, and the API reference. Runnable TypeScript patterns also live in [`examples/`](./examples/README.md).
-
-## Runtime
-
-The client needs a WebSocket implementation. Modern browsers and Node.js 22 provide one globally.
-
-Use a WebSocket URL ending in `/ws`, such as `ws://127.0.0.1:6767/ws`. Pass `password` when the daemon requires authentication.
-
-The client advertises its supported protocol capabilities by default. Optional `capabilities`
-overrides extend or override that declaration; browser hosting must be supplied by the caller.
-Connecting alone does not subscribe to agent timelines or catalog events. See the
-[event guide](https://paseo.sh/docs/sdk/events) for subscription lifetimes and timeline replacements.
-
-## Stability
-
-The high-level API exported from `@getpaseo/client` is the supported SDK surface. The SDK and daemon remain protocol-compatible across versions, but newly added capabilities can require a newer daemon.

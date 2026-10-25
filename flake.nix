@@ -1,84 +1,70 @@
 {
-  description = "Paseo - self-hosted daemon for AI coding agents";
+  description = "OpenCode development flake";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
   };
 
   outputs =
-    {
-      self,
-      nixpkgs,
-    }:
+    { self, nixpkgs, ... }:
     let
-      supportedSystems = [
-        "x86_64-linux"
+      systems = [
         "aarch64-linux"
-        "x86_64-darwin"
+        "x86_64-linux"
         "aarch64-darwin"
       ];
-      forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
-      pkgsFor = system: import nixpkgs { inherit system; };
+      forEachSystem = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
+      rev = self.shortRev or self.dirtyShortRev or "dirty";
     in
     {
-      packages = forAllSystems (
-        system:
-        let
-          pkgs = pkgsFor system;
-          paseo = pkgs.callPackage ./nix/package.nix { };
-          versionParts = pkgs.lib.splitString "." paseo.version;
-          sourceRevision = if self ? revCount && self.revCount != null then self.revCount else 0;
-          buildRevision = sourceRevision - (sourceRevision / 10000) * 10000;
-          desktopBuildVersion = pkgs.lib.concatStringsSep "." [
-            (builtins.elemAt versionParts 0)
-            (builtins.elemAt versionParts 1)
-            (toString buildRevision)
+      devShells = forEachSystem (pkgs: {
+        default = pkgs.mkShell {
+          packages = with pkgs; [
+            bun
+            nodejs
+            pkg-config
+            openssl
+            git
           ];
-        in
-        {
-          default = paseo;
-          paseo = paseo;
-          desktop = pkgs.callPackage ./nix/desktop-package.nix {
-            inherit paseo;
-            buildVersion = desktopBuildVersion;
-          };
-        }
-      );
-
-      checks = forAllSystems (
-        system:
-        let
-          pkgs = pkgsFor system;
-          packages = self.packages.${system};
-          license = (builtins.fromJSON (builtins.readFile ./package.json)).license;
-        in
-        {
-          license-metadata =
-            assert packages.paseo.meta.license.spdxId == license;
-            assert packages.desktop.meta.license.spdxId == license;
-            pkgs.runCommand "paseo-license-metadata" { } "touch $out";
-        }
-      );
-
-      nixosModules.default = self.nixosModules.paseo;
-      nixosModules.paseo =
-        { pkgs, lib, ... }:
-        {
-          imports = [ ./nix/module.nix ];
-          services.paseo.package = lib.mkDefault self.packages.${pkgs.stdenv.hostPlatform.system}.default;
         };
+      });
 
-      devShells = forAllSystems (
-        system:
+      overlays = {
+        default =
+          final: _prev:
+          let
+            node_modules = final.callPackage ./nix/node_modules.nix {
+              inherit rev;
+            };
+          in
+          rec {
+            opencode = final.callPackage ./nix/opencode.nix {
+              inherit node_modules;
+            };
+            opencode-desktop = final.callPackage ./nix/desktop.nix {
+              inherit opencode;
+            };
+          };
+      };
+
+      packages = forEachSystem (
+        pkgs:
         let
-          pkgs = pkgsFor system;
+          node_modules = pkgs.callPackage ./nix/node_modules.nix {
+            inherit rev;
+          };
         in
-        {
-          default = pkgs.mkShell {
-            packages = [
-              pkgs.nodejs_22
-              pkgs.python3
-            ];
+        rec {
+          default = opencode;
+          opencode = pkgs.callPackage ./nix/opencode.nix {
+            inherit node_modules;
+          };
+          opencode-desktop = pkgs.callPackage ./nix/desktop.nix {
+            inherit opencode;
+          };
+          # Updater derivation with fakeHash - build fails and reveals correct hash
+          node_modules_updater = node_modules.override {
+            hash = pkgs.lib.fakeHash;
           };
         }
       );

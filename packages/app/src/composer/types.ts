@@ -1,20 +1,54 @@
-import type { AttachmentMetadata, ComposerAttachment } from "@/attachments/types";
+import type {
+  AgentPart,
+  ComposerStore,
+  FileAttachmentPart,
+  ImageAttachmentPart,
+  PathAttachmentPart,
+  Prompt,
+  SkillPart,
+} from "./state"
 
-export type ImageAttachment = AttachmentMetadata;
+export type ComposerFilePart = FileAttachmentPart
 
-export interface MessagePayload {
-  text: string;
-  attachments: ComposerAttachment[];
-  cwd: string;
-  forceSend?: boolean;
+export type ComposerAgentPart = AgentPart
+
+export type ComposerSkillPart = SkillPart
+
+export type ComposerAttachment = ImageAttachmentPart | PathAttachmentPart
+
+export type ComposerPrompt = Prompt
+
+export type ComposerComment = ComposerStore["context"]["items"][number]
+
+export type ComposerPersistedState = ComposerStore
+
+export type ComposerHistoryEntry = {
+  prompt: ComposerPrompt
+  metadata?: unknown
 }
 
-/**
- * Text the draft owner hands the editor. `hydrated` is the owner's answer to a mount:
- * the draft's text as persisted or still pending from the editor that unmounted.
- */
-export interface TextReplacement {
-  kind: "initial" | "hydrated" | "replace";
-  key: string;
-  text: string;
+export type ComposerHistory = {
+  entries: (mode: "normal" | "shell") => ComposerHistoryEntry[]
+  add: (prompt: ComposerPrompt, mode: "normal" | "shell") => void
+  capture?: () => unknown
+  restore?: (metadata: unknown) => void
+}
+
+export type ComposerOption = {
+  id: string
+  label: string
+  providerID?: string
+}
+
+export type ComposerSuggestion = {
+  id: string
+  kind: "agent" | "command" | "file" | "reference" | "resource" | "skill"
+  label: string
+  title?: string
+  trigger?: string
+  description?: string
+  path?: string
+  keybind?: string[]
+  recent?: boolean
+  mention?: ComposerFilePart | ComposerAgentPart | ComposerSkillPart
 }

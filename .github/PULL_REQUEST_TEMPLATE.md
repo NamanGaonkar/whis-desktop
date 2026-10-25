@@ -1,10 +1,4 @@
-<!--
-Please follow this template. The PR template applies whether you opened the PR via the web UI, `gh pr create`, or any other tool.
-
-You MUST read CONTRIBUTING.md before sending a PR.
--->
-
-### Linked issue
+### Issue for this PR
 
 Closes #
 
@@ -12,38 +6,24 @@ Closes #
 
 - [ ] Bug fix
 - [ ] New feature
-- [ ] Enhancement
-- [ ] Refactor
-- [ ] Docs
+- [ ] Refactor / code improvement
+- [ ] Documentation
 
-### Reasoning
+### What does this PR do?
 
-<!-- A short description of the reasoning of this change in your own words. What was wrong, and how do you hope this PR fixes it. If you can't explain this briefly, the PR is probably too big. This description must be grounded in real user flows and framed as value provided to Paseo users. -->
+Please provide a description of the issue, the changes you made to fix it, and why they work. It is expected that you understand why your changes work and if you do not understand why at least say as much so a maintainer knows how much to value the PR.
 
-### Goals
+**If you paste a large clearly AI generated description here your PR may be IGNORED or CLOSED!**
 
-<!-- A bullet list of what this PR wants to accomplish, include requirements and acceptance criteria. This helps lock down the scope of the PR and prevent expanding scope over the intended goal. -->
+### How did you verify your code works?
 
-### Non-goals
+### Screenshots / recordings
 
-<!-- A bullet list of what this PR does not want to accomplish. Add any intentional trade offs taken. This helps lock down the scope of the PR and prevent expanding scope over the intended goal. -->
-
-### QA
-
-<!--
-This is the section I read most carefully. I need to see that *you* tested this, not that the diff looks plausible.
-
-- For UI changes: a screenshot or short video on every affected platform (mobile, web, desktop). UI claims without visual proof are not enough.
-- For behavior changes: the actual steps you ran, and what you observed.
-- For bug fixes: how you reproduced the bug before, and confirmed it's fixed after.
--->
+_If this is a UI change, please include a screenshot or recording._
 
 ### Checklist
 
-- [ ] Plugin changes follow the [SDK import boundaries](../docs/plugins.md#sdk-import-boundaries) (if applicable)
-- [ ] One focused change
-- [ ] `npm run typecheck` passes
-- [ ] `npm run lint` passes
-- [ ] `npm run format` passes
-- [ ] QA evidence
-- [ ] Tests added or updated where it made sense
+- [ ] I have tested my changes locally
+- [ ] I have not included unrelated changes in this PR
+
+_If you do not follow this template your PR will be automatically rejected._

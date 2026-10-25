@@ -1,48 +1,41 @@
 {
-  "name": "@getpaseo/protocol",
-  "version": "3.0.0",
-  "description": "Paseo shared protocol schemas and wire types",
-  "files": [
-    "dist",
-    "!dist/**/*.map",
-    "README.md"
-  ],
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "@opencode/protocol",
+  "version": "2.1.4",
   "type": "module",
-  "exports": {
-    "./*": {
-      "types": "./dist/*.d.ts",
-      "default": "./dist/*.js"
-    },
-    "./addresses": {
-      "types": "./dist/addresses.d.ts",
-      "default": "./dist/addresses.js"
-    }
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/anomalyco/opencode.git",
+    "directory": "packages/protocol"
   },
   "publishConfig": {
     "access": "public"
   },
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    "./simulation": "./src/simulation.ts",
+    "./*": "./src/*.ts"
+  },
   "scripts": {
-    "clean": "node ../../scripts/clean-package-dist.mjs",
-    "build": "tsc -p tsconfig.json --incremental false",
-    "build:clean": "npm run clean && npm run build",
-    "prepack": "npm run build:clean",
-    "typecheck": "tsgo --noEmit",
-    "test": "vitest run",
-    "generate:validators": "node scripts/generate-validation-aot.mjs",
-    "watch": "concurrently --kill-others --names validation,tsc --prefix-colors green,yellow \"node scripts/watch-validation-aot.mjs\" \"tsc -p tsconfig.json --watch --preserveWatchOutput\"",
-    "prebuild": "npm run generate:validators",
-    "pretypecheck": "npm run generate:validators",
-    "pretest": "npm run generate:validators"
+    "build": "bun run script/build.ts",
+    "generate": "bun run script/generate-openapi.ts",
+    "check:generated": "bun run script/generate-openapi.ts --check",
+    "test": "bun test --only-failures",
+    "typecheck": "bun check --no-script",
+    "typecheck:tsc": "tsc --noEmit"
   },
   "dependencies": {
-    "semver": "^7.8.5",
-    "zod": "^4.4.3"
+    "@opencode/schema": "workspace:*",
+    "effect": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "^20.9.0",
-    "@types/semver": "^7.8.0",
-    "typescript": "^5.2.2",
-    "vitest": "^4.1.6",
-    "zod-aot": "0.20.4"
+    "@tsconfig/bun": "catalog:",
+    "@types/bun": "catalog:",
+    "@typescript/native": "catalog:",
+    "prettier": "3.6.2",
+    "typescript": "catalog:"
   }
 }

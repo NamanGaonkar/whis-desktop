@@ -1,8 +1,5 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Product discussion on Discord
-    url: https://discord.gg/jz8T2uahpH
-    about: Product discussion, including feature requests
-  - name: Product discussion on GitHub
-    url: https://github.com/NamanGaonkar/whis-desktop/discussions
-    about: Product discussion, including feature requests
+  - name: 💬 Discord Community
+    url: https://discord.gg/opencode
+    about: For support, troubleshooting, how-to questions, and real-time discussion.

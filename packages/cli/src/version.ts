@@ -1,15 +1,28 @@
-import { createRequire } from "node:module";
+import { Option, Schema } from "effect"
 
-const require = createRequire(import.meta.url);
+declare const OPENCODE_VERSION: string
+declare const OPENCODE_CHANNEL: string
+declare const OPENCODE_ARTIFACT: string
+declare const OPENCODE_RELEASE_HIGHLIGHTS: string
 
-interface CliPackageJson {
-  version?: unknown;
+const version = typeof OPENCODE_VERSION === "string" ? OPENCODE_VERSION : "local"
+const channel = typeof OPENCODE_CHANNEL === "string" ? OPENCODE_CHANNEL : "local"
+const artifact = typeof OPENCODE_ARTIFACT === "string" ? OPENCODE_ARTIFACT : "cli"
+// Stable release builds embed the release notes' Highlights; every other build has none.
+const highlights =
+  typeof OPENCODE_RELEASE_HIGHLIGHTS === "string"
+    ? Option.getOrElse(
+        Schema.decodeUnknownOption(
+          Schema.fromJsonString(Schema.Array(Schema.Struct({ title: Schema.String, body: Schema.String }))),
+        )(OPENCODE_RELEASE_HIGHLIGHTS),
+        () => [],
+      )
+    : []
+
+export {
+  version as OPENCODE_VERSION,
+  channel as OPENCODE_CHANNEL,
+  artifact as OPENCODE_ARTIFACT,
+  highlights as OPENCODE_HIGHLIGHTS,
 }
-
-export function resolveCliVersion(): string {
-  const packageJson = require("../package.json") as CliPackageJson;
-  if (typeof packageJson.version === "string" && packageJson.version.trim().length > 0) {
-    return packageJson.version.trim();
-  }
-  throw new Error("Unable to resolve @whis/cli version from package.json.");
-}
+export const OPENCODE_LOCAL = channel === "local"

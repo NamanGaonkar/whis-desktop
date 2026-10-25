@@ -1,104 +1,112 @@
-# Contributing to Paseo
+# Contributing to OpenCode
 
-This guide is here to save us both time and help you find a useful way to contribute.
+The changes most likely to be accepted are:
 
-Paseo grows through bug reports, testing, workflow discussions, plugins, documentation, and people helping each other. The sections below explain where each contribution belongs and what to expect.
+- Bug fixes
+- Additional LSPs and formatters
+- LLM performance improvements
+- Environment-specific fixes
+- Missing standard behavior
+- Documentation improvements
 
-## Philosophy
+UI and core product features require design review before implementation. If you are unsure whether a change fits, ask a maintainer or choose an issue labeled [`help wanted`](https://github.com/anomalyco/opencode/issues?q=is%3Aissue%20state%3Aopen%20label%3Ahelp-wanted), [`good first issue`](https://github.com/anomalyco/opencode/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22), [`bug`](https://github.com/anomalyco/opencode/issues?q=is%3Aissue%20state%3Aopen%20label%3Abug), or [`perf`](https://github.com/anomalyco/opencode/issues?q=is%3Aopen%20is%3Aissue%20label%3A%22perf%22).
 
-**Paseo has a lean, opinionated core built to be extended.**
+Want to take on an issue? Leave a comment and a maintainer may assign it unless it is already being worked on.
 
-The goal is a low floor and a high ceiling: a polished default experience that is easy to understand, with the flexibility to choose your providers, run on your own infrastructure, and build your own workflows. Paseo should remain self-hosted and respectful of your privacy and control.
+> [!NOTE]
+> PRs that ignore these guardrails will likely be closed.
 
-The core continues to evolve through improvements to the shared experience. Specialized workflows and integrations belong in the extension ecosystem. Product, design, architecture, and workflow decisions remain with the maintainer.
+## Adding Providers
 
-Read the [product philosophy](docs/product.md) for the reasoning behind these choices and how Paseo develops.
+New providers should rarely require OpenCode changes. Add the provider to [models.dev](https://github.com/anomalyco/models.dev) first.
 
-## Build a plugin
+## Development
 
-Most specialized workflows and integrations are better served by plugins.
+OpenCode requires Bun 1.3 or newer. From the repository root:
 
-Plugins let you build what you need, share it, and maintain it independently. Start with the [plugin documentation](https://paseo.sh/docs/plugins). For applications and integrations built around Paseo, see the [SDK documentation](https://paseo.sh/docs/sdk).
+```bash
+bun install
+bun dev [directory]
+```
 
-If an extension point is missing, describe the workflow in [Discussions](https://github.com/getpaseo/paseo/discussions). A reusable capability that enables several plugins may be a better addition than implementing one particular workflow in core.
+`bun dev` runs the V2 CLI and TUI. Pass a directory to open another project, or `.` to open this repository.
 
-## Report bugs
+To test a development TUI against your installed OpenCode V2 background service and live sessions:
 
-Open a [GitHub issue](https://github.com/getpaseo/paseo/issues) and fill out the bug report template.
+```bash
+bun run dev:live [directory]
+```
 
-Include:
+For web development, run the backend and app in separate terminals. Other interfaces have root scripts:
 
-- What you did, what you expected, and what happened.
-- Reproduction steps, Paseo version, and platform.
-- Relevant logs, screenshots, or a recording.
+```bash
+bun dev serve --port 4096
+bun run dev:web
+bun run dev:desktop
+bun run dev:www
+```
 
-If an agent investigated, include the evidence and reproduction steps it collected. Its explanation of the cause still needs verification.
+### Packages
 
-Focused fixes for reproducible bugs are welcome. If you submit one, follow the pull request and QA guidance below.
+- `packages/schema`: shared wire and storage contracts
+- `packages/core`: domain behavior and persistence
+- `packages/protocol`: public API definitions
+- `packages/server`: HTTP server and runtime composition
+- `packages/client`: generated TypeScript clients
+- `packages/cli`: command-line entrypoint and service lifecycle
+- `packages/tui`: terminal interface
+- `packages/app`: shared web interface
+- `packages/desktop`: Electron desktop application
+- `packages/plugin`: plugin API
 
-## Discuss workflows before proposing features
+### Verification
 
-Product discussions, including feature requests, belong in [GitHub Discussions](https://github.com/getpaseo/paseo/discussions). Feature requests opened as issues will be closed.
+Run typechecks, and tests where defined, from the affected package rather than the repository root:
 
-Explain:
+```bash
+cd packages/core
+bun run test
+bun typecheck
+```
 
-- What are you trying to do?
-- How do you do it today?
-- Where does Paseo get in the way?
-- What would a better workflow look like?
+Follow package-specific instructions in nearby `AGENTS.md` files. After changing the public Protocol or Server `HttpApi`, run `bun run generate` from `packages/client`; never edit generated client files directly.
 
-This helps other people describe their needs and gives me useful context when deciding what to build.
+Follow the repository [style guide](./AGENTS.md).
 
-There is no feature request backlog or commitment to implement a discussion. I may read and learn from it without replying.
+## Pull Requests
 
-## If you still want to submit a pull request
+### Link Issues When Required
 
-After considering plugins and discussing the workflow, you may still want to propose a change to core. Focused fixes for reproducible bugs are also welcome.
+Bug fixes, chores, and tests must reference an existing issue. Documentation, refactor, and feature PRs are exempt from the automated linked-issue check. When required, use `Fixes #123` or `Closes #123` in the PR description.
 
-**Pull requests are closed by default.** I may reopen the ones I want to take forward. Submit one only if you are comfortable with it being closed without a detailed review or explanation.
+Before implementing new functionality, open a feature request describing the problem, why it belongs in OpenCode, and your proposed approach if you have one. Wait for design approval before opening the implementation PR.
 
-Paseo receives more pull requests than I can responsibly review. Reviewing every submission and explaining every decision would consume the time available for developing the product.
+Base branches on `dev` and complete the provided pull request template.
 
-I can prompt an agent to write code just as you can. The bottlenecks are choosing what to build, shaping it, verifying its behavior, and taking responsibility for its maintenance. A finished implementation still leaves that work to do.
+### Keep It Focused
 
-If you choose to submit a PR, these are the basics to cover.
+- Keep PRs small and focused.
+- Explain the problem and why the change fixes it.
+- Check whether the functionality already exists.
+- For UI changes, include before-and-after screenshots or video.
+- For logic changes, explain what you tested and how a reviewer can verify it.
 
-### What I look for in a core feature
+### Keep It Brief
 
-- **Demonstrated demand.** Link a discussion with concrete examples of other users needing the workflow. A feature for a small, specialized use case belongs in a plugin.
-- **Value across workflows.** The feature should improve how existing capabilities work together and benefit a broad set of users. A reusable improvement is more valuable than an isolated control for one task.
-- **A coherent design across platforms and providers.** Shared capabilities should work across platforms and providers wherever applicable. Do not reshape a shared abstraction around one provider while leaving the others unsupported or inconsistent.
-- **A finished experience.** Follow the [design guidelines](docs/design.md). The feature must look and feel right in Paseo, including loading states, layout stability, and interaction performance. PRs with janky or rushed interfaces will be closed. Design judgment remains with the maintainer.
+Long, AI-generated PR descriptions and issues may be ignored. Write a short explanation in your own words. If the change cannot be explained briefly, the PR may be too large.
 
-### Keep the scope small
+### Use Conventional Titles
 
-Submit one focused change. PRs adding more than roughly **3,000 lines of production code** are unlikely to be accepted. Prefer the smallest complete improvement that can be tested and understood on its own.
+Use `type(scope): summary`. Supported types are `feat`, `fix`, `docs`, `chore`, `refactor`, and `test`. The scope is optional.
 
-### QA evidence
+Examples:
 
-Run the changed application or service and test the affected workflow yourself. Include detailed QA evidence so I can see what you exercised and what happened. PRs without this verification and evidence will be closed, whether they fix a bug or add a feature.
+- `docs: update contributing guide`
+- `fix(tui): restore scroll position`
+- `feat(app): add workspace search`
 
-Explain the problem and link the relevant bug report or discussion. Include:
+## Issues
 
-- Automated tests that exercise the changed behavior. A bug fix needs a regression test that fails on the broken version.
-- The commands you ran and their output.
-- A recording for interactive UI changes, or before-and-after screenshots for static changes.
-- The platforms you tested and any affected platforms you could not test.
+Bug reports and feature requests must use their issue templates. Blank issues are not allowed; ask support and how-to questions in the [Discord community](https://discord.gg/opencode).
 
-The [QA guide](docs/qa.md) explains the expected evidence and available tooling.
-
-Using an agent is welcome. Sending it to implement a change and submitting its output without trying the result yourself does not meet this bar.
-
-**Satisfying all of the above does not mean your pull request will be merged.**
-
-### What happens to your contribution
-
-If I take a contribution forward, I may narrow it, reshape it, or use it as a reference for my own implementation. **You will be credited for your contribution, including when I reimplement it.**
-
-A closed PR does not necessarily mean the underlying problem was dismissed. It means I am not taking that submission forward. Detailed reviews, individual explanations, and follow-up discussions cannot be provided at this volume.
-
-## Help the community
-
-Testing betas, reproducing bugs, improving documentation, sharing plugins, and answering questions all help Paseo develop.
-
-There is no formal process for becoming a maintainer. Consistent involvement and good judgment build the shared context needed to take on more responsibility.
+Automated checks flag missing templates, placeholder text, AI-generated walls of text, and missing meaningful content. You have two hours to correct a flagged issue before it closes automatically. Ask a maintainer if an issue was flagged incorrectly.
