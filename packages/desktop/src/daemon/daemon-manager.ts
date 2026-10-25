@@ -48,6 +48,7 @@ import { getDesktopSettingsStore } from "../settings/desktop-settings-electron.j
 import { isRunningUnderARM64Translation } from "../system/arm64-translation.js";
 import { describeSandbox } from "../diagnostics/sandbox.js";
 import { getDesktopAppLogs } from "../diagnostics/app-logs.js";
+import { fetchProviderModels } from "./model-discovery.js";
 import { getDesktopUpdaterDiagnostics } from "../diagnostics/updater.js";
 import {
   deleteLegacySkillSelection,
@@ -551,6 +552,15 @@ export function createDaemonCommandHandlers(): Record<string, DesktopCommandHand
         writeFileSync(path.join(memoryDir, "project_context.md"), projectContext, "utf-8");
       }
       return { ok: true };
+    },
+    detect_provider_models: async (args) => {
+      const { provider, apiKey, endpoint } = (args || {}) as {
+        provider?: string;
+        apiKey?: string;
+        endpoint?: string;
+      };
+      if (!provider) throw new Error("Provider ID is required");
+      return await fetchProviderModels({ provider, apiKey, endpoint });
     },
   };
 }
