@@ -83,7 +83,7 @@ const getBase = (appId: string): Configuration => {
     extraMetadata: {
       name: "Whis",
       productName: "Whis",
-      version: "4.0.0",
+      version: "4.0.1",
       desktopName: `${appId}.desktop`,
     },
     files: [

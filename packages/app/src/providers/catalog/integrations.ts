@@ -25,6 +25,9 @@ export function useIntegrations(directory: Accessor<string | undefined>) {
 
   return {
     ready: () => data.location.integration.list(location()) !== undefined,
-    list: () => data.location.integration.list(location()) ?? [],
+    list: () =>
+      (data.location.integration.list(location()) ?? []).filter(
+        (item) => item.id !== "opencode" && item.id !== "opencode-go",
+      ),
   }
 }

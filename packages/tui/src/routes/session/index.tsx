@@ -2535,7 +2535,7 @@ function FreeLimitNotice(props: { message: Pick<SessionMessageAssistant, "error"
     <box paddingLeft={3} flexDirection="column">
       <text fg={theme.text.muted}>You've used today's free messages.{reset() ? ` They reset at ${reset()}.` : ""}</text>
       <text fg={theme.text.muted}>
-        Upgrade to OpenCode Go → <span style={{ fg: theme.text.base }}>/connect</span> · Switch model →{" "}
+        Connect provider API key → <span style={{ fg: theme.text.base }}>/connect</span> · Switch model →{" "}
         <span style={{ fg: theme.text.base }}>/models</span>
       </text>
     </box>

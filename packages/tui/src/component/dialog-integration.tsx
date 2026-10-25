@@ -47,12 +47,15 @@ import {
 } from "../util/form"
 
 const INTEGRATION_PRIORITY: Record<string, number> = {
-  "opencode-go": 0,
-  opencode: 1,
+  deepseek: 0,
+  anthropic: 1,
   openai: 2,
-  "github-copilot": 3,
-  anthropic: 4,
-  google: 5,
+  google: 3,
+  ollama: 4,
+  openrouter: 5,
+  moonshot: 6,
+  minimax: 7,
+  zai: 8,
 }
 
 type ConnectMethod = Exclude<IntegrationInfo["methods"][number], { type: "env" }>
@@ -67,13 +70,15 @@ const SUBMIT = Symbol("submit")
 const OAUTH_CODE = /[A-Z0-9]{4}-[A-Z0-9]{4,5}/
 
 export function integrationOptions(list: IntegrationInfo[]) {
-  return list.toSorted(
-    (a, b) =>
-      Number(b.metadata?.source === "mcp") - Number(a.metadata?.source === "mcp") ||
-      (INTEGRATION_PRIORITY[a.id] ?? 99) - (INTEGRATION_PRIORITY[b.id] ?? 99) ||
-      a.name.localeCompare(b.name) ||
-      a.id.localeCompare(b.id),
-  )
+  return list
+    .filter((item) => item.id !== "opencode" && item.id !== "opencode-go")
+    .toSorted(
+      (a, b) =>
+        Number(b.metadata?.source === "mcp") - Number(a.metadata?.source === "mcp") ||
+        (INTEGRATION_PRIORITY[a.id] ?? 99) - (INTEGRATION_PRIORITY[b.id] ?? 99) ||
+        a.name.localeCompare(b.name) ||
+        a.id.localeCompare(b.id),
+    )
 }
 
 export function connectMethods(integration: IntegrationInfo): ConnectMethod[] {

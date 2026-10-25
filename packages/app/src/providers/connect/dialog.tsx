@@ -237,14 +237,24 @@ function ProviderPicker(props: { directory?: string; onSelect: (provider: string
     filter: "",
   })
 
-  const featured = ["opencode-go", "opencode", "anthropic", "openai", "google", "openrouter", "vercel"]
+  const featured = [
+    "deepseek",
+    "anthropic",
+    "openai",
+    "google",
+    "ollama",
+    "openrouter",
+    "moonshot",
+    "minimax",
+    "zai",
+  ]
   const custom = () => ({ id: CUSTOM_ID, name: language.t("dialog.provider.custom.label") })
 
   const all = createMemo(() => {
     language.locale()
     const query = store.filter.trim().toLowerCase()
 
-    const values = [custom(), ...integrations.list()]
+    const values = [custom(), ...integrations.list().filter((p) => p.id !== "opencode" && p.id !== "opencode-go")]
 
     if (!query) return values
 
@@ -361,18 +371,7 @@ function ProviderPicker(props: { directory?: string; onSelect: (provider: string
                             {accountCount(provider)}
                           </Badge>
                         </Show>
-                        <Show when={CONSOLE_PROVIDERS.has(provider.id) && accountCount(provider) === 0}>
-                          <span class="min-w-0 truncate font-[440] text-v2-text-text-muted">
-                            {language.t(
-                              provider.id === "opencode"
-                                ? "dialog.provider.opencode.tagline"
-                                : "dialog.provider.opencodeGo.tagline",
-                            )}
-                          </span>
-                          <span class="flex h-4 shrink-0 items-center rounded-xs border-[0.5px] border-v2-border-border-base bg-v2-background-bg-layer-03 px-1 text-[11px] font-[530] leading-none tracking-[0.05px] text-v2-text-text-muted">
-                            {language.t("dialog.provider.tag.recommended")}
-                          </span>
-                        </Show>
+
                         <Show when={provider.id === CUSTOM_ID}>
                           <span class="flex h-4 shrink-0 items-center rounded-xs border-[0.5px] border-v2-border-border-base bg-v2-background-bg-layer-03 px-1 text-[11px] font-[530] leading-none tracking-[0.05px] text-v2-text-text-muted">
                             {language.t("settings.providers.tag.custom")}

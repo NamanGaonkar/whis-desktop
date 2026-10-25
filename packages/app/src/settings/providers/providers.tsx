@@ -28,8 +28,6 @@ type ProviderSource = "env" | "api" | "account" | "config" | "custom"
 type ProviderItem = ReturnType<ReturnType<typeof useProviders>["connected"]>[number]
 
 const PROVIDER_NOTES = [
-  { match: (id: string) => id === "opencode", key: "dialog.provider.opencode.note" },
-  { match: (id: string) => id === "opencode-go", key: "dialog.provider.opencodeGo.tagline" },
   { match: (id: string) => id === "anthropic", key: "dialog.provider.anthropic.note" },
   { match: (id: string) => id.startsWith("github-copilot"), key: "dialog.provider.copilot.note" },
   { match: (id: string) => id === "openai", key: "dialog.provider.openai.note" },
@@ -115,14 +113,7 @@ export const SettingsProviders: Component<{
       ?.connections.some((connection) => connection.type === "credential" || connection.type === "env")
 
     return connected
-      .filter(
-        (provider) =>
-          provider.id !== "opencode" ||
-          managedConsole !== undefined ||
-          consoleConnected ||
-          Object.values(provider.models).some((model) => model.cost.input > 0),
-      )
-      .toSorted((a, b) => Number(b.id === "opencode-go") - Number(a.id === "opencode-go"))
+      .filter((provider) => provider.id !== "opencode" && provider.id !== "opencode-go")
   })
 
   createEffect(() => {
@@ -552,9 +543,7 @@ export const SettingsProviders: Component<{
                         <span class="settings-provider-name">
                           {item.name}
                         </span>
-                        <Show when={item.id === "opencode" || item.id === "opencode-go"}>
-                          <Badge>{language.t("dialog.provider.tag.recommended")}</Badge>
-                        </Show>
+
                       </div>
                       <Show when={note(item.id)}>
                         {(key) => <p class="settings-provider-description">{language.t(key())}</p>}

@@ -51,6 +51,24 @@ const layer = Layer.effect(
                   ["The environment you are running in is now:", environment].join("\n"),
               },
             }),
+            Instructions.make({
+              key: Instructions.Key.make("core/memory"),
+              codec: Schema.toCodecJson(Schema.String),
+              read: Effect.sync(() =>
+                [
+                  "<memory>",
+                  "  Whis maintains persistent cross-chat memory across sessions.",
+                  "  Global user preferences and profile: ~/.whis/memory/user_profile.md",
+                  "  Project-specific conventions and context: .whis/memory/project_context.md",
+                  "  When asked to remember a fact, user preference, or project convention across chats, use the save_memory tool.",
+                  "</memory>",
+                ].join("\n"),
+              ),
+              render: {
+                initial: (memory) => ["Memory instructions:", memory].join("\n"),
+                changed: (_previous, memory) => ["Memory instructions updated:", memory].join("\n"),
+              },
+            }),
           ]),
         ),
     })

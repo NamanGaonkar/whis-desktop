@@ -39,6 +39,8 @@ export const Plugin = define({
       const project = discovery.project && FSUtil.contains(root, start)
       const stop = FSUtil.contains(home, start) ? home : root
       const globalFile = yield* fs.resolve(join(global.config, "AGENTS.md"))
+      const userProfileFile = yield* fs.resolve(join(global.home, ".whis", "memory", "user_profile.md"))
+      const globalProjectContext = yield* fs.resolve(join(global.home, ".whis", "memory", "project_context.md"))
       const loaded: { current: Loaded } = { current: { type: "available", files: [] } }
       const configured: { sources: string[]; remote: Map<string, InstructionDiscovery.File> } = {
         sources: [],
@@ -49,10 +51,14 @@ export const Plugin = define({
       // The ancestor walk can reach the global file when the location sits
       // beneath the global config dir; global: false excludes it there too.
       const candidates = [
-        ...(discovery.global ? [globalFile] : []),
+        ...(discovery.global ? [globalFile, userProfileFile, globalProjectContext] : []),
         ...(project
           ? ancestorDirectories(start, stop)
-              .map((directory) => join(directory, "AGENTS.md"))
+              .flatMap((directory) => [
+                join(directory, "AGENTS.md"),
+                join(directory, "project_context.md"),
+                join(directory, ".whis", "memory", "project_context.md"),
+              ])
               .filter((file) => discovery.global || file !== globalFile)
           : []),
       ]
@@ -76,15 +82,26 @@ export const Plugin = define({
       })
 
       const globalSource = Effect.fn("ConfigInstructionPlugin.globalSource")(function* () {
-        if (!discovery.global || !(yield* fs.isFile(globalFile))) return []
-        const file = yield* read(globalFile)
-        return file instanceof InstructionDiscovery.File ? [file] : []
+        if (!discovery.global) return []
+        const files: InstructionDiscovery.File[] = []
+        for (const candidate of [globalFile, userProfileFile, globalProjectContext]) {
+          if (yield* fs.isFile(candidate)) {
+            const file = yield* read(candidate)
+            if (file instanceof InstructionDiscovery.File) files.push(file)
+          }
+        }
+        return files
       })
 
       const projectSource = Effect.fn("ConfigInstructionPlugin.projectSource")(function* () {
         if (!project) return []
         const walked = yield* Effect.forEach(
-          yield* fs.up({ targets: ["AGENTS.md"], start, stop, type: "file" }),
+          yield* fs.up({
+            targets: ["AGENTS.md", "project_context.md", ".whis/memory/project_context.md"],
+            start,
+            stop,
+            type: "file",
+          }),
           fs.resolve,
         )
         const discovered = new Set(walked.filter((file) => discovery.global || file !== globalFile))

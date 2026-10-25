@@ -1,12 +1,11 @@
 export const popularProviders = [
-  "anthropic",
   "deepseek",
+  "anthropic",
   "openai",
   "google",
-  "xai",
   "ollama",
   "openrouter",
-  "minimax",
   "moonshot",
+  "minimax",
   "zai",
 ]

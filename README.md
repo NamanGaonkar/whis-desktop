@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-4.0.0--fix-amber?style=flat-square" />
+  <img alt="Version" src="https://img.shields.io/badge/version-4.0.1-amber?style=flat-square" />
   <img alt="License" src="https://img.shields.io/badge/license-MIT-orange?style=flat-square" />
   <img alt="Platform" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-black?style=flat-square" />
 </p>
@@ -73,16 +73,16 @@ The output application will be located at:
 Whis does not require an external account or proxy. Simply add your API keys directly in the **Providers** settings panel or export them in your shell environment:
 
 | Provider | Environment Variable | Models Supported |
-| :--- | :--- | :--- |
-| **DeepSeek** | `DEEPSEEK_API_KEY` | DeepSeek-V3, DeepSeek-R1 |
-| **Anthropic** | `ANTHROPIC_API_KEY` | Claude 3.7 Sonnet, Claude 3.5 Sonnet, Claude 3.5 Haiku |
-| **OpenAI** | `OPENAI_API_KEY` | GPT-4o, o1, o3-mini |
-| **Google Gemini** | `GEMINI_API_KEY` | Gemini 2.5 Pro, Gemini 2.0 Flash |
-| **Ollama** | `OLLAMA_API_BASE` | Qwen 2.5 Coder, DeepSeek-R1, Llama 3.3, local models |
+|---|---|---|
+| **DeepSeek** | `DEEPSEEK_API_KEY` | DeepSeek-V4-Pro, DeepSeek-V4-Flash |
+| **Anthropic** | `ANTHROPIC_API_KEY` | Claude Fable 5.1, Claude Opus 5.5, Claude Sonnet 5.5, Claude Haiku 5.5 |
+| **OpenAI** | `OPENAI_API_KEY` | GPT-6 Astra, GPT-6.1 Sol, GPT-6 Luna |
+| **Google Gemini** | `GEMINI_API_KEY` | Gemini 4 Argon, Gemini 3.8 Flash, Gemini 3.5 Flash-Lite |
+| **Ollama** | `OLLAMA_API_BASE` | Qwen3 Coder, Qwen3.6, gpt-oss (20B / 120B), Gemma 4, local models |
 | **OpenRouter** | `OPENROUTER_API_KEY` | Aggregated multi-model endpoints |
-| **Moonshot (Kimi)** | `MOONSHOT_API_KEY` | Kimi K2, Kimi K2.5 |
-| **MiniMax** | `MINIMAX_API_KEY` | MiniMax-M2.5, MiniMax-M2.7 |
-| **Zhipu AI (GLM)** | `ZHIPU_API_KEY` | GLM-4.5, GLM-5 |
+| **Moonshot (Kimi)** | `MOONSHOT_API_KEY` | Kimi K3, Kimi K2.7 Code, Kimi K2.6 |
+| **MiniMax** | `MINIMAX_API_KEY` | MiniMax-M3 |
+| **Z.ai (Zhipu / GLM)** | `ZHIPU_API_KEY` | GLM-5.3, GLM-5.3 Flash, GLM-5.3 Prime |
 
 ---
 
