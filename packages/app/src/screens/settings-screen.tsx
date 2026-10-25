@@ -217,27 +217,29 @@ const HOST_SECTION_ITEMS: HostSectionItem[] = [
 
 function renderHostSettingsContent(
   view: Extract<SettingsView, { kind: "host" }>,
+  targetServerId: string,
   onHostRemoved: () => void,
 ): ReactNode {
+  const serverId = targetServerId || view.serverId;
   switch (view.section) {
     case "projects":
-      return <ProjectsScreen serverId={view.serverId} />;
+      return <ProjectsScreen serverId={serverId} />;
     case "connections":
-      return <HostConnectionsPage serverId={view.serverId} />;
+      return <HostConnectionsPage serverId={serverId} />;
     case "agents":
-      return <HostAgentsPage serverId={view.serverId} />;
+      return <HostAgentsPage serverId={serverId} />;
     case "metadata":
-      return <MetadataGenerationPage serverId={view.serverId} />;
+      return <MetadataGenerationPage serverId={serverId} />;
     case "workspaces":
-      return <HostWorkspacesPage serverId={view.serverId} />;
+      return <HostWorkspacesPage serverId={serverId} />;
     case "providers":
-      return <HostProvidersPage serverId={view.serverId} />;
+      return <HostProvidersPage serverId={serverId} />;
     case "usage":
-      return <HostUsagePage serverId={view.serverId} />;
+      return <HostUsagePage serverId={serverId} />;
     case "plugins":
-      return <HostPluginsPage serverId={view.serverId} />;
+      return <HostPluginsPage serverId={serverId} />;
     case "host":
-      return <HostSettingsPage serverId={view.serverId} onHostRemoved={onHostRemoved} />;
+      return <HostSettingsPage serverId={serverId} onHostRemoved={onHostRemoved} />;
   }
 }
 
@@ -1049,14 +1051,23 @@ export default function SettingsScreen({ view, openAddHostIntent = null }: Setti
   // The host the four sections scope to: the host on the active view, otherwise
   // the picker choice, otherwise the connected local daemon, otherwise the first host.
   const activeHostServerId = useMemo(() => {
-    if (view.kind === "host" || view.kind === "project" || view.kind === "plugin")
-      return view.serverId;
-    return resolveActiveHostServerId({
-      selectedServerId: selectedSettingsHostServerId,
-      localServerId,
-      hosts,
-      orderedHosts: sortedHosts,
-    });
+    const rawId =
+      view.kind === "host" || view.kind === "project" || view.kind === "plugin"
+        ? view.serverId
+        : selectedSettingsHostServerId;
+    if (rawId && rawId !== "local" && hosts.some((h) => h.serverId === rawId)) {
+      return rawId;
+    }
+    return (
+      localServerId ??
+      hosts[0]?.serverId ??
+      resolveActiveHostServerId({
+        selectedServerId: selectedSettingsHostServerId,
+        localServerId,
+        hosts,
+        orderedHosts: sortedHosts,
+      })
+    );
   }, [view, selectedSettingsHostServerId, localServerId, hosts, sortedHosts]);
 
   const handleLanguageChange = useCallback(
@@ -1252,10 +1263,11 @@ export default function SettingsScreen({ view, openAddHostIntent = null }: Setti
   })();
 
   const content: ReactNode = (() => {
+    const effectiveServerId = activeHostServerId ?? ("serverId" in view ? view.serverId : "");
     if (view.kind === "plugin")
       return (
         <PluginSettingsContent
-          serverId={view.serverId}
+          serverId={effectiveServerId}
           pluginId={view.pluginId}
           screenId={view.screenId}
           onBackToPlugins={handleBackFromDetail}
@@ -1263,12 +1275,12 @@ export default function SettingsScreen({ view, openAddHostIntent = null }: Setti
         />
       );
     if (view.kind === "host") {
-      return renderHostSettingsContent(view, handleHostRemoved);
+      return renderHostSettingsContent(view, effectiveServerId, handleHostRemoved);
     }
     if (view.kind === "project") {
       return (
         <ProjectSettingsScreen
-          serverId={view.serverId}
+          serverId={effectiveServerId}
           projectId={view.projectId}
           onBackToProjects={handleBackFromDetail}
           showBackToProjects={!isCompactLayout}

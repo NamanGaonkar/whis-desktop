@@ -2,7 +2,8 @@ import { useCallback, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { ImportSessionSheet } from "@/components/import-session-sheet";
 import { useHostChooser } from "@/hosts/host-chooser";
-import { useHostRuntimeClient } from "@/runtime/host-runtime";
+import { useHostRuntimeClient, useHosts } from "@/runtime/host-runtime";
+import { useLocalDaemonServerId } from "@/hooks/use-is-local-daemon";
 import { navigateToAgent } from "@/utils/navigate-to-agent";
 import { useOpenProject } from "@/hooks/use-open-project";
 
@@ -52,6 +53,8 @@ export function useImportSession({
 }: UseImportSessionOptions = {}): UseImportSessionResult {
   const { t } = useTranslation();
   const chooseHost = useHostChooser();
+  const hosts = useHosts();
+  const localServerId = useLocalDaemonServerId();
   const [importServerId, setImportServerId] = useState<string | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const client = useHostRuntimeClient(importServerId ?? "");
@@ -63,15 +66,17 @@ export function useImportSession({
   }, []);
 
   const open = useCallback(() => {
-    if (serverId) {
-      openForHost(serverId);
+    const effectiveServerId =
+      (serverId && serverId !== "local" ? serverId : null) ?? localServerId ?? hosts[0]?.serverId;
+    if (effectiveServerId) {
+      openForHost(effectiveServerId);
       return;
     }
     chooseHost({
       title: t("importSession.chooseHostTitle"),
       onChooseHost: openForHost,
     });
-  }, [chooseHost, openForHost, serverId, t]);
+  }, [chooseHost, hosts, localServerId, openForHost, serverId, t]);
 
   const close = useCallback(() => setIsSheetOpen(false), []);
 

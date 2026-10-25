@@ -104,36 +104,40 @@ vi.mock("lucide-react-native", () => {
   };
 });
 
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string, values?: Record<string, string | number>) =>
-      (
-        ({
-          "settings.providers.providerDetails": "{{name}} provider details",
-          "settings.providers.enableProvider": "Enable {{name}}",
-          "settings.providers.statuses.disabled": "Disabled",
-          "settings.providers.statuses.available": "Available",
-          "settings.providers.statuses.loading": "Loading",
-          "settings.providers.statuses.error": "Error",
-          "settings.providers.statuses.notInstalled": "Not installed",
-          "settings.providers.models.one": "1 model",
-          "settings.providers.models.many": "{{count}} models",
-          "settings.providers.addErrorTitle": "Unable to add provider",
-          "settings.providers.updateErrorTitle": "Unable to update provider",
-          "settings.providers.actions.menu": "{{name}} actions",
-          "settings.providers.actions.remove": "Remove provider",
-          "settings.providers.actions.removing": "Removing...",
-          "settings.providers.remove.confirmTitle": "Remove {{name}}?",
-          "settings.providers.remove.confirmMessage":
-            "This deletes the provider entry from config.json. It cannot be undone.",
-          "settings.providers.remove.confirm": "Remove",
-          "settings.providers.remove.errorTitle": "Unable to remove provider",
-        })[key] ?? key
-      )
-        .replaceAll("{{name}}", String(values?.name ?? ""))
-        .replaceAll("{{count}}", String(values?.count ?? "")),
-  }),
-}));
+vi.mock("react-i18next", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react-i18next")>();
+  return {
+    ...actual,
+    useTranslation: () => ({
+      t: (key: string, values?: Record<string, string | number>) =>
+        (
+          ({
+            "settings.providers.providerDetails": "{{name}} provider details",
+            "settings.providers.enableProvider": "Enable {{name}}",
+            "settings.providers.statuses.disabled": "Disabled",
+            "settings.providers.statuses.available": "Available",
+            "settings.providers.statuses.loading": "Loading",
+            "settings.providers.statuses.error": "Error",
+            "settings.providers.statuses.notInstalled": "Not installed",
+            "settings.providers.models.one": "1 model",
+            "settings.providers.models.many": "{{count}} models",
+            "settings.providers.addErrorTitle": "Unable to add provider",
+            "settings.providers.updateErrorTitle": "Unable to update provider",
+            "settings.providers.actions.menu": "{{name}} actions",
+            "settings.providers.actions.remove": "Remove provider",
+            "settings.providers.actions.removing": "Removing...",
+            "settings.providers.remove.confirmTitle": "Remove {{name}}?",
+            "settings.providers.remove.confirmMessage":
+              "This deletes the provider entry from config.json. It cannot be undone.",
+            "settings.providers.remove.confirm": "Remove",
+            "settings.providers.remove.errorTitle": "Unable to remove provider",
+          })[key] ?? key
+        )
+          .replaceAll("{{name}}", String(values?.name ?? ""))
+          .replaceAll("{{count}}", String(values?.count ?? "")),
+    }),
+  };
+});
 
 vi.mock("@/components/ui/switch", () => ({
   Switch: ({
@@ -270,6 +274,12 @@ vi.mock("@/hooks/use-daemon-config", () => ({
 
 vi.mock("@/runtime/host-runtime", () => ({
   useHostRuntimeIsConnected: () => true,
+  useHosts: () => [{ serverId: "srv_test", label: "Local" }],
+}));
+
+vi.mock("@/hooks/use-is-local-daemon", () => ({
+  useLocalDaemonServerId: () => "srv_test",
+  useIsLocalDaemon: () => true,
 }));
 
 vi.mock("@/runtime/host-features", () => ({

@@ -39,7 +39,7 @@ import { useDaemonStatus } from "@/desktop/hooks/use-daemon-status";
 import { useDesktopSettings } from "@/desktop/settings/desktop-settings";
 import { PairDeviceModal } from "@/desktop/components/pair-device-modal";
 import { useDaemonConfig } from "@/hooks/use-daemon-config";
-import { useIsLocalDaemon } from "@/hooks/use-is-local-daemon";
+import { useIsLocalDaemon, useLocalDaemonServerId } from "@/hooks/use-is-local-daemon";
 import {
   getHostRuntimeStore,
   isHostRuntimeConnected,
@@ -157,7 +157,16 @@ function formatDaemonVersionBadge(version: string | null): string | null {
 
 function useHostProfile(serverId: string): HostProfile | null {
   const daemons = useHosts();
-  return daemons.find((entry) => entry.serverId === serverId) ?? null;
+  const localServerId = useLocalDaemonServerId();
+  if (serverId && serverId !== "local") {
+    const match = daemons.find((entry) => entry.serverId === serverId);
+    if (match) return match;
+  }
+  if (localServerId) {
+    const match = daemons.find((entry) => entry.serverId === localServerId);
+    if (match) return match;
+  }
+  return daemons[0] ?? null;
 }
 
 function HostNotFound() {
@@ -247,6 +256,7 @@ function HostConnectionError({ serverId }: { serverId: string }) {
 
 export function HostConnectionsPage({ serverId }: { serverId: string }) {
   const host = useHostProfile(serverId);
+  const effectiveServerId = host?.serverId ?? serverId;
 
   if (!host) {
     return <HostNotFound />;
@@ -254,7 +264,7 @@ export function HostConnectionsPage({ serverId }: { serverId: string }) {
 
   return (
     <View>
-      <HostConnectionError serverId={serverId} />
+      <HostConnectionError serverId={effectiveServerId} />
       <ConnectionsSection host={host} />
     </View>
   );
@@ -263,6 +273,7 @@ export function HostConnectionsPage({ serverId }: { serverId: string }) {
 export function HostPairDevicePage({ serverId }: { serverId: string }) {
   const { t } = useTranslation();
   const host = useHostProfile(serverId);
+  const effectiveServerId = host?.serverId ?? serverId;
 
   if (!host) {
     return <HostNotFound />;
@@ -270,7 +281,7 @@ export function HostPairDevicePage({ serverId }: { serverId: string }) {
 
   return (
     <SettingsSection title={t("settings.host.pairDevices.title")}>
-      <PairDeviceRow serverId={serverId} />
+      <PairDeviceRow serverId={effectiveServerId} />
     </SettingsSection>
   );
 }
@@ -278,7 +289,8 @@ export function HostPairDevicePage({ serverId }: { serverId: string }) {
 export function HostAgentsPage({ serverId }: { serverId: string }) {
   const { t } = useTranslation();
   const host = useHostProfile(serverId);
-  const isConnected = useHostRuntimeIsConnected(serverId);
+  const effectiveServerId = host?.serverId ?? serverId;
+  const isConnected = useHostRuntimeIsConnected(effectiveServerId);
 
   if (!host) {
     return <HostNotFound />;
@@ -288,17 +300,17 @@ export function HostAgentsPage({ serverId }: { serverId: string }) {
     <View>
       {isConnected ? (
         <SettingsSection title={t("settings.hostSections.agents")}>
-          <InjectPaseoToolsCard serverId={serverId} />
-          <BrowserToolsOptInCard serverId={serverId} />
-          <AppendSystemPromptCard serverId={serverId} />
+          <InjectPaseoToolsCard serverId={effectiveServerId} />
+          <BrowserToolsOptInCard serverId={effectiveServerId} />
+          <AppendSystemPromptCard serverId={effectiveServerId} />
         </SettingsSection>
       ) : (
         <View style={[settingsStyles.card, styles.emptyCard]}>
           <Text style={styles.emptyText}>{t("settings.host.agents.unavailable")}</Text>
         </View>
       )}
-      <AgentSkillsSection serverId={serverId} />
-      <AgentProfilesSection serverId={serverId} />
+      <AgentSkillsSection serverId={effectiveServerId} />
+      <AgentProfilesSection serverId={effectiveServerId} />
     </View>
   );
 }
@@ -306,7 +318,8 @@ export function HostAgentsPage({ serverId }: { serverId: string }) {
 export function HostWorkspacesPage({ serverId }: { serverId: string }) {
   const { t } = useTranslation();
   const host = useHostProfile(serverId);
-  const isConnected = useHostRuntimeIsConnected(serverId);
+  const effectiveServerId = host?.serverId ?? serverId;
+  const isConnected = useHostRuntimeIsConnected(effectiveServerId);
 
   if (!host) {
     return <HostNotFound />;
@@ -316,7 +329,7 @@ export function HostWorkspacesPage({ serverId }: { serverId: string }) {
     <View>
       {isConnected ? (
         <SettingsSection title={t("settings.hostSections.workspaces")}>
-          <AutoArchiveMergedWorkspacesCard serverId={serverId} />
+          <AutoArchiveMergedWorkspacesCard serverId={effectiveServerId} />
         </SettingsSection>
       ) : (
         <View style={[settingsStyles.card, styles.emptyCard]}>
@@ -329,6 +342,7 @@ export function HostWorkspacesPage({ serverId }: { serverId: string }) {
 
 export function HostProvidersPage({ serverId }: { serverId: string }) {
   const host = useHostProfile(serverId);
+  const effectiveServerId = host?.serverId ?? serverId;
 
   if (!host) {
     return <HostNotFound />;
@@ -336,13 +350,14 @@ export function HostProvidersPage({ serverId }: { serverId: string }) {
 
   return (
     <View>
-      <ProvidersSection serverId={serverId} />
+      <ProvidersSection serverId={effectiveServerId} />
     </View>
   );
 }
 
 export function HostUsagePage({ serverId }: { serverId: string }) {
   const host = useHostProfile(serverId);
+  const effectiveServerId = host?.serverId ?? serverId;
 
   if (!host) {
     return <HostNotFound />;
@@ -350,7 +365,7 @@ export function HostUsagePage({ serverId }: { serverId: string }) {
 
   return (
     <View>
-      <HostUsageSection serverId={serverId} />
+      <HostUsageSection serverId={effectiveServerId} />
     </View>
   );
 }
@@ -363,7 +378,8 @@ export function HostSettingsPage({
   onHostRemoved?: () => void;
 }) {
   const host = useHostProfile(serverId);
-  const isLocalDaemon = useIsLocalDaemon(serverId);
+  const effectiveServerId = host?.serverId ?? serverId;
+  const isLocalDaemon = useIsLocalDaemon(effectiveServerId);
 
   if (!host) {
     return <HostNotFound />;
@@ -371,8 +387,8 @@ export function HostSettingsPage({
 
   return (
     <View>
-      <HostStatusBadges serverId={serverId} />
-      <HostConnectionError serverId={serverId} />
+      <HostStatusBadges serverId={effectiveServerId} />
+      <HostConnectionError serverId={effectiveServerId} />
 
       <HostAppearanceSection host={host} />
 

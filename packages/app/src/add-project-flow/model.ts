@@ -75,11 +75,12 @@ export function openAddProjectFlow(input: OpenAddProjectFlowInput): AddProjectFl
     ? input.hosts.find((host) => host.serverId === input.preferredHostId)
     : null;
   const onlyHost = input.hosts.length === 1 ? input.hosts[0] : null;
-  const initialHost = preferredHost ?? onlyHost;
+  const initialHostId =
+    preferredHost?.serverId ?? onlyHost?.serverId ?? input.preferredHostId ?? null;
 
   return {
     hosts: input.hosts,
-    pages: initialHost ? [methodPage(initialHost.serverId)] : [searchPage("host")],
+    pages: initialHostId ? [methodPage(initialHostId)] : [searchPage("host")],
     newDirectoryNameDrafts: {},
     githubLocationDrafts: {},
   };
@@ -98,11 +99,11 @@ export function applyAvailableAddProjectHosts(
     ? hosts.find((host) => host.serverId === preferredHostId)
     : null;
   const onlyHost = hosts.length === 1 ? hosts[0] : null;
-  const initialHost = preferredHost ?? onlyHost;
+  const initialHostId = preferredHost?.serverId ?? onlyHost?.serverId ?? preferredHostId ?? null;
   return {
     ...state,
     hosts,
-    pages: initialHost ? [methodPage(initialHost.serverId)] : state.pages,
+    pages: initialHostId ? [methodPage(initialHostId)] : state.pages,
   };
 }
 

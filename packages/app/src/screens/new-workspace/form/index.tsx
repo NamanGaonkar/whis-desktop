@@ -330,11 +330,13 @@ export function useNewWorkspaceForm(props: NewWorkspaceFormProps): ReactElement 
     </>
   );
 
+  const showHostPicker = host.allHosts.length > 1;
+
   if (isCompact) {
     return (
       <View testID="new-workspace-ref-picker-row" style={styles.compactStack}>
         {projectField}
-        {hostField}
+        {showHostPicker ? hostField : null}
         {isolationField}
         {baseField}
         {launchField}
@@ -350,7 +352,7 @@ export function useNewWorkspaceForm(props: NewWorkspaceFormProps): ReactElement 
   return (
     <View testID="new-workspace-ref-picker-row" style={styles.desktopRow} pointerEvents="box-none">
       <View style={styles.desktopControl}>{projectField}</View>
-      <View style={styles.desktopControl}>{hostField}</View>
+      {showHostPicker ? <View style={styles.desktopControl}>{hostField}</View> : null}
       {isolationField ? <View style={styles.desktopControl}>{isolationField}</View> : null}
       {baseField ? <View style={styles.desktopControl}>{baseField}</View> : null}
       <View style={styles.launchSpacer} pointerEvents="none" />

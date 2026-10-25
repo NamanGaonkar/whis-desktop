@@ -28,8 +28,9 @@ export function OpenProjectScreen() {
   const router = useRouter();
   const openDesktopAgentList = usePanelStore((s) => s.openDesktopAgentList);
   const openProjectPicker = useOpenAddProject();
-  const importSession = useImportSession();
   const localServerId = useLocalDaemonServerId();
+  const effectiveServerId = localServerId ?? hosts[0]?.serverId;
+  const importSession = useImportSession({ serverId: effectiveServerId ?? undefined });
 
   const isCompactLayout = useIsCompactFormFactor();
 
@@ -40,13 +41,13 @@ export function OpenProjectScreen() {
   }, [isCompactLayout, openDesktopAgentList]);
 
   const handleOpenPicker = useCallback(() => {
-    void openProjectPicker();
-  }, [openProjectPicker]);
+    void openProjectPicker(effectiveServerId ?? undefined);
+  }, [openProjectPicker, effectiveServerId]);
 
   const handleOpenProviders = useCallback(() => {
-    const targetServerId = localServerId ?? hosts[0]?.serverId ?? "local";
+    const targetServerId = effectiveServerId ?? "local";
     router.push(buildSettingsHostSectionRoute(targetServerId, "providers"));
-  }, [hosts, localServerId, router]);
+  }, [effectiveServerId, router]);
 
   return (
     <View style={styles.container}>
@@ -184,14 +185,15 @@ const styles = StyleSheet.create((theme) => ({
   tiles: {
     marginTop: { xs: theme.spacing[6], md: theme.spacing[12] },
     width: "100%",
-    maxWidth: 452,
+    maxWidth: { xs: 452, md: 740 },
     flexDirection: "row",
-    flexWrap: "wrap",
+    flexWrap: { xs: "wrap", md: "nowrap" },
     justifyContent: "flex-start",
     gap: theme.spacing[3],
   },
   tile: {
-    width: { xs: "100%", md: 220 },
+    width: { xs: "100%", md: 230 },
+    flex: { xs: undefined, md: 1 },
     minHeight: { xs: 0, md: 132 },
     padding: theme.spacing[4],
     backgroundColor: theme.colors.surface1,

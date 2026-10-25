@@ -374,10 +374,11 @@ export function AddProjectFlow({ request, onClose }: AddProjectFlowProps) {
       stableProjectIdentityByHost,
     ],
   );
+  const effectivePreferredHostId = request.preferredHostId ?? localServerId ?? hosts[0]?.serverId;
   const [state, setState] = useState(() =>
     openAddProjectFlow({
       hosts: availableHosts,
-      ...(request.preferredHostId ? { preferredHostId: request.preferredHostId } : {}),
+      ...(effectivePreferredHostId ? { preferredHostId: effectivePreferredHostId } : {}),
     }),
   );
   const page = currentAddProjectPage(state);
@@ -409,9 +410,9 @@ export function AddProjectFlow({ request, onClose }: AddProjectFlowProps) {
 
   useEffect(() => {
     setState((current) =>
-      applyAvailableAddProjectHosts(current, availableHosts, request.preferredHostId),
+      applyAvailableAddProjectHosts(current, availableHosts, effectivePreferredHostId),
     );
-  }, [availableHosts, request.preferredHostId]);
+  }, [availableHosts, effectivePreferredHostId]);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(query), 250);

@@ -24,7 +24,8 @@ import {
 import { useFetchQuery } from "@/data/query";
 import { useDaemonConfig } from "@/hooks/use-daemon-config";
 import { useHostFeature } from "@/runtime/host-features";
-import { useHostRuntimeClient, useHostRuntimeIsConnected } from "@/runtime/host-runtime";
+import { useHostRuntimeClient, useHostRuntimeIsConnected, useHosts } from "@/runtime/host-runtime";
+import { useLocalDaemonServerId } from "@/hooks/use-is-local-daemon";
 import { SettingsSection } from "@/components/settings/headings/settings-section";
 import { resolvePluginPageState } from "@/screens/settings/plugins-page-state";
 import { openPluginInstallForm } from "@/screens/settings/plugin-install-form-model";
@@ -264,19 +265,110 @@ function PluginLogsSheet({
   );
 }
 
+function resolveEffectiveServerId(
+  serverId: string,
+  localServerId: string | null,
+  hosts: readonly { serverId: string }[],
+): string {
+  if (!serverId || serverId === "local") {
+    return localServerId ?? hosts[0]?.serverId ?? serverId;
+  }
+  return serverId;
+}
+
+type PluginPageState = ReturnType<typeof resolvePluginPageState>;
+
+interface PluginCatalogProps {
+  pageState: PluginPageState;
+  plugins: { data?: PluginListItem[]; error: unknown };
+  mutationPending: boolean;
+  pendingPluginId?: string;
+  pendingAction?: string;
+  serverId: string;
+  logsSupported: boolean;
+  retry: () => void;
+  action: (name: PluginRowAction, plugin: PluginListItem) => void;
+  onOpenLogs: (pluginId: string) => void;
+  t: (key: string, options?: Record<string, unknown>) => string;
+}
+
+function PluginCatalogSection({
+  pageState,
+  plugins,
+  mutationPending,
+  pendingPluginId,
+  pendingAction,
+  serverId,
+  logsSupported,
+  retry,
+  action,
+  onOpenLogs,
+  t,
+}: PluginCatalogProps) {
+  if (pageState === "error") {
+    return (
+      <Alert
+        size="sm"
+        variant="error"
+        title={t("settings.plugins.states.errorTitle")}
+        description={errorMessage(plugins.error)}
+      >
+        <Button variant="outline" size="sm" onPress={retry}>
+          {t("settings.plugins.states.retry")}
+        </Button>
+      </Alert>
+    );
+  }
+
+  if (pageState === "loading") {
+    return <Alert size="sm" title={t("settings.plugins.states.loading")} />;
+  }
+
+  return (
+    <SettingsCard>
+      {plugins.data?.length ? (
+        plugins.data.map((plugin) => {
+          const clientError = pluginRegistry.getEvaluationError(serverId, plugin.id);
+          const pending = mutationPending && pendingPluginId === plugin.id;
+          return (
+            <PluginRow
+              key={plugin.id}
+              serverId={serverId}
+              plugin={plugin}
+              clientError={clientError}
+              pending={mutationPending}
+              pendingAction={pending ? pluginRowAction(pendingAction) : undefined}
+              onAction={action}
+              onOpenLogs={onOpenLogs}
+              supportsLogs={logsSupported}
+            />
+          );
+        })
+      ) : (
+        <View style={styles.empty}>
+          <Text style={settingsStyles.rowHint}>{t("settings.plugins.states.empty")}</Text>
+        </View>
+      )}
+    </SettingsCard>
+  );
+}
+
 export function HostPluginsPage({ serverId }: { serverId: string }) {
   const { t } = useTranslation();
-  const client = useHostRuntimeClient(serverId);
-  const connected = useHostRuntimeIsConnected(serverId);
-  const supported = useHostFeature(serverId, "pluginManagement");
+  const hosts = useHosts();
+  const localServerId = useLocalDaemonServerId();
+  const effectiveServerId = resolveEffectiveServerId(serverId, localServerId, hosts);
+  const client = useHostRuntimeClient(effectiveServerId);
+  const connected = useHostRuntimeIsConnected(effectiveServerId);
+  const supported = useHostFeature(effectiveServerId, "pluginManagement");
   // COMPAT(pluginSourceInstallation): added in v0.8.0; remove gate after 2027-03-16 once daemon floor supports source identifiers.
-  const sourceInstallSupported = useHostFeature(serverId, "pluginSourceInstallation");
+  const sourceInstallSupported = useHostFeature(effectiveServerId, "pluginSourceInstallation");
   // COMPAT(pluginLogs): added in v0.4.0, remove gate after 2027-08-16.
-  const logsSupported = useHostFeature(serverId, "pluginLogs");
-  const { config, patchConfig } = useDaemonConfig(serverId);
+  const logsSupported = useHostFeature(effectiveServerId, "pluginLogs");
+  const { config, patchConfig } = useDaemonConfig(effectiveServerId);
   const refreshQueue = useRef(Promise.resolve());
   useInstalledPlugins();
-  const queryKey = useMemo(() => pluginQueryKey(serverId), [serverId]);
+  const queryKey = useMemo(() => pluginQueryKey(effectiveServerId), [effectiveServerId]);
   const [installForm] = useState(openPluginInstallForm);
   const installState = useSyncExternalStore(
     installForm.subscribe,
@@ -424,50 +516,6 @@ export function HostPluginsPage({ serverId }: { serverId: string }) {
     return <Alert size="md" variant="warning" title={t("settings.plugins.states.updateTitle")} />;
   }
 
-  let catalogContent = <Alert size="sm" title={t("settings.plugins.states.loading")} />;
-  if (pageState === "error") {
-    catalogContent = (
-      <Alert
-        size="sm"
-        variant="error"
-        title={t("settings.plugins.states.errorTitle")}
-        description={errorMessage(plugins.error)}
-      >
-        <Button variant="outline" size="sm" onPress={retry}>
-          {t("settings.plugins.states.retry")}
-        </Button>
-      </Alert>
-    );
-  } else if (pageState !== "loading") {
-    catalogContent = (
-      <SettingsCard>
-        {plugins.data?.length ? (
-          plugins.data.map((plugin) => {
-            const clientError = pluginRegistry.getEvaluationError(serverId, plugin.id);
-            const pending = mutation.isPending && mutation.variables?.pluginId === plugin.id;
-            return (
-              <PluginRow
-                key={plugin.id}
-                serverId={serverId}
-                plugin={plugin}
-                clientError={clientError}
-                pending={mutation.isPending}
-                pendingAction={pending ? pluginRowAction(mutation.variables?.action) : undefined}
-                onAction={action}
-                onOpenLogs={setLogsPluginId}
-                supportsLogs={logsSupported}
-              />
-            );
-          })
-        ) : (
-          <View style={styles.empty}>
-            <Text style={settingsStyles.rowHint}>{t("settings.plugins.states.empty")}</Text>
-          </View>
-        )}
-      </SettingsCard>
-    );
-  }
-
   return (
     <View>
       <SettingsSection title={t("settings.plugins.title")}>
@@ -526,7 +574,19 @@ export function HostPluginsPage({ serverId }: { serverId: string }) {
             testID="plugin-management-feedback"
           />
         ) : null}
-        {catalogContent}
+        <PluginCatalogSection
+          pageState={pageState}
+          plugins={plugins}
+          mutationPending={mutation.isPending}
+          pendingPluginId={mutation.variables?.pluginId}
+          pendingAction={mutation.variables?.action}
+          serverId={serverId}
+          logsSupported={logsSupported}
+          retry={retry}
+          action={action}
+          onOpenLogs={setLogsPluginId}
+          t={t}
+        />
       </SettingsSection>
       {client && logsPluginId ? (
         <PluginLogsSheet

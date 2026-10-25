@@ -10,6 +10,8 @@ import { useProjectIcons } from "@/projects/icons";
 import { createProjectIconTarget } from "@/projects/icon-target";
 import { settingsStyles } from "@/styles/settings";
 import { openProjectSettings } from "@/navigation/settings-navigation";
+import { useHosts } from "@/runtime/host-runtime";
+import { useLocalDaemonServerId } from "@/hooks/use-is-local-daemon";
 import type { ProjectHostEntry, ProjectSummary } from "@/utils/projects";
 
 interface ProjectsScreenProps {
@@ -23,6 +25,12 @@ interface HostProject {
 
 export default function ProjectsScreen({ serverId }: ProjectsScreenProps) {
   const { t } = useTranslation();
+  const hosts = useHosts();
+  const localServerId = useLocalDaemonServerId();
+  const effectiveServerId =
+    !serverId || serverId === "local"
+      ? (localServerId ?? hosts[0]?.serverId ?? serverId)
+      : serverId;
   const { projects, hostErrors, isLoading } = useProjects();
   const [timedOut, setTimedOut] = useState(false);
 
@@ -35,12 +43,12 @@ export default function ProjectsScreen({ serverId }: ProjectsScreenProps) {
     () =>
       projects.flatMap((project) =>
         project.hosts
-          .filter((host) => host.serverId === serverId)
+          .filter((host) => host.serverId === effectiveServerId)
           .map((host) => ({ project, host })),
       ),
-    [projects, serverId],
+    [projects, effectiveServerId],
   );
-  const scopedErrors = hostErrors.filter((error) => error.serverId === serverId);
+  const scopedErrors = hostErrors.filter((error) => error.serverId === effectiveServerId);
   const iconTargets = useMemo(
     () =>
       hostProjects.flatMap(({ project, host }) => {

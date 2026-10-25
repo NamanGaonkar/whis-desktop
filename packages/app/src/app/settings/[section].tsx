@@ -2,7 +2,7 @@ import { Redirect, useLocalSearchParams } from "expo-router";
 import { useMemo } from "react";
 import { useHostRuntimeBootstrapState } from "@/app/_layout";
 import { HostRouteBootstrapBoundary } from "@/components/host-route-bootstrap-boundary";
-import { useLocalDaemonServerIdState } from "@/hooks/use-is-local-daemon";
+import { useLocalDaemonServerId, useLocalDaemonServerIdState } from "@/hooks/use-is-local-daemon";
 import { useHosts } from "@/runtime/host-runtime";
 import SettingsScreen from "@/screens/settings-screen";
 import { StartupSplashScreen } from "@/screens/startup-splash-screen";
@@ -10,6 +10,7 @@ import {
   buildSettingsHostSectionRoute,
   buildSettingsRoute,
   isSettingsSectionSlug,
+  normalizeHostSectionSlug,
   type SettingsSectionSlug,
 } from "@/utils/host-routes";
 
@@ -40,12 +41,24 @@ export default function SettingsSectionRoute() {
   const section: SettingsSectionSlug = isSettingsSectionSlug(rawSection) ? rawSection : "general";
   const openAddHostIntent = typeof params.addHost === "string" ? params.addHost : null;
   const view = useMemo(() => ({ kind: "section" as const, section }), [section]);
+  const hosts = useHosts();
+  const localServerId = useLocalDaemonServerId();
+  const targetServerId = localServerId ?? hosts[0]?.serverId;
 
   // COMPAT(settingsDaemonRedirect): added 2026-07-08, remove after 2027-01-08.
   if (rawSection === "daemon") {
     return (
       <HostRouteBootstrapBoundary>
         <SettingsDaemonRedirect />
+      </HostRouteBootstrapBoundary>
+    );
+  }
+
+  const hostSection = normalizeHostSectionSlug(rawSection);
+  if (hostSection && targetServerId) {
+    return (
+      <HostRouteBootstrapBoundary>
+        <Redirect href={buildSettingsHostSectionRoute(targetServerId, hostSection)} />
       </HostRouteBootstrapBoundary>
     );
   }

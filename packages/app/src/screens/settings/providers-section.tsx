@@ -13,7 +13,8 @@ import { StyleSheet, useUnistyles } from "react-native-unistyles";
 import { useIsCompactFormFactor } from "@/constants/layout";
 import { useToast } from "@/contexts/toast-api-context";
 import { settingsStyles } from "@/styles/settings";
-import { useHostRuntimeIsConnected } from "@/runtime/host-runtime";
+import { useHostRuntimeIsConnected, useHosts } from "@/runtime/host-runtime";
+import { useLocalDaemonServerId } from "@/hooks/use-is-local-daemon";
 import { useHostFeature } from "@/runtime/host-features";
 import { useProvidersSnapshot } from "@/hooks/use-providers-snapshot";
 import { useDaemonConfig } from "@/hooks/use-daemon-config";
@@ -328,11 +329,17 @@ export interface ProvidersSectionProps {
 export function ProvidersSection({ serverId }: ProvidersSectionProps) {
   const { t } = useTranslation();
   const toast = useToast();
-  const isConnected = useHostRuntimeIsConnected(serverId);
-  const supportsHopliteProvider = useHostFeature(serverId, "hopliteProvider");
-  const supportsProviderRemoval = useHostFeature(serverId, "providerRemoval");
-  const { entries, isLoading, refresh } = useProvidersSnapshot(serverId);
-  const { config, patchConfig } = useDaemonConfig(serverId);
+  const hosts = useHosts();
+  const localServerId = useLocalDaemonServerId();
+  const effectiveServerId =
+    !serverId || serverId === "local"
+      ? (localServerId ?? hosts[0]?.serverId ?? serverId)
+      : serverId;
+  const isConnected = useHostRuntimeIsConnected(effectiveServerId);
+  const supportsHopliteProvider = useHostFeature(effectiveServerId, "hopliteProvider");
+  const supportsProviderRemoval = useHostFeature(effectiveServerId, "providerRemoval");
+  const { entries, isLoading, refresh } = useProvidersSnapshot(effectiveServerId);
+  const { config, patchConfig } = useDaemonConfig(effectiveServerId);
   const openProviderSettings = useProviderSettingsStore((state) => state.open);
   const [pendingProviderId, setPendingProviderId] = useState<string | null>(null);
   const [removingProviderId, setRemovingProviderId] = useState<string | null>(null);
@@ -340,7 +347,7 @@ export function ProvidersSection({ serverId }: ProvidersSectionProps) {
   const [installingProviderId, setInstallingProviderId] = useState<string | null>(null);
 
   const providerDefinitions = useMemo(() => buildProviderDefinitions(entries), [entries]);
-  const hasServer = serverId.length > 0;
+  const hasServer = effectiveServerId.length > 0;
 
   /** Config owns derived providers and opt-in bundled catalog providers. */
   const isConfigOwnedProvider = useCallback(
@@ -357,9 +364,9 @@ export function ProvidersSection({ serverId }: ProvidersSectionProps) {
 
   const handleOpenProviderSettings = useCallback(
     (providerId: string) => {
-      openProviderSettings({ serverId, provider: providerId });
+      openProviderSettings({ serverId: effectiveServerId, provider: providerId });
     },
-    [openProviderSettings, serverId],
+    [effectiveServerId, openProviderSettings],
   );
 
   const handleToggleEnabled = useCallback(
@@ -452,7 +459,7 @@ export function ProvidersSection({ serverId }: ProvidersSectionProps) {
               return (
                 <ProviderRow
                   key={def.id}
-                  serverId={serverId}
+                  serverId={effectiveServerId}
                   def={def}
                   entry={entry}
                   enabled={entry.enabled ?? true}

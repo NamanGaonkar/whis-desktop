@@ -9,6 +9,8 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { useDaemonConfig } from "@/hooks/use-daemon-config";
 import { useProvidersSnapshot } from "@/hooks/use-providers-snapshot";
+import { useHosts } from "@/runtime/host-runtime";
+import { useLocalDaemonServerId } from "@/hooks/use-is-local-daemon";
 import { buildSelectableProviderSelectorProviders } from "@/provider-selection/provider-selection";
 import { SettingsSection } from "@/components/settings/headings/settings-section";
 import { settingsStyles } from "@/styles/settings";
@@ -16,10 +18,73 @@ import { settingsStyles } from "@/styles/settings";
 const METADATA_GENERATION_DOCS_URL = "https://github.com/NamanGaonkar/whis-desktop";
 type SelectionMode = "automatic" | "preferred";
 
+function resolveEffectiveServerId(
+  serverId: string,
+  localServerId: string | null,
+  hosts: readonly { serverId: string }[],
+): string {
+  if (!serverId || serverId === "local") {
+    return localServerId ?? hosts[0]?.serverId ?? serverId;
+  }
+  return serverId;
+}
+
+interface PreferredModelRowProps {
+  providers: ReturnType<typeof buildSelectableProviderSelectorProviders>;
+  configuredProvider: { provider: string; model?: string } | null;
+  onSelect: (provider: AgentProvider, model: string) => void;
+  isLoading: boolean;
+  onOpen: () => void;
+  onRetryProvider: (provider: AgentProvider) => void;
+  isRetryingProvider: boolean;
+  disabled: boolean;
+  serverId: string;
+  t: (key: string) => string;
+}
+
+function PreferredModelRow({
+  providers,
+  configuredProvider,
+  onSelect,
+  isLoading,
+  onOpen,
+  onRetryProvider,
+  isRetryingProvider,
+  disabled,
+  serverId,
+  t,
+}: PreferredModelRowProps) {
+  return (
+    <View style={[settingsStyles.row, settingsStyles.rowBorder]}>
+      <View style={settingsStyles.rowContent}>
+        <Text style={settingsStyles.rowTitle}>{t("settings.metadataGeneration.model")}</Text>
+        <Text style={settingsStyles.rowHint}>{t("settings.metadataGeneration.modelHint")}</Text>
+      </View>
+      <CombinedModelSelector
+        providers={providers}
+        selectedProvider={configuredProvider?.provider ?? ""}
+        selectedModel={configuredProvider?.model ?? ""}
+        onSelect={onSelect}
+        isLoading={isLoading}
+        onOpen={onOpen}
+        onRetryProvider={onRetryProvider}
+        isRetryingProvider={isRetryingProvider}
+        disabled={disabled}
+        serverId={serverId}
+        desktopPlacement="bottom-start"
+        desktopMinWidth={360}
+      />
+    </View>
+  );
+}
+
 export function MetadataGenerationPage({ serverId }: { serverId: string }) {
   const { t } = useTranslation();
-  const { config, isLoading: isConfigLoading, patchConfig } = useDaemonConfig(serverId);
-  const snapshot = useProvidersSnapshot(serverId);
+  const hosts = useHosts();
+  const localServerId = useLocalDaemonServerId();
+  const effectiveServerId = resolveEffectiveServerId(serverId, localServerId, hosts);
+  const { config, isLoading: isConfigLoading, patchConfig } = useDaemonConfig(effectiveServerId);
+  const snapshot = useProvidersSnapshot(effectiveServerId);
   const providers = useMemo(
     () => buildSelectableProviderSelectorProviders(snapshot.entries),
     [snapshot.entries],
@@ -145,28 +210,18 @@ export function MetadataGenerationPage({ serverId }: { serverId: string }) {
           />
         </View>
         {mode === "preferred" ? (
-          <View style={[settingsStyles.row, settingsStyles.rowBorder]}>
-            <View style={settingsStyles.rowContent}>
-              <Text style={settingsStyles.rowTitle}>{t("settings.metadataGeneration.model")}</Text>
-              <Text style={settingsStyles.rowHint}>
-                {t("settings.metadataGeneration.modelHint")}
-              </Text>
-            </View>
-            <CombinedModelSelector
-              providers={providers}
-              selectedProvider={configuredProvider?.provider ?? ""}
-              selectedModel={configuredProvider?.model ?? ""}
-              onSelect={handleModelSelect}
-              isLoading={snapshot.isLoading || snapshot.isFetching}
-              onOpen={handleSelectorOpen}
-              onRetryProvider={handleRetryProvider}
-              isRetryingProvider={snapshot.isRefreshing}
-              disabled={isSaving}
-              serverId={serverId}
-              desktopPlacement="bottom-start"
-              desktopMinWidth={360}
-            />
-          </View>
+          <PreferredModelRow
+            providers={providers}
+            configuredProvider={configuredProvider}
+            onSelect={handleModelSelect}
+            isLoading={snapshot.isLoading || snapshot.isFetching}
+            onOpen={handleSelectorOpen}
+            onRetryProvider={handleRetryProvider}
+            isRetryingProvider={snapshot.isRefreshing}
+            disabled={isSaving}
+            serverId={serverId}
+            t={t}
+          />
         ) : null}
       </View>
     </SettingsSection>
