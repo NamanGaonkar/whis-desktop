@@ -1,12 +1,8 @@
 export * as DatabaseSync from "./sync.js"
 
-import { eq, sql } from "drizzle-orm"
+import { sql } from "drizzle-orm"
 import { Effect } from "effect"
-import { SessionMessageTable, SessionTable } from "../session/sql.js"
 import { SessionMessage } from "../session/message.js"
-import { SessionSchema } from "../session/schema.js"
-import { EventSequenceTable } from "../event/sql.js"
-import { V1Migration } from "./v1-migration.js"
 import type { EffectDrizzleSqlite } from "./drizzle.js"
 
 type Database = EffectDrizzleSqlite.EffectSQLiteDatabase
@@ -273,65 +269,192 @@ export function reconcileSessions(db: Database) {
 
 export function reconcileSessionV1Messages(db: Database, sessionID: string) {
   return Effect.gen(function* () {
-    const v1Count = yield* db.get<{ count: number }>(
-      sql`SELECT COUNT(*) as count FROM message WHERE session_id = ${sessionID}`,
-    ).pipe(Effect.orDie)
-    if (!v1Count || v1Count.count === 0) return
+    // 1. Reconcile missing V1 messages into session_message
+    const missingV1 = yield* db.all<{
+      id: string
+      session_id: string
+      time_created: number
+      time_updated: number
+      data: string
+    }>(sql`
+      SELECT id, session_id, time_created, time_updated, data
+      FROM message
+      WHERE session_id = ${sessionID}
+        AND id NOT IN (SELECT id FROM session_message WHERE session_id = ${sessionID})
+      ORDER BY time_created ASC
+    `).pipe(Effect.orDie)
 
-    const v2Count = yield* db.get<{ count: number }>(
-      sql`SELECT COUNT(*) as count FROM session_message WHERE session_id = ${sessionID}`,
-    ).pipe(Effect.orDie)
+    if (missingV1 && missingV1.length > 0) {
+      const parts = yield* db.all<{
+        id: string
+        message_id: string
+        session_id: string
+        time_created: number
+        time_updated: number
+        data: string
+      }>(sql`
+        SELECT id, message_id, session_id, time_created, time_updated, data
+        FROM part
+        WHERE session_id = ${sessionID}
+        ORDER BY time_created ASC
+      `).pipe(Effect.orDie)
 
-    if (v2Count && v2Count.count >= v1Count.count) return
+      const partsByMsg = new Map<string, Array<{ id: string; time_created: number; data: any }>>()
+      for (const p of parts) {
+        const list = partsByMsg.get(p.message_id) ?? []
+        let parsed: any = {}
+        try {
+          parsed = typeof p.data === "string" ? JSON.parse(p.data) : p.data
+        } catch {
+          parsed = {}
+        }
+        list.push({ id: p.id, time_created: p.time_created, data: parsed })
+        partsByMsg.set(p.message_id, list)
+      }
 
-    const sessionRow = yield* db
-      .select()
-      .from(SessionTable)
-      .where(eq(SessionTable.id, SessionSchema.ID.make(sessionID)))
-      .get()
-      .pipe(Effect.orDie)
-    if (!sessionRow) return
+      const seqRow = yield* db.get<{ max_seq: number | null }>(sql`
+        SELECT MAX(seq) AS max_seq FROM session_message WHERE session_id = ${sessionID}
+      `).pipe(Effect.orDie)
+      let nextSeq = (seqRow?.max_seq !== null && seqRow?.max_seq !== undefined ? seqRow.max_seq : -1) + 1
 
-    const sourceMessages = yield* db.all<V1Migration.SourceMessage>(
-      sql`SELECT id, session_id, time_created, time_updated, data FROM message WHERE session_id = ${sessionID} ORDER BY time_created ASC`,
-    ).pipe(Effect.orDie)
-
-    const sourceParts = yield* db.all<V1Migration.SourcePart>(
-      sql`SELECT id, message_id, session_id, time_created, time_updated, data FROM part WHERE session_id = ${sessionID} ORDER BY time_created ASC`,
-    ).pipe(Effect.orDie)
-
-    const transformed = V1Migration.transformSession({
-      session: sessionRow,
-      messages: sourceMessages,
-      parts: sourceParts,
-    })
-
-    yield* db.transaction((tx) =>
-      Effect.gen(function* () {
-        for (const message of transformed.messages) {
-          yield* tx
-            .insert(SessionMessageTable)
-            .values({
-              id: SessionMessage.ID.make(message.id),
-              session_id: SessionSchema.ID.make(message.session_id),
-              type: message.type,
-              seq: message.seq,
-              time_created: message.time_created,
-              time_updated: message.time_updated,
-              data: sql`${JSON.stringify(message.data)}`,
-            })
-            .onConflictDoNothing()
+      for (const m of missingV1) {
+        let msgData: any = {}
+        try {
+          msgData = typeof m.data === "string" ? JSON.parse(m.data) : m.data
+        } catch {
+          msgData = {}
         }
 
-        yield* tx
-          .insert(EventSequenceTable)
-          .values({ aggregate_id: sessionRow.id, seq: transformed.watermark })
-          .onConflictDoUpdate({
-            target: EventSequenceTable.aggregate_id,
-            set: { seq: transformed.watermark, owner_id: null },
-          })
-      }),
-    ).pipe(Effect.orDie)
+        const msgParts = partsByMsg.get(m.id) ?? []
+
+        if (msgData.role === "user") {
+          const text = msgParts
+            .filter((p) => p.data.type === "text" && !p.data.ignored)
+            .map((p) => p.data.text || "")
+            .join("\n\n")
+
+          const payload = {
+            text,
+            time: { created: m.time_created },
+            ...(msgData.agent ? { agent: msgData.agent } : {}),
+            ...(msgData.model ? { model: msgData.model } : {}),
+          }
+
+          yield* db.run(sql`
+            INSERT INTO session_message (id, session_id, type, seq, time_created, time_updated, data)
+            VALUES (${m.id}, ${sessionID}, 'user', ${nextSeq++}, ${m.time_created}, ${m.time_updated}, ${JSON.stringify(payload)})
+            ON CONFLICT(id) DO NOTHING
+          `).pipe(Effect.orDie)
+        } else if (msgData.role === "assistant") {
+          const content: any[] = []
+          let startSnapshot: string | undefined
+          let endSnapshot: string | undefined
+
+          for (const p of msgParts) {
+            const pType = p.data.type
+            if (pType === "step-start") {
+              startSnapshot = p.data.snapshot
+            } else if (pType === "step-finish") {
+              endSnapshot = p.data.snapshot
+            } else if (pType === "reasoning") {
+              content.push({
+                type: "reasoning",
+                text: p.data.text || "",
+                time: {
+                  created: p.data.time?.start || p.time_created,
+                  ...(p.data.time?.end ? { completed: p.data.time.end } : {}),
+                },
+              })
+            } else if (pType === "text") {
+              content.push({
+                type: "text",
+                text: p.data.text || "",
+              })
+            } else if (pType === "tool") {
+              content.push({
+                type: "tool",
+                id: p.data.callID || p.id,
+                name: p.data.tool,
+                state: p.data.state || "completed",
+              })
+            }
+          }
+
+          const payload = {
+            agent: msgData.agent || "build",
+            model: msgData.modelID
+              ? {
+                  providerID: msgData.providerID || "ollama-cloud",
+                  id: msgData.modelID,
+                  variant: msgData.variant || "default",
+                }
+              : undefined,
+            content,
+            snapshot:
+              startSnapshot || endSnapshot
+                ? {
+                    ...(startSnapshot ? { start: startSnapshot } : {}),
+                    ...(endSnapshot ? { end: endSnapshot } : {}),
+                  }
+                : undefined,
+            cost: msgData.cost ?? 0,
+            tokens: msgData.tokens ?? {
+              input: 0,
+              output: 0,
+              reasoning: 0,
+              cache: { read: 0, write: 0 },
+            },
+            finish: msgData.finish || "stop",
+            time: {
+              created: m.time_created,
+              completed: msgData.time?.completed || m.time_updated,
+            },
+          }
+
+          yield* db.run(sql`
+            INSERT INTO session_message (id, session_id, type, seq, time_created, time_updated, data)
+            VALUES (${m.id}, ${sessionID}, 'assistant', ${nextSeq++}, ${m.time_created}, ${m.time_updated}, ${JSON.stringify(payload)})
+            ON CONFLICT(id) DO NOTHING
+          `).pipe(Effect.orDie)
+        }
+      }
+
+      if (nextSeq > 0) {
+        yield* db.run(sql`
+          INSERT INTO event_sequence (aggregate_id, seq, owner_id)
+          VALUES (${sessionID}, ${nextSeq - 1}, NULL)
+          ON CONFLICT(aggregate_id) DO UPDATE SET
+            seq = MAX(seq, excluded.seq)
+        `).pipe(Effect.orDie)
+      }
+    }
+
+    // 2. Reconcile missing V2 messages into message / part
+    const missingV2 = yield* db.all<{
+      id: string
+      session_id: string
+      type: string
+      seq: number
+      time_created: number
+      time_updated: number
+      data: string
+    }>(sql`
+      SELECT id, session_id, type, seq, time_created, time_updated, data
+      FROM session_message
+      WHERE session_id = ${sessionID}
+        AND (type = 'user' OR type = 'assistant')
+        AND id NOT IN (SELECT id FROM message WHERE session_id = ${sessionID})
+      ORDER BY seq ASC
+    `).pipe(Effect.orDie)
+
+    if (missingV2 && missingV2.length > 0) {
+      for (const msgRow of missingV2) {
+        const decoded = SchemaDecodeMessageRow(msgRow)
+        if (decoded) {
+          yield* syncV2MessageToV1(db, sessionID, decoded)
+        }
+      }
+    }
   })
 }
 
@@ -356,38 +479,64 @@ export function syncV2MessageToV1(db: Database, sessionID: string, message: Sess
         INSERT INTO message (id, session_id, time_created, time_updated, data)
         VALUES (${message.id}, ${sessionID}, ${timeCreated}, ${timeUpdated}, ${JSON.stringify(userMsgData)})
         ON CONFLICT(id) DO UPDATE SET
-          time_updated = ${timeUpdated},
-          data = ${JSON.stringify(userMsgData)}
+          time_updated = excluded.time_updated,
+          data = excluded.data
       `).pipe(Effect.orDie)
 
       const text = message.text ?? ""
-      const partID = `prt_${message.id.replace(/^msg_/, "")}`
+      const cleanID = message.id.replace(/^msg_/, "")
+      const partID = `prt_${cleanID}`
       const partData = { type: "text", text }
 
       yield* db.run(sql`
         INSERT INTO part (id, message_id, session_id, time_created, time_updated, data)
         VALUES (${partID}, ${message.id}, ${sessionID}, ${timeCreated}, ${timeUpdated}, ${JSON.stringify(partData)})
         ON CONFLICT(id) DO UPDATE SET
-          time_updated = ${timeUpdated},
-          data = ${JSON.stringify(partData)}
+          time_updated = excluded.time_updated,
+          data = excluded.data
       `).pipe(Effect.orDie)
       return
     }
 
     if (message.type === "assistant") {
+      // Find parentID from previous user message
+      const parentRow = yield* db.get<{ id: string }>(sql`
+        SELECT id FROM session_message
+        WHERE session_id = ${sessionID} AND type = 'user' AND time_created <= ${timeCreated}
+        ORDER BY seq DESC LIMIT 1
+      `).pipe(Effect.orDie)
+
+      let parentID = parentRow?.id
+      if (!parentID) {
+        const v1ParentRow = yield* db.get<{ id: string }>(sql`
+          SELECT id FROM message
+          WHERE session_id = ${sessionID} AND json_extract(data, '$.role') = 'user' AND time_created <= ${timeCreated}
+          ORDER BY time_created DESC LIMIT 1
+        `).pipe(Effect.orDie)
+        parentID = v1ParentRow?.id
+      }
+
+      const inputTokens = message.tokens?.input ?? 0
+      const outputTokens = message.tokens?.output ?? 0
+      const reasoningTokens = message.tokens?.reasoning ?? 0
+      const cacheRead = message.tokens?.cache?.read ?? 0
+      const cacheWrite = message.tokens?.cache?.write ?? 0
+
       const assistantMsgData = {
+        ...(parentID ? { parentID } : {}),
         role: "assistant",
+        mode: "build",
         agent: message.agent ?? "build",
         modelID: message.model?.id,
         providerID: message.model?.providerID,
         finish: message.finish ?? "stop",
         cost: message.cost ?? 0,
-        tokens: message.tokens ?? {
-          total: 0,
-          input: 0,
-          output: 0,
-          reasoning: 0,
-          cache: { write: 0, read: 0 },
+        tokens: {
+          total: inputTokens + outputTokens,
+          input: inputTokens,
+          output: outputTokens,
+          reasoning: reasoningTokens,
+          cache: { write: cacheWrite, read: cacheRead },
         },
         time: {
           created: timeCreated,
@@ -399,19 +548,44 @@ export function syncV2MessageToV1(db: Database, sessionID: string, message: Sess
         INSERT INTO message (id, session_id, time_created, time_updated, data)
         VALUES (${message.id}, ${sessionID}, ${timeCreated}, ${timeUpdated}, ${JSON.stringify(assistantMsgData)})
         ON CONFLICT(id) DO UPDATE SET
-          time_updated = ${timeUpdated},
-          data = ${JSON.stringify(assistantMsgData)}
+          time_updated = excluded.time_updated,
+          data = excluded.data
       `).pipe(Effect.orDie)
 
+      const cleanID = message.id.replace(/^msg_/, "")
+
+      // 1. step-start part
+      const startSnapshot = message.snapshot?.start ?? ""
+      const startPartID = `prt_${cleanID}_start`
+      const startPartData = { type: "step-start", snapshot: startSnapshot }
+      yield* db.run(sql`
+        INSERT INTO part (id, message_id, session_id, time_created, time_updated, data)
+        VALUES (${startPartID}, ${message.id}, ${sessionID}, ${timeCreated}, ${timeCreated}, ${JSON.stringify(startPartData)})
+        ON CONFLICT(id) DO UPDATE SET
+          time_updated = excluded.time_updated,
+          data = excluded.data
+      `).pipe(Effect.orDie)
+
+      // 2. content parts
       let index = 0
       for (const item of message.content) {
-        const partID = `prt_${message.id.replace(/^msg_/, "")}_${index++}`
+        let partID = `prt_${cleanID}_${index++}`
         let partData: Record<string, unknown> = { type: item.type }
         if (item.type === "text") {
+          partID = `prt_${cleanID}_t_${index}`
           partData = { type: "text", text: item.text }
         } else if (item.type === "reasoning") {
-          partData = { type: "reasoning", text: item.text }
+          partID = `prt_${cleanID}_r_${index}`
+          partData = {
+            type: "reasoning",
+            text: item.text,
+            time: {
+              start: item.time?.created ? Number(item.time.created) : timeCreated,
+              end: item.time?.completed ? Number(item.time.completed) : timeUpdated,
+            },
+          }
         } else if (item.type === "tool") {
+          partID = `prt_${cleanID}_tool_${index}`
           partData = { type: "tool", callID: item.id, tool: item.name, state: item.state }
         }
 
@@ -419,10 +593,28 @@ export function syncV2MessageToV1(db: Database, sessionID: string, message: Sess
           INSERT INTO part (id, message_id, session_id, time_created, time_updated, data)
           VALUES (${partID}, ${message.id}, ${sessionID}, ${timeCreated}, ${timeUpdated}, ${JSON.stringify(partData)})
           ON CONFLICT(id) DO UPDATE SET
-            time_updated = ${timeUpdated},
-            data = ${JSON.stringify(partData)}
+            time_updated = excluded.time_updated,
+            data = excluded.data
         `).pipe(Effect.orDie)
       }
+
+      // 3. step-finish part
+      const endSnapshot = message.snapshot?.end ?? startSnapshot
+      const finishPartID = `prt_${cleanID}_finish`
+      const finishPartData = {
+        type: "step-finish",
+        reason: message.finish ?? "stop",
+        snapshot: endSnapshot,
+        tokens: assistantMsgData.tokens,
+        cost: assistantMsgData.cost,
+      }
+      yield* db.run(sql`
+        INSERT INTO part (id, message_id, session_id, time_created, time_updated, data)
+        VALUES (${finishPartID}, ${message.id}, ${sessionID}, ${timeCreated}, ${timeUpdated}, ${JSON.stringify(finishPartData)})
+        ON CONFLICT(id) DO UPDATE SET
+          time_updated = excluded.time_updated,
+          data = excluded.data
+      `).pipe(Effect.orDie)
     }
   })
 }
@@ -432,42 +624,35 @@ export function syncAll(db: Database) {
     yield* installTriggers(db)
     yield* reconcileSessions(db)
 
-    // Reconcile existing CLI sessions into session_message
-    const v1Sessions = yield* db.all<{ id: string }>(sql`
+    // Reconcile all sessions with messages that need reconciliation in either direction
+    const outOfSyncSessions = yield* db.all<{ id: string }>(sql`
       SELECT DISTINCT session_id AS id FROM message
-      WHERE session_id NOT IN (SELECT DISTINCT session_id FROM session_message)
-    `).pipe(Effect.orDie)
-
-    for (const item of v1Sessions) {
-      yield* reconcileSessionV1Messages(db, item.id)
-    }
-
-    // Reconcile existing Desktop sessions into message/part
-    const v2Sessions = yield* db.all<{ id: string }>(sql`
+      WHERE id NOT IN (SELECT id FROM session_message)
+      UNION
       SELECT DISTINCT session_id AS id FROM session_message
-      WHERE session_id NOT IN (SELECT DISTINCT session_id FROM message)
+      WHERE (type = 'user' OR type = 'assistant') AND id NOT IN (SELECT id FROM message)
     `).pipe(Effect.orDie)
 
-    for (const item of v2Sessions) {
-      const messages = yield* db
-        .select()
-        .from(SessionMessageTable)
-        .where(eq(SessionMessageTable.session_id, SessionSchema.ID.make(item.id)))
-        .all()
-        .pipe(Effect.orDie)
-
-      for (const msgRow of messages) {
-        const decoded = SchemaDecodeMessageRow(msgRow)
-        if (decoded) {
-          yield* syncV2MessageToV1(db, item.id, decoded)
-        }
-      }
+    for (const item of outOfSyncSessions) {
+      yield* reconcileSessionV1Messages(db, item.id)
     }
   })
 }
 
-function SchemaDecodeMessageRow(row: typeof SessionMessageTable.$inferSelect): SessionMessage.Info | undefined {
-  const data = typeof row.data === "string" ? JSON.parse(row.data) : row.data
+function SchemaDecodeMessageRow(row: {
+  id: string
+  session_id: string
+  type: string
+  time_created: number
+  time_updated: number
+  data: unknown
+}): SessionMessage.Info | undefined {
+  let data: any = {}
+  try {
+    data = typeof row.data === "string" ? JSON.parse(row.data) : row.data
+  } catch {
+    data = {}
+  }
   return {
     ...data,
     id: row.id,
