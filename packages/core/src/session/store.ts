@@ -6,6 +6,7 @@ import { Project } from "@opencode/schema/project"
 import { Workspace } from "@opencode/schema/workspace"
 import { AbsolutePath, PositiveInt, RelativePath } from "@opencode/schema/schema"
 import { Database } from "../database/database.js"
+import { DatabaseSync } from "../database/sync.js"
 import { makeGlobalNode } from "@opencode/util/effect/app-node"
 import { SessionHistory } from "./history.js"
 import { MessageDecodeError } from "./error.js"
@@ -94,7 +95,11 @@ const layer = Layer.effect(
 
     return Service.of({
       get: Effect.fnUntraced(function* (sessionID) {
-        const row = yield* db.select().from(SessionTable).where(eq(SessionTable.id, sessionID)).get().pipe(Effect.orDie)
+        let row = yield* db.select().from(SessionTable).where(eq(SessionTable.id, sessionID)).get().pipe(Effect.orDie)
+        if (!row) {
+          yield* DatabaseSync.reconcileSessions(db)
+          row = yield* db.select().from(SessionTable).where(eq(SessionTable.id, sessionID)).get().pipe(Effect.orDie)
+        }
         return row ? fromRow(row) : undefined
       }),
       list: Effect.fn("SessionStore.list")(function* (input = {}) {
@@ -151,6 +156,7 @@ const layer = Layer.effect(
         return (direction === "previous" ? rows.toReversed() : rows).map((row) => fromRow(row))
       }),
       messages: Effect.fn("SessionStore.messages")(function* (input) {
+        yield* DatabaseSync.reconcileSessionV1Messages(db, input.sessionID)
         const direction = input.cursor?.direction ?? "next"
         const requestedOrder = input.order ?? "desc"
         const order = direction === "previous" ? (requestedOrder === "asc" ? "desc" : "asc") : requestedOrder
@@ -189,7 +195,10 @@ const layer = Layer.effect(
           SessionHistory.decodeMessageRow,
         )
       }),
-      context: Effect.fn("SessionStore.context")((sessionID) => SessionHistory.load(db, sessionID, "latest")),
+      context: Effect.fn("SessionStore.context")(function* (sessionID) {
+        yield* DatabaseSync.reconcileSessionV1Messages(db, sessionID)
+        return yield* SessionHistory.load(db, sessionID, "latest")
+      }),
       message: Effect.fn("SessionStore.message")(function* (messageID) {
         const row = yield* db
           .select()

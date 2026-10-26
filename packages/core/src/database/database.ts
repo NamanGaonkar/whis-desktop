@@ -9,6 +9,7 @@ import { closeSync, existsSync, openSync } from "node:fs"
 import { chmod } from "node:fs/promises"
 import { isAbsolute, join } from "path"
 import { DatabaseMigration } from "./migration.js"
+import { DatabaseSync } from "./sync.js"
 import { makeGlobalNode } from "@opencode/util/effect/app-node"
 
 const makeDatabase = EffectDrizzleSqlite.makeWithDefaults()
@@ -47,6 +48,7 @@ const databaseLayer = (lock: Effect.Effect<Semaphore.Semaphore>) =>
       if (supportsForeignKeyToggle) yield* db.run("PRAGMA foreign_keys = ON")
       const semaphore = yield* lock
       yield* semaphore.withPermit(DatabaseMigration.apply(db))
+      yield* semaphore.withPermit(DatabaseSync.syncAll(db))
 
       return { db }
     }).pipe(Effect.orDie),

@@ -4,6 +4,7 @@ import { and, asc, desc, eq, gt, gte, inArray, isNull, lt, lte, or, sql } from "
 import { DateTime, Effect, Layer, Schema, Stream } from "effect"
 import path from "path"
 import { Database } from "../database/database.js"
+import { DatabaseSync } from "../database/sync.js"
 import { Bus } from "../bus.js"
 import { makeGlobalNode } from "@opencode/util/effect/app-node"
 import { Model } from "@opencode/schema/model"
@@ -257,7 +258,10 @@ function run(db: DatabaseService, event: MessageEvent) {
           ),
         )
         .run()
-        .pipe(Effect.orDie)
+        .pipe(
+          Effect.flatMap(() => DatabaseSync.syncV2MessageToV1(db, event.data.sessionID, message)),
+          Effect.orDie,
+        )
     }
     const appendMessage = (message: SessionMessage.Info) => insertMessage(db, event, message)
     const adapter: SessionMessageUpdater.Adapter = {
@@ -412,7 +416,10 @@ function insertMessage(db: DatabaseService, event: SessionEvent.DurableEvent, me
       data,
     })
     .run()
-    .pipe(Effect.orDie)
+    .pipe(
+      Effect.flatMap(() => DatabaseSync.syncV2MessageToV1(db, event.data.sessionID, message)),
+      Effect.orDie,
+    )
 }
 
 function projectIdle(

@@ -69,7 +69,9 @@ export function createHomeSessionsController(home: HomeController) {
         ? ({ signal }) => loadHomeSessionIndex((input, options) => ctx.sdk.api.session.list(input, options), signal)
         : skipToken,
       retry: false,
-      staleTime: 30_000,
+      staleTime: 1_000,
+      refetchInterval: 2_000,
+      refetchOnWindowFocus: true,
       refetchOnMount: true,
       refetchOnReconnect: true,
       select: selectSessions,
@@ -89,6 +91,19 @@ export function createHomeSessionsController(home: HomeController) {
       HOME_SESSION_LIMIT,
       Date.now(),
     )
+  })
+
+  createEffect(() => {
+    const ctx = home.server.focusedContext()
+    if (!ctx) return
+    const known = new Set(ctx.projects.list().map((p) => pathKey(p.worktree)))
+    for (const session of indexedSessions()) {
+      const dir = session.location.directory
+      if (dir && !known.has(pathKey(dir))) {
+        known.add(pathKey(dir))
+        ctx.projects.open(dir)
+      }
+    }
   })
 
   const allRecords = createMemo(() =>
