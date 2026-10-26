@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process"
+import { readFileSync } from "node:fs"
 import { readdir, stat } from "node:fs/promises"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
@@ -83,7 +84,7 @@ const getBase = (appId: string): Configuration => {
     extraMetadata: {
       name: "Whis",
       productName: "Whis",
-      version: "4.0.4",
+      version: JSON.parse(readFileSync(path.join(packageDir, "package.json"), "utf8")).version,
       desktopName: `${appId}.desktop`,
     },
     files: [
