@@ -336,6 +336,7 @@ export function Session(props: {
     if (client.connection.status() !== "connected") return
     setSynced(false)
     const sessionID = route.sessionID
+    if (!sessionID || sessionID === "dummy" || !sessionID.startsWith("ses")) return
     void (async () => {
       await Promise.all([
         data.session.sync(sessionID, { children: true }),

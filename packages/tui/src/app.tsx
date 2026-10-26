@@ -698,7 +698,11 @@ function App() {
       })
       .then((response) => {
         const match = response.data[0]?.id
-        if (!match) return
+        if (!match) {
+          toast.show({ message: "No previous session found", variant: "error" })
+          route.navigate({ type: "home" })
+          return
+        }
         if (!args.fork) {
           route.navigate({ type: "session", sessionID: match, prompt: startupPrompt })
           return
@@ -708,7 +712,10 @@ function App() {
           .then((result) => route.navigate({ type: "session", sessionID: result.id, prompt: startupPrompt }))
           .catch(toast.error)
       })
-      .catch(toast.error)
+      .catch((error) => {
+        route.navigate({ type: "home" })
+        toast.error(error)
+      })
   })
 
   // Handle --session with --fork once.

@@ -20,6 +20,7 @@ import { Spinner } from "@opencode/ui/spinner"
 import { Menu } from "@opencode/ui/menu"
 import { Tooltip } from "@opencode/ui/tooltip"
 import type { HomeProjectSelection, LocalProject } from "@/shell/state/layout"
+import { pathKey } from "@/workspaces/path-key"
 import { ServerConnection } from "@/runtime/server/registry"
 import { useLanguage } from "@/runtime/i18n/language"
 import { usePlatform } from "@/runtime/platform/platform"
@@ -80,7 +81,9 @@ export type HomeProjectsViewProps = {
 
 export function HomeProjectsView(props: HomeProjectsViewProps) {
   const [state, setState] = createStore({ open: false })
-  const selected = createMemo(() => props.projects.find((project) => project.worktree === props.selection.directory))
+  const selected = createMemo(() =>
+    props.projects.find((project) => pathKey(project.worktree) === pathKey(props.selection.directory ?? "")),
+  )
 
   const server = createMemo(() =>
     props.servers.find((server) => ServerConnection.key(server) === props.selection.server),
@@ -569,7 +572,8 @@ function HomeProjectSlot(
       index={props.index}
       serverSelected={props.selection.server === ServerConnection.key(props.server)}
       selected={
-        props.selection.server === ServerConnection.key(props.server) && props.selection.directory === props.worktree
+        props.selection.server === ServerConnection.key(props.server) &&
+        pathKey(props.selection.directory ?? "") === pathKey(props.worktree)
       }
       unread={props.hasUnread(props.server, project())}
     />

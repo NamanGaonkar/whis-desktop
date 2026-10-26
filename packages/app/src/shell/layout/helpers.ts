@@ -30,7 +30,7 @@ export function toggleHomeProjectSelection(
   server: ServerConnection.Key,
   directory: string,
 ): HomeProjectSelection {
-  if (current?.server === server && current.directory === directory) return { server }
+  if (current?.server === server && pathKey(current.directory ?? "") === pathKey(directory)) return { server }
 
   return { server, directory }
 }
@@ -43,7 +43,7 @@ export function closeHomeProject(
 ) {
   projects.close(directory)
 
-  if (selected?.server === server && selected.directory === directory) return { server }
+  if (selected?.server === server && pathKey(selected.directory ?? "") === pathKey(directory)) return { server }
 
   return selected
 }

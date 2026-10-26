@@ -103,7 +103,17 @@ const layer = Layer.effect(
         const order = direction === "previous" ? (requestedOrder === "asc" ? "desc" : "asc") : requestedOrder
         const sortColumn = SessionTable.time_updated
         const conditions: SQL[] = []
-        if ("directory" in input) conditions.push(eq(SessionTable.directory, input.directory))
+        if ("directory" in input && input.directory) {
+          const forward = input.directory.replaceAll("\\", "/")
+          const backslash = input.directory.replaceAll("/", "\\")
+          conditions.push(
+            or(
+              eq(SessionTable.directory, input.directory),
+              eq(SessionTable.directory, forward),
+              eq(SessionTable.directory, backslash),
+            )!,
+          )
+        }
         if (input.workspaceID) conditions.push(eq(SessionTable.workspace_id, input.workspaceID))
         if ("project" in input) conditions.push(eq(SessionTable.project_id, input.project))
         if ("project" in input && input.subpath !== undefined) conditions.push(eq(SessionTable.path, input.subpath))

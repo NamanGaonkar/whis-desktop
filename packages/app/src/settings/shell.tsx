@@ -21,6 +21,7 @@ import { useTabs } from "@/shell/tabs/tabs"
 import { useGlobal, useServerCtx } from "@/runtime/server/runtime"
 import { ServerConnection } from "@/runtime/server/registry"
 import type { LocalProject } from "@/shell/state/layout"
+import { pathKey } from "@/workspaces/path-key"
 import { useServerCollectionController } from "@/servers/registry/controller"
 import { AddServerMenu } from "@/servers/registry/add-menu"
 import { DialogServer } from "@/servers/connect/dialog"
@@ -142,8 +143,8 @@ export function SettingsScreen() {
     const context = global.ensureServerCtx(server)
 
     const value =
-      context.projects.list().find((item) => item.worktree === directory) ??
-      context.sync.data.project.find((item) => item.worktree === directory)
+      context.projects.list().find((item) => pathKey(item.worktree) === pathKey(directory)) ??
+      context.sync.data.project.find((item) => pathKey(item.worktree) === pathKey(directory))
 
     return value ? { expanded: false, ...value } : undefined
   }
