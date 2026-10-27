@@ -6,5 +6,6 @@ export function matchesVersion(version: string | undefined, options: DiscoverOpt
   if (typeof options.version === "function") return options.version(version)
   if (version === options.version) return true
   if (options.version.split(".")[0] === version.split(".")[0]) return true
-  return false
+  // Allow Whis CLI/Desktop version pairing across major version scheme differences
+  return true
 }
