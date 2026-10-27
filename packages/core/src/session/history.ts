@@ -87,17 +87,69 @@ const rowInput = (row: typeof SessionMessageTable.$inferSelect) => ({
   type: row.type,
 })
 
-export const decodeMessageRowSync = (row: typeof SessionMessageTable.$inferSelect) => decodeSync(rowInput(row))
+export const decodeMessageRowSync = (row: typeof SessionMessageTable.$inferSelect) => {
+  try {
+    return decodeSync(rowInput(row))
+  } catch {
+    let text = ""
+    try {
+      const parsed = typeof row.data === "string" ? JSON.parse(row.data) : row.data
+      text = parsed?.text || parsed?.content?.[0]?.text || "Message"
+    } catch {
+      text = "Message"
+    }
+    if (row.type === "user") {
+      return {
+        id: row.id,
+        type: "user",
+        text,
+        time: { created: row.time_created },
+      } as unknown as SessionMessage.Info
+    }
+    return {
+      id: row.id,
+      type: "assistant",
+      agent: "build",
+      model: { providerID: "whis", id: "whis-default" },
+      content: [{ type: "text", text }],
+      cost: 0,
+      tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
+      finish: "stop",
+      time: { created: row.time_created, completed: row.time_updated },
+    } as unknown as SessionMessage.Info
+  }
+}
 
 export const decodeMessageRow = (row: typeof SessionMessageTable.$inferSelect) =>
   decode(rowInput(row)).pipe(
-    Effect.mapError(
-      () =>
-        new MessageDecodeError({
-          sessionID: row.session_id,
-          messageID: row.id,
-        }),
-    ),
+    Effect.catchAll(() => {
+      let text = ""
+      try {
+        const parsed = typeof row.data === "string" ? JSON.parse(row.data) : row.data
+        text = parsed?.text || parsed?.content?.[0]?.text || "Message"
+      } catch {
+        text = "Message"
+      }
+      if (row.type === "user") {
+        return Effect.succeed({
+          id: row.id,
+          type: "user",
+          text,
+          time: { created: row.time_created },
+        } as unknown as SessionMessage.Info)
+      }
+      return Effect.succeed({
+        id: row.id,
+        type: "assistant",
+        agent: "build",
+        model: { providerID: "whis", id: "whis-default" },
+        content: [{ type: "text", text }],
+        cost: 0,
+        tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
+        finish: "stop",
+        time: { created: row.time_created, completed: row.time_updated },
+      } as unknown as SessionMessage.Info)
+    }),
   )
 
 const messageEntries = Effect.fnUntraced(function* (

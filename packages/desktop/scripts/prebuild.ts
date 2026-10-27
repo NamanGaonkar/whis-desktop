@@ -16,6 +16,6 @@ const dist =
 
 if (dist) {
   await copyBuiltCliToResources(dist)
-} else if (channel === "dev") {
+} else if (channel === "dev" && !(await Bun.file("resources/whis-cli.exe").exists())) {
   await downloadCliToResources()
 }

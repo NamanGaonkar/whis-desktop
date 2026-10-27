@@ -149,9 +149,12 @@ const installCli = Effect.fn("DesktopCli.install")(function* (source: string, ve
   const destination = path.join(directory, executableName())
 
   if (existsSync(destination)) {
-    yield* Effect.logInfo("v2 CLI staged executable reused", { path: destination, version })
-
-    return destination
+    const srcStat = yield* fs.stat(source).pipe(Effect.orElseSucceed(() => undefined))
+    const destStat = yield* fs.stat(destination).pipe(Effect.orElseSucceed(() => undefined))
+    if (srcStat && destStat && srcStat.size === destStat.size) {
+      yield* Effect.logInfo("v2 CLI staged executable reused", { path: destination, version })
+      return destination
+    }
   }
 
   const temp = destination + `.${process.pid}.tmp`
