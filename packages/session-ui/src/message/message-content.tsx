@@ -1,3 +1,18 @@
+function formatMessageTime(timestamp: number | undefined, locale: string) {
+  if (!timestamp) return ""
+  const date = new Date(timestamp)
+  const now = new Date()
+  const isToday = date.toDateString() === now.toDateString()
+  const yesterday = new Date(now)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const isYesterday = date.toDateString() === yesterday.toDateString()
+
+  const timeStr = new Intl.DateTimeFormat(locale, { timeStyle: "short" }).format(date)
+  if (isToday) return timeStr
+  if (isYesterday) return `Yesterday, ${timeStr}`
+  return `${new Intl.DateTimeFormat(locale, { month: "short", day: "numeric" }).format(date)}, ${timeStr}`
+}
+
 import {
   createEffect,
   createMemo,
@@ -299,7 +314,7 @@ export function CurrentUserMessageDisplay(props: {
       .join("\u00A0\u00B7\u00A0")
   })
 
-  const stamp = createMemo(() => timefmt().format(props.message.time.created))
+  const stamp = createMemo(() => formatMessageTime(props.message.time.created, i18n.locale()))
 
   const copy = async (text: string) => {
     if (!text || !(await writeClipboard(text))) return
@@ -685,7 +700,7 @@ export function AssistantTextContent(props: {
   const i18n = useI18n()
   const numfmt = createMemo(() => new Intl.NumberFormat(i18n.locale()))
   const timefmt = createMemo(() => new Intl.DateTimeFormat(i18n.locale(), { timeStyle: "short" }))
-  const stamp = createMemo(() => (props.message.time.created ? timefmt().format(props.message.time.created) : ""))
+  const stamp = createMemo(() => (props.message.time.created ? formatMessageTime(props.message.time.created, i18n.locale()) : ""))
 
   const interrupted = () => {
     const type = props.message.error?.type.toLowerCase()

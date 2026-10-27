@@ -61,7 +61,7 @@ describe("SessionBidirectionalSync", () => {
       const messages = yield* store.messages({ sessionID: Session.ID.make(sessionID), order: "asc" })
       expect(messages.length).toBe(2)
       expect(messages[0]?.type).toBe("user")
-      expect(messages[0]?.text).toBe("Hello from whis-cli!")
+      expect((messages[0] as any)?.text).toBe("Hello from whis-cli!")
       expect(messages[1]?.type).toBe("assistant")
 
       // Check session_v2 also contains this session
@@ -141,7 +141,7 @@ describe("SessionBidirectionalSync", () => {
       // Open in Desktop
       let msgs = yield* store.messages({ sessionID: Session.ID.make(sessionID) })
       expect(msgs.length).toBe(1)
-      expect(msgs[0]?.text).toBe("Turn 1 in CLI")
+      expect((msgs[0] as any)?.text).toBe("Turn 1 in CLI")
 
       // Continue in Desktop: Desktop writes Turn 2
       time += 1000
@@ -171,7 +171,7 @@ describe("SessionBidirectionalSync", () => {
       // Re-read in Desktop
       msgs = yield* store.messages({ sessionID: Session.ID.make(sessionID), order: "asc" })
       expect(msgs.length).toBe(3)
-      expect(msgs.map((m) => m.text)).toEqual(["Turn 1 in CLI", "Turn 2 in Desktop", "Turn 3 in CLI"])
+      expect(msgs.map((m: any) => m.text)).toEqual(["Turn 1 in CLI", "Turn 2 in Desktop", "Turn 3 in CLI"])
     }),
   )
 })

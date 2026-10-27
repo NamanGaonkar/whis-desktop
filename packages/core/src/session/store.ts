@@ -104,7 +104,7 @@ const layer = Layer.effect(
         return row ? fromRow(row) : undefined
       }),
       list: Effect.fn("SessionStore.list")(function* (input = {}) {
-        yield* DatabaseSync.syncAll(db)
+        yield* DatabaseSync.syncAll(db).pipe(Effect.orDie)
         const direction = input.anchor?.direction ?? "next"
         const requestedOrder = input.order ?? "desc"
         const order = direction === "previous" ? (requestedOrder === "asc" ? "desc" : "asc") : requestedOrder

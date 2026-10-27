@@ -140,7 +140,11 @@ export function DialogSessionList() {
   })
 
   const options = createMemo(() => {
-    const today = new Date().toDateString()
+    const now = new Date()
+    const today = now.toDateString()
+    const yesterdayDate = new Date(now)
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1)
+    const yesterday = yesterdayDate.toDateString()
     const sessionMap = new Map(
       sessions()
         .filter((session) => !session.parentID)
@@ -186,7 +190,8 @@ export function DialogSessionList() {
       .filter((session) => !session.parentID && !pinnedSet.has(session.id))
       .map((session) => {
         const date = new Date(session.time.updated).toDateString()
-        return option(session, date === today ? "Today" : date)
+        const category = date === today ? "Today" : date === yesterday ? "Yesterday" : date
+        return option(session, category)
       })
 
     return [...pinned.map((sessionID) => option(sessionMap.get(sessionID)!, "Pinned")), ...remaining]

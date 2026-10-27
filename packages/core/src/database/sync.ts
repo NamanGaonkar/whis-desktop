@@ -230,23 +230,26 @@ export function installTriggers(db: Database) {
       END
     `)
 
+    yield* db.run(sql`DROP TRIGGER IF EXISTS sync_part_touch_session`).pipe(Effect.orDie)
+    yield* db.run(sql`DROP TRIGGER IF EXISTS sync_message_touch_session`).pipe(Effect.orDie)
+
     yield* db.run(sql`
       CREATE TRIGGER IF NOT EXISTS sync_message_touch_session
       AFTER INSERT ON message
       FOR EACH ROW
       BEGIN
-        UPDATE session SET time_updated = NEW.time_updated WHERE id = NEW.session_id;
-        UPDATE session_v2 SET time_updated = NEW.time_updated WHERE id = NEW.session_id;
+        UPDATE session SET time_updated = MAX(time_updated, NEW.time_updated) WHERE id = NEW.session_id;
+        UPDATE session_v2 SET time_updated = MAX(time_updated, NEW.time_updated) WHERE id = NEW.session_id;
       END
     `)
 
     yield* db.run(sql`
-      CREATE TRIGGER IF NOT EXISTS sync_part_touch_session
-      AFTER INSERT ON part
+      CREATE TRIGGER IF NOT EXISTS sync_v2_message_touch_session
+      AFTER INSERT ON session_message
       FOR EACH ROW
       BEGIN
-        UPDATE session SET time_updated = NEW.time_updated WHERE id = NEW.session_id;
-        UPDATE session_v2 SET time_updated = NEW.time_updated WHERE id = NEW.session_id;
+        UPDATE session SET time_updated = MAX(time_updated, NEW.time_updated) WHERE id = NEW.session_id;
+        UPDATE session_v2 SET time_updated = MAX(time_updated, NEW.time_updated) WHERE id = NEW.session_id;
       END
     `)
   })
@@ -254,6 +257,58 @@ export function installTriggers(db: Database) {
 
 export function reconcileSessions(db: Database) {
   return Effect.gen(function* () {
+    // Repair any session timestamps artificially bumped into the future
+    yield* db.run(sql`
+      UPDATE session
+      SET time_updated = (
+        SELECT COALESCE(MAX(sub.max_time), session.time_created)
+        FROM (
+          SELECT MAX(time_updated) as max_time FROM message WHERE session_id = session.id
+          UNION ALL
+          SELECT MAX(time_updated) as max_time FROM session_message WHERE session_id = session.id
+        ) sub
+        WHERE sub.max_time IS NOT NULL
+      )
+      WHERE id IN (
+        SELECT s.id
+        FROM session s
+        WHERE s.time_updated > (
+          SELECT COALESCE(MAX(sub.max_time), s.time_created)
+          FROM (
+            SELECT MAX(time_updated) as max_time FROM message WHERE session_id = s.id
+            UNION ALL
+            SELECT MAX(time_updated) as max_time FROM session_message WHERE session_id = s.id
+          ) sub
+          WHERE sub.max_time IS NOT NULL
+        ) + 60000
+      );
+    `).pipe(Effect.orDie)
+
+    yield* db.run(sql`
+      UPDATE session_v2
+      SET time_updated = (
+        SELECT COALESCE(MAX(sub.max_time), session_v2.time_created)
+        FROM (
+          SELECT MAX(time_updated) as max_time FROM message WHERE session_id = session_v2.id
+          UNION ALL
+          SELECT MAX(time_updated) as max_time FROM session_message WHERE session_id = session_v2.id
+        ) sub
+        WHERE sub.max_time IS NOT NULL
+      )
+      WHERE id IN (
+        SELECT s.id
+        FROM session_v2 s
+        WHERE s.time_updated > (
+          SELECT COALESCE(MAX(sub.max_time), s.time_created)
+          FROM (
+            SELECT MAX(time_updated) as max_time FROM message WHERE session_id = s.id
+            UNION ALL
+            SELECT MAX(time_updated) as max_time FROM session_message WHERE session_id = s.id
+          ) sub
+          WHERE sub.max_time IS NOT NULL
+        ) + 60000
+      );
+    `).pipe(Effect.orDie)
     // Copy any CLI sessions into session_v2
     yield* db.run(sql`
       INSERT OR IGNORE INTO session_v2 (
@@ -713,7 +768,7 @@ export function syncAll(db: Database) {
     for (const item of outOfSyncSessions) {
       yield* reconcileSessionV1Messages(db, item.id)
     }
-  })
+  }).pipe(Effect.orDie)
 }
 
 function SchemaDecodeMessageRow(row: {
