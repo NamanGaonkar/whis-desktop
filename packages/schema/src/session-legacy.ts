@@ -32,7 +32,8 @@ export function event(type: string, data: unknown) {
 }
 
 /** Upgrades a projected message's data by message type. */
-export function message(type: unknown, data: Record<string, unknown>) {
+export function message(type: unknown, data: unknown) {
+  if (!isRecord(data)) return data
   if (type === "assistant") return content(rename(data, "providerState", "native"))
   if (type === "compaction") return providerContext(recent(rename(data, "providerState", "native")))
   return data

@@ -14,7 +14,6 @@ import { SessionMessageTable } from "./sql.js"
 
 type DatabaseService = Database.Interface["db"]
 
-const decode = Schema.decodeUnknownEffect(SessionMessage.Info)
 const decodeSync = Schema.decodeUnknownSync(SessionMessage.Info)
 
 /**
@@ -81,76 +80,93 @@ const latestCompaction = Effect.fnUntraced(function* (
 })
 
 // Every stored message row decodes through here, so rows written in older shapes are upgraded in one place.
-const rowInput = (row: typeof SessionMessageTable.$inferSelect) => ({
-  ...SessionLegacy.message(row.type, row.data),
-  id: row.id,
-  type: row.type,
-})
+const rowInput = (row: typeof SessionMessageTable.$inferSelect) => {
+  let parsedData: any = {}
+  try {
+    parsedData = typeof row.data === "string" ? JSON.parse(row.data) : row.data
+  } catch {
+    parsedData = {}
+  }
+  const upgraded = typeof parsedData === "object" && parsedData !== null
+    ? (SessionLegacy.message(row.type, parsedData) as Record<string, unknown>)
+    : {}
+  return {
+    ...upgraded,
+    id: row.id,
+    type: row.type,
+  }
+}
 
-export const decodeMessageRowSync = (row: typeof SessionMessageTable.$inferSelect) => {
+export const decodeMessageRowSync = (row: typeof SessionMessageTable.$inferSelect): SessionMessage.Info => {
   try {
     return decodeSync(rowInput(row))
   } catch {
-    let text = ""
+    let parsed: any = {}
     try {
-      const parsed = typeof row.data === "string" ? JSON.parse(row.data) : row.data
-      text = parsed?.text || parsed?.content?.[0]?.text || "Message"
+      parsed = typeof row.data === "string" ? JSON.parse(row.data) : row.data
     } catch {
-      text = "Message"
+      parsed = {}
     }
+    const extra = parsed && typeof parsed === "object" ? parsed : {}
+
     if (row.type === "user") {
+      const text =
+        parsed?.text ||
+        (Array.isArray(parsed?.content)
+          ? parsed.content
+              .filter((c: any) => c && typeof c.text === "string")
+              .map((c: any) => c.text)
+              .join("\n\n")
+          : "") ||
+        "Message"
+
       return {
+        files: Array.isArray(parsed?.files) ? parsed.files : [],
+        agents: Array.isArray(parsed?.agents) ? parsed.agents : [],
+        skills: Array.isArray(parsed?.skills) ? parsed.skills : [],
+        time: { created: row.time_created },
+        ...extra,
         id: row.id,
         type: "user",
         text,
-        time: { created: row.time_created },
       } as unknown as SessionMessage.Info
     }
+
+    if (row.type === "assistant") {
+      let content = Array.isArray(parsed?.content) && parsed.content.length > 0 ? parsed.content : undefined
+      if (!content) {
+        const text = parsed?.text || "Message"
+        content = [{ type: "text", text }]
+      }
+
+      return {
+        agent: parsed?.agent || "build",
+        model: parsed?.model || { providerID: "whis", id: "whis-default" },
+        cost: parsed?.cost ?? 0,
+        tokens: parsed?.tokens ?? { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
+        finish: parsed?.finish || "stop",
+        time: {
+          created: row.time_created,
+          ...(parsed?.time?.completed ? { completed: parsed.time.completed } : { completed: row.time_updated }),
+        },
+        ...extra,
+        id: row.id,
+        type: "assistant",
+        content,
+      } as unknown as SessionMessage.Info
+    }
+
     return {
+      time: { created: row.time_created },
+      ...extra,
       id: row.id,
-      type: "assistant",
-      agent: "build",
-      model: { providerID: "whis", id: "whis-default" },
-      content: [{ type: "text", text }],
-      cost: 0,
-      tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
-      finish: "stop",
-      time: { created: row.time_created, completed: row.time_updated },
+      type: row.type,
     } as unknown as SessionMessage.Info
   }
 }
 
 export const decodeMessageRow = (row: typeof SessionMessageTable.$inferSelect) =>
-  decode(rowInput(row)).pipe(
-    Effect.catchAll(() => {
-      let text = ""
-      try {
-        const parsed = typeof row.data === "string" ? JSON.parse(row.data) : row.data
-        text = parsed?.text || parsed?.content?.[0]?.text || "Message"
-      } catch {
-        text = "Message"
-      }
-      if (row.type === "user") {
-        return Effect.succeed({
-          id: row.id,
-          type: "user",
-          text,
-          time: { created: row.time_created },
-        } as unknown as SessionMessage.Info)
-      }
-      return Effect.succeed({
-        id: row.id,
-        type: "assistant",
-        agent: "build",
-        model: { providerID: "whis", id: "whis-default" },
-        content: [{ type: "text", text }],
-        cost: 0,
-        tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
-        finish: "stop",
-        time: { created: row.time_created, completed: row.time_updated },
-      } as unknown as SessionMessage.Info)
-    }),
-  )
+  Effect.sync(() => decodeMessageRowSync(row))
 
 const messageEntries = Effect.fnUntraced(function* (
   db: DatabaseService,
