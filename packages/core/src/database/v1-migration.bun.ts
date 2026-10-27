@@ -1061,7 +1061,7 @@ function migrateTool(part: typeof SessionV1.ToolPart.Type, fallback: number) {
         status: "completed",
         input: part.state.input,
         content:
-          part.state.time.compacted === undefined
+          part.state.time?.compacted === undefined
             ? [
                 { type: "text", text: part.state.output },
                 ...(part.state.attachments ?? []).map((file) => ({
@@ -1074,7 +1074,7 @@ function migrateTool(part: typeof SessionV1.ToolPart.Type, fallback: number) {
             : [{ type: "text", text: "[Old tool result content cleared]" }],
         metadata: part.state.metadata,
       },
-      time: { created: part.state.time.start, completed: part.state.time.end },
+      time: { created: part.state.time?.start ?? fallback, completed: part.state.time?.end },
     }
   if (part.state.status === "error")
     return {
@@ -1088,7 +1088,7 @@ function migrateTool(part: typeof SessionV1.ToolPart.Type, fallback: number) {
           : {}),
         ...(part.state.metadata ? { metadata: part.state.metadata } : {}),
       },
-      time: { created: part.state.time.start, completed: part.state.time.end },
+      time: { created: part.state.time?.start ?? fallback, completed: part.state.time?.end },
     }
   return {
     ...base,
@@ -1098,7 +1098,7 @@ function migrateTool(part: typeof SessionV1.ToolPart.Type, fallback: number) {
       error: { type: "tool.interrupted", message: "Tool execution was interrupted before V2 migration" },
       ...(part.state.status === "running" && part.state.metadata ? { metadata: part.state.metadata } : {}),
     },
-    time: { created: part.state.status === "running" ? part.state.time.start : fallback },
+    time: { created: part.state.status === "running" ? (part.state.time?.start ?? fallback) : fallback },
   }
 }
 

@@ -1,7 +1,7 @@
 export * as DatabaseSync from "./sync.js"
 
 import { sql } from "drizzle-orm"
-import { Effect } from "effect"
+import { DateTime, Effect } from "effect"
 import { SessionMessage } from "../session/message.js"
 import type { EffectDrizzleSqlite } from "./drizzle.js"
 
@@ -232,11 +232,13 @@ export function installTriggers(db: Database) {
 
     yield* db.run(sql`DROP TRIGGER IF EXISTS sync_part_touch_session`).pipe(Effect.orDie)
     yield* db.run(sql`DROP TRIGGER IF EXISTS sync_message_touch_session`).pipe(Effect.orDie)
+    yield* db.run(sql`DROP TRIGGER IF EXISTS sync_v2_message_touch_session`).pipe(Effect.orDie)
 
     yield* db.run(sql`
       CREATE TRIGGER IF NOT EXISTS sync_message_touch_session
       AFTER INSERT ON message
       FOR EACH ROW
+      WHEN (json_extract(NEW.data, '$.role') = 'user' OR json_extract(NEW.data, '$.role') = 'assistant')
       BEGIN
         UPDATE session SET time_updated = MAX(time_updated, NEW.time_updated) WHERE id = NEW.session_id;
         UPDATE session_v2 SET time_updated = MAX(time_updated, NEW.time_updated) WHERE id = NEW.session_id;
@@ -247,6 +249,7 @@ export function installTriggers(db: Database) {
       CREATE TRIGGER IF NOT EXISTS sync_v2_message_touch_session
       AFTER INSERT ON session_message
       FOR EACH ROW
+      WHEN (NEW.type = 'user' OR NEW.type = 'assistant')
       BEGIN
         UPDATE session SET time_updated = MAX(time_updated, NEW.time_updated) WHERE id = NEW.session_id;
         UPDATE session_v2 SET time_updated = MAX(time_updated, NEW.time_updated) WHERE id = NEW.session_id;
@@ -263,9 +266,9 @@ export function reconcileSessions(db: Database) {
       SET time_updated = (
         SELECT COALESCE(MAX(sub.max_time), session.time_created)
         FROM (
-          SELECT MAX(time_updated) as max_time FROM message WHERE session_id = session.id
+          SELECT MAX(time_created) as max_time FROM message WHERE session_id = session.id
           UNION ALL
-          SELECT MAX(time_updated) as max_time FROM session_message WHERE session_id = session.id
+          SELECT MAX(time_created) as max_time FROM session_message WHERE session_id = session.id
         ) sub
         WHERE sub.max_time IS NOT NULL
       )
@@ -275,9 +278,9 @@ export function reconcileSessions(db: Database) {
         WHERE s.time_updated > (
           SELECT COALESCE(MAX(sub.max_time), s.time_created)
           FROM (
-            SELECT MAX(time_updated) as max_time FROM message WHERE session_id = s.id
+            SELECT MAX(time_created) as max_time FROM message WHERE session_id = s.id
             UNION ALL
-            SELECT MAX(time_updated) as max_time FROM session_message WHERE session_id = s.id
+            SELECT MAX(time_created) as max_time FROM session_message WHERE session_id = s.id
           ) sub
           WHERE sub.max_time IS NOT NULL
         ) + 60000
@@ -289,9 +292,9 @@ export function reconcileSessions(db: Database) {
       SET time_updated = (
         SELECT COALESCE(MAX(sub.max_time), session_v2.time_created)
         FROM (
-          SELECT MAX(time_updated) as max_time FROM message WHERE session_id = session_v2.id
+          SELECT MAX(time_created) as max_time FROM message WHERE session_id = session_v2.id
           UNION ALL
-          SELECT MAX(time_updated) as max_time FROM session_message WHERE session_id = session_v2.id
+          SELECT MAX(time_created) as max_time FROM session_message WHERE session_id = session_v2.id
         ) sub
         WHERE sub.max_time IS NOT NULL
       )
@@ -301,9 +304,9 @@ export function reconcileSessions(db: Database) {
         WHERE s.time_updated > (
           SELECT COALESCE(MAX(sub.max_time), s.time_created)
           FROM (
-            SELECT MAX(time_updated) as max_time FROM message WHERE session_id = s.id
+            SELECT MAX(time_created) as max_time FROM message WHERE session_id = s.id
             UNION ALL
-            SELECT MAX(time_updated) as max_time FROM session_message WHERE session_id = s.id
+            SELECT MAX(time_created) as max_time FROM session_message WHERE session_id = s.id
           ) sub
           WHERE sub.max_time IS NOT NULL
         ) + 60000
@@ -502,11 +505,59 @@ export function reconcileSessionV1Messages(db: Database, sessionID: string) {
                 text: p.data.text || "",
               })
             } else if (pType === "tool") {
+              const toolState = p.data.state
+              let normalizedState: any = {
+                status: "completed",
+                input: {},
+                content: [{ type: "text", text: "" }],
+              }
+              if (typeof toolState === "object" && toolState !== null) {
+                if (toolState.status === "error") {
+                  let err = toolState.error
+                  if (typeof err !== "object" || err === null || typeof err.type !== "string" || typeof err.message !== "string") {
+                    err = { type: "tool.execution", message: typeof err === "string" ? err : (err?.message || "Tool execution failed") }
+                  }
+                  normalizedState = {
+                    status: "error",
+                    input: toolState.input ?? {},
+                    error: err,
+                    ...(Array.isArray(toolState.content) && toolState.content.length > 0 ? { content: toolState.content } : {}),
+                    ...(toolState.metadata ? { metadata: toolState.metadata } : {}),
+                  }
+                } else if (toolState.status === "running") {
+                  normalizedState = {
+                    status: "running",
+                    input: toolState.input ?? {},
+                    metadata: toolState.metadata ?? {},
+                  }
+                } else if (toolState.status === "streaming") {
+                  normalizedState = {
+                    status: "streaming",
+                    input: typeof toolState.input === "string" ? toolState.input : "",
+                  }
+                } else {
+                  let toolContent = Array.isArray(toolState.content) && toolState.content.length > 0 ? toolState.content : undefined
+                  if (!toolContent) {
+                    const text = typeof toolState.output === "string" ? toolState.output : (toolState.output !== undefined ? JSON.stringify(toolState.output) : "")
+                    toolContent = [{ type: "text", text }]
+                  }
+                  normalizedState = {
+                    status: "completed",
+                    input: toolState.input ?? {},
+                    content: toolContent,
+                    ...(toolState.metadata ? { metadata: toolState.metadata } : {}),
+                  }
+                }
+              }
               content.push({
                 type: "tool",
                 id: p.data.callID || p.id,
-                name: p.data.tool,
-                state: p.data.state || "completed",
+                name: p.data.tool || "unknown",
+                state: normalizedState,
+                time: {
+                  created: p.data.time?.start || p.time_created,
+                  ...(p.data.time?.end ? { completed: p.data.time.end } : {}),
+                },
               })
             }
           }
@@ -588,13 +639,23 @@ export function reconcileSessionV1Messages(db: Database, sessionID: string) {
   })
 }
 
+function toEpoch(val: unknown, fallback: number = Date.now()): number {
+  if (typeof val === "number" && !isNaN(val)) return val
+  if (!val) return fallback
+  try {
+    return DateTime.toEpochMillis(val as any)
+  } catch {
+    const n = Number(val)
+    return isNaN(n) ? fallback : n
+  }
+}
+
 export function syncV2MessageToV1(db: Database, sessionID: string, message: SessionMessage.Info) {
   return Effect.gen(function* () {
-    const timeCreated =
-      typeof message.time.created === "number" ? message.time.created : Number(message.time.created)
+    const timeCreated = toEpoch(message.time?.created)
     const timeUpdated =
       "completed" in message.time && message.time.completed
-        ? Number(message.time.completed)
+        ? toEpoch(message.time.completed, timeCreated)
         : timeCreated
 
     if (message.type === "user") {
@@ -712,13 +773,52 @@ export function syncV2MessageToV1(db: Database, sessionID: string, message: Sess
             type: "reasoning",
             text: item.text,
             time: {
-              start: item.time?.created ? Number(item.time.created) : timeCreated,
-              end: item.time?.completed ? Number(item.time.completed) : timeUpdated,
+              start: toEpoch(item.time?.created, timeCreated),
+              end: toEpoch(item.time?.completed, timeUpdated),
             },
           }
         } else if (item.type === "tool") {
           partID = `prt_${cleanID}_tool_${index}`
-          partData = { type: "tool", callID: item.id, tool: item.name, state: item.state }
+          const tState: any = item.state
+          let v1State: any = tState
+          if (tState && typeof tState === "object") {
+            if (tState.status === "completed") {
+              const text = Array.isArray(tState.content)
+                ? tState.content.filter((c: any) => c.type === "text").map((c: any) => c.text).join("\n")
+                : ""
+              v1State = {
+                status: "completed",
+                input: tState.input ?? {},
+                output: text,
+                time: {
+                  start: toEpoch(item.time?.created, timeCreated),
+                  end: toEpoch(item.time?.completed, timeUpdated),
+                },
+                ...(tState.metadata ? { metadata: tState.metadata } : {}),
+              }
+            } else if (tState.status === "error") {
+              v1State = {
+                status: "error",
+                input: tState.input ?? {},
+                error: typeof tState.error === "string" ? tState.error : tState.error?.message || "Tool execution failed",
+                time: {
+                  start: toEpoch(item.time?.created, timeCreated),
+                  end: toEpoch(item.time?.completed, timeUpdated),
+                },
+                ...(tState.metadata ? { metadata: tState.metadata } : {}),
+              }
+            }
+          }
+          partData = {
+            type: "tool",
+            callID: item.id,
+            tool: item.name,
+            state: v1State,
+            time: {
+              start: toEpoch(item.time?.created, timeCreated),
+              end: toEpoch(item.time?.completed, timeUpdated),
+            },
+          }
         }
 
         yield* db.run(sql`

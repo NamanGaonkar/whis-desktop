@@ -52,8 +52,87 @@ function part(value: unknown) {
   if (!isRecord(value)) return value
   if (value.type === "text" || value.type === "reasoning") return rename(value, "state", "native")
   // A tool part's own `state` is its lifecycle status, not native data.
-  if (value.type === "tool") return toolResult(rename(value, "providerState", "native"))
+  if (value.type === "tool") return normalizeToolPart(toolResult(rename(value, "providerState", "native")))
   return value
+}
+
+function normalizeToolPart(value: Record<string, unknown>): Record<string, unknown> {
+  const input = isRecord(value.input) ? value.input : {}
+  const time =
+    isRecord(value.time) && value.time.created !== undefined
+      ? value.time
+      : { created: Date.now(), ...(isRecord(value.time) ? value.time : {}) }
+
+  let state = value.state
+  if (isRecord(state)) {
+    const sStatus = state.status
+    if (sStatus === "completed") {
+      let content = Array.isArray(state.content) && state.content.length > 0 ? state.content : undefined
+      if (!content) {
+        const text =
+          typeof state.output === "string"
+            ? state.output
+            : state.output !== undefined
+              ? JSON.stringify(state.output)
+              : ""
+        content = [{ type: "text", text }]
+      }
+      state = {
+        ...state,
+        input: isRecord(state.input) ? state.input : input,
+        content,
+      }
+    } else if (sStatus === "error") {
+      let err = state.error
+      if (!isRecord(err) || typeof err.type !== "string" || typeof err.message !== "string") {
+        const msg =
+          typeof err === "string"
+            ? err
+            : isRecord(err) && typeof err.message === "string"
+              ? err.message
+              : "Tool execution failed"
+        err = { type: "tool.execution", message: msg }
+      }
+      state = {
+        ...state,
+        input: isRecord(state.input) ? state.input : input,
+        error: err,
+      }
+    } else if (sStatus === "running") {
+      state = {
+        ...state,
+        input: isRecord(state.input) ? state.input : input,
+        metadata: isRecord(state.metadata) ? state.metadata : {},
+      }
+    } else if (sStatus === "streaming") {
+      state = {
+        ...state,
+        input: typeof state.input === "string" ? state.input : "",
+      }
+    } else {
+      const text = typeof state.output === "string" ? state.output : ""
+      state = {
+        status: "completed",
+        input,
+        content: [{ type: "text", text }],
+      }
+    }
+  } else {
+    const text = typeof value.output === "string" ? value.output : ""
+    state = {
+      status: "completed",
+      input,
+      content: [{ type: "text", text }],
+    }
+  }
+
+  return {
+    ...value,
+    id: typeof value.id === "string" ? value.id : typeof value.callID === "string" ? value.callID : "call_legacy",
+    name: typeof value.name === "string" ? value.name : typeof value.tool === "string" ? value.tool : "unknown",
+    state,
+    time,
+  }
 }
 
 /** Kept text a summary compaction stored before it referenced `metadata.keepID`; replay still reads it. */
