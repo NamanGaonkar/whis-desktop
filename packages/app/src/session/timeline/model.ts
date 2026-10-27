@@ -16,6 +16,9 @@ export function createTimelineModel(input: { session: Pick<SessionModel, "identi
     async (id) => {
       if (!id) return
       const owner = input.session.ownership.capture()
+      // Invalidate the cached transcript so we always re-fetch on open, picking up
+      // any messages written by whis-cli or another session source.
+      data.session.message.invalidate(id)
       await Promise.all([data.session.message.sync(id), data.session.pending.sync(id)])
       await enrichLeadingTurn({
         current: owner.current,

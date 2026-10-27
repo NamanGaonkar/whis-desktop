@@ -95,6 +95,7 @@ const layer = Layer.effect(
 
     return Service.of({
       get: Effect.fnUntraced(function* (sessionID) {
+        yield* DatabaseSync.reconcileSessionV1Messages(db, sessionID)
         let row = yield* db.select().from(SessionTable).where(eq(SessionTable.id, sessionID)).get().pipe(Effect.orDie)
         if (!row) {
           yield* DatabaseSync.reconcileSessions(db)
@@ -103,6 +104,7 @@ const layer = Layer.effect(
         return row ? fromRow(row) : undefined
       }),
       list: Effect.fn("SessionStore.list")(function* (input = {}) {
+        yield* DatabaseSync.syncAll(db)
         const direction = input.anchor?.direction ?? "next"
         const requestedOrder = input.order ?? "desc"
         const order = direction === "previous" ? (requestedOrder === "asc" ? "desc" : "asc") : requestedOrder

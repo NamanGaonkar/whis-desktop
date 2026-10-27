@@ -128,6 +128,10 @@ function MessageTimelineView(
   const data = server.ctx.data
   const sdk = useWorkspaceLocation()
   const sessionID = props.data.sessionID
+  const messageLoadError = () => {
+    const id = sessionID()
+    return id ? data.session.message.error(id) : undefined
+  }
   const sessionStatus = props.data.status
   const titleLabel = props.data.titleLabel
   const parentID = props.data.parentID
@@ -461,7 +465,28 @@ function MessageTimelineView(
         </Show>
       )}
       header={
-        <Show when={!props.hideHeader}>
+        <>
+          <Show when={messageLoadError()}>
+            {(err) => (
+              <div
+                role="alert"
+                style={{
+                  background: "var(--v2-background-bg-feedback-warning, #7c3d00)",
+                  color: "var(--v2-text-text-contrast, #fff8ec)",
+                  border: "1px solid var(--v2-border-border-feedback-warning, rgba(255,185,40,0.4))",
+                  padding: "8px 16px",
+                  "font-size": "13px",
+                  display: "flex",
+                  "align-items": "center",
+                  gap: "8px",
+                }}
+              >
+                <span style={{ "font-weight": "600" }}>⚠ Could not load chat messages:</span>
+                <span style={{ opacity: "0.85" }}>{err()}</span>
+              </div>
+            )}
+          </Show>
+          <Show when={!props.hideHeader}>
           <SessionTitleHeader>
             <div class="h-12 w-full flex items-center justify-between gap-2">
               <div class="flex items-center gap-1 min-w-0 flex-1">
@@ -612,7 +637,8 @@ function MessageTimelineView(
               </Show>
             </div>
           </SessionTitleHeader>
-        </Show>
+          </Show>
+        </>
       }
     />
   )

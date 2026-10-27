@@ -124,6 +124,7 @@ type Store = {
     message: Record<string, SessionMessageInfo[]>
     messageCursor: Record<string, string | undefined>
     messageLoading: Record<string, boolean>
+    messageError: Record<string, string | undefined>
     pending: Record<string, SessionInboxInfo[]>
     permission: Record<string, PermissionRequest[]>
     // Pending forms keyed by owner: a session ID or the temporary "global" elicitation sentinel.
@@ -267,6 +268,7 @@ export function createData(config: CreateDataInput) {
       message: {},
       messageCursor: {},
       messageLoading: {},
+      messageError: {},
       pending: {},
       permission: {},
       form: {},
@@ -1486,6 +1488,9 @@ export function createData(config: CreateDataInput) {
             ? "steering"
             : "starting"
         },
+        error(sessionID: string) {
+          return store.session.messageError[sessionID]
+        },
         sync(sessionID: string) {
           return sync.run(`session.pending:${sessionID}`, async () => {
             const updates = new Map<string, SessionInboxInfo | SessionInbox.Delivery | undefined>()
@@ -1713,11 +1718,20 @@ export function createData(config: CreateDataInput) {
         },
         sync(sessionID: string) {
           return sync.run(`session.message:${sessionID}`, async () => {
-            const response = await api().message.list({
-              sessionID,
-              limit: config.initialMessageLimit?.() ?? messagePageLimit,
-              order: "desc",
-            })
+            let response: Awaited<ReturnType<ReturnType<typeof api>["message"]["list"]>>
+            try {
+              response = await api().message.list({
+                sessionID,
+                limit: config.initialMessageLimit?.() ?? messagePageLimit,
+                order: "desc",
+              })
+              setStore("session", "messageError", sessionID, undefined)
+            } catch (err) {
+              const msg = err instanceof Error ? err.message : String(err)
+              console.error("[whis] Failed to load chat messages for session", sessionID, err)
+              setStore("session", "messageError", sessionID, msg)
+              return
+            }
             const fetched = response.data.toReversed()
             // Same protection as the pending sync: a re-fetch racing an
             // admission must not wipe its local transcript row.
@@ -1808,6 +1822,9 @@ export function createData(config: CreateDataInput) {
             .finally(() => setStore("session", "messageLoading", sessionID, false))
           track(messageLoads, sessionID, request)
           await request
+        },
+        error(sessionID: string) {
+          return store.session.messageError[sessionID]
         },
         invalidate(sessionID: string) {
           sync.invalidate(`session.message:${sessionID}`)

@@ -167,16 +167,45 @@
     }
   }
 
+  
+  .user-bubble-header,
+  [data-slot="user-bubble-header"] {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-bottom: 4px;
+    padding-right: 4px;
+    font-size: 11px;
+    line-height: 14px;
+    user-select: none;
+  }
+
+  .user-bubble-sender,
+  [data-slot="user-bubble-sender"] {
+    font-weight: 600;
+    color: var(--v2-bubble-user-sender, var(--v2-text-text-accent));
+  }
+
+  .user-bubble-time,
+  [data-slot="user-bubble-time"] {
+    color: var(--v2-bubble-user-time, var(--v2-text-text-muted));
+    font-size: 10px;
+    opacity: 0.85;
+  }
+
   [data-slot="user-message-text"] {
     display: inline-block;
     white-space: pre-wrap;
     word-break: break-word;
     overflow: hidden;
     unicode-bidi: plaintext;
-    background: var(--v2-background-bg-layer-02);
-    border: none;
-    padding: 8px 12px;
-    border-radius: 10px;
+    background: var(--v2-bubble-user-bg, var(--v2-background-bg-accent));
+    color: var(--v2-bubble-user-text, var(--v2-text-text-contrast));
+    border: var(--v2-bubble-user-border, 1px solid transparent);
+    box-shadow: var(--v2-bubble-user-shadow, 0 2px 8px rgba(0, 0, 0, 0.08));
+    padding: 12px 16px;
+    border-radius: 18px 18px 4px 18px;
     transition:
       background-color 200ms ease,
       color 200ms ease;
@@ -272,10 +301,55 @@
 
 [data-component="text-part"] {
   width: 100%;
-  margin-top: 24px;
+  max-width: min(92%, 84ch);
+  margin-top: 20px;
+
+  .assistant-bubble-header,
+  [data-slot="assistant-bubble-header"] {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    margin-bottom: 6px;
+    padding-left: 4px;
+    font-size: 11px;
+    line-height: 14px;
+    user-select: none;
+  }
+
+  .assistant-bubble-sender,
+  [data-slot="assistant-bubble-sender"] {
+    font-weight: 600;
+    color: var(--v2-bubble-assistant-sender, var(--v2-text-text-accent));
+  }
+
+  .assistant-bubble-time,
+  [data-slot="assistant-bubble-time"] {
+    color: var(--v2-bubble-assistant-time, var(--v2-text-text-muted));
+    font-size: 10px;
+    opacity: 0.85;
+  }
 
   [data-slot="text-part-body"] {
     margin-top: 0;
+    background: var(--v2-bubble-assistant-bg, var(--v2-background-bg-layer-01));
+    color: var(--v2-bubble-assistant-text, var(--v2-text-text-base));
+    border: var(--v2-bubble-assistant-border, 1px solid var(--v2-border-border-base));
+    box-shadow: var(--v2-bubble-assistant-shadow, 0 1px 4px rgba(0, 0, 0, 0.04));
+    border-radius: 18px 18px 18px 4px;
+    padding: 14px 18px;
+  }
+
+  [data-slot="text-part-body"] a {
+    color: var(--v2-text-text-accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  [data-slot="text-part-body"] pre,
+  [data-slot="text-part-body"] :not(pre) > code {
+    background: var(--v2-background-bg-layer-02);
+    border: 1px solid var(--v2-border-border-muted);
   }
 
   [data-slot="text-part-copy-wrapper"] {
@@ -1275,41 +1349,21 @@
   }
 }
 
-:root[data-color-scheme="light"] body [data-component="user-message"] [data-slot="user-message-text"] {
-  background: var(--v2-background-bg-layer-02);
-}
-
 :root
   body
   [data-workspace-session]
   [data-component="user-message"]:not([data-pending])
-  [data-slot="user-message-text"] {
-  --user-message-mention-prefix-color: var(--v2-blue-300);
-
-  background: var(--v2-background-bg-accent);
-  color: var(--v2-text-text-contrast);
-}
-
-:root body [data-local-session] [data-component="user-message"] [data-slot="user-message-text"] {
-  border-radius: 8px;
-}
-
-:root[data-color-scheme="light"]
+  [data-slot="user-message-text"],
+:root
   body
   [data-local-session]
   [data-component="user-message"]:not([data-pending])
   [data-slot="user-message-text"] {
-  background: var(--v2-blue-100);
-  color: var(--v2-blue-700);
-}
-
-:root[data-color-scheme="dark"]
-  body
-  [data-local-session]
-  [data-component="user-message"]:not([data-pending])
-  [data-slot="user-message-text"] {
-  background: var(--v2-blue-1200);
-  color: var(--v2-blue-300);
+  background: var(--v2-bubble-user-bg, var(--v2-background-bg-accent));
+  color: var(--v2-bubble-user-text, var(--v2-text-text-contrast));
+  border: var(--v2-bubble-user-border, 1px solid transparent);
+  box-shadow: var(--v2-bubble-user-shadow, 0 2px 8px rgba(0, 0, 0, 0.08));
+  border-radius: 18px 18px 4px 18px;
 }
 
 /* Only delivery animates. A steer can render once before its admission marks it pending, and must not fade from the

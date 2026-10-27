@@ -394,6 +394,12 @@ export function CurrentUserMessageDisplay(props: {
         }
       >
         <div data-slot="user-message-body" data-voice={props.voice ? "true" : undefined}>
+          <div class="user-bubble-header" data-slot="user-bubble-header">
+            <span class="user-bubble-sender" data-slot="user-bubble-sender">You</span>
+            <Show when={stamp()}>
+              <span class="user-bubble-time" data-slot="user-bubble-time">{stamp()}</span>
+            </Show>
+          </div>
           <Show when={props.voice}>
             <div data-slot="user-message-voice" role="img" aria-label={i18n.t("ui.message.voice")}>
               <Tooltip appearance="compact" value={i18n.t("ui.message.voice")} placement="top" gutter={4}>
@@ -678,6 +684,8 @@ export function AssistantTextContent(props: {
   const data = useData()
   const i18n = useI18n()
   const numfmt = createMemo(() => new Intl.NumberFormat(i18n.locale()))
+  const timefmt = createMemo(() => new Intl.DateTimeFormat(i18n.locale(), { timeStyle: "short" }))
+  const stamp = createMemo(() => (props.message.time.created ? timefmt().format(props.message.time.created) : ""))
 
   const interrupted = () => {
     const type = props.message.error?.type.toLowerCase()
@@ -736,6 +744,14 @@ export function AssistantTextContent(props: {
   return (
     <Show when={props.text}>
       <div data-component="text-part" data-timeline-part-id={props.id}>
+        <div class="assistant-bubble-header" data-slot="assistant-bubble-header">
+          <span class="assistant-bubble-sender" data-slot="assistant-bubble-sender">
+            {props.message.agent ? props.message.agent[0]?.toUpperCase() + props.message.agent.slice(1) : "Whis"}
+          </span>
+          <Show when={stamp()}>
+            <span class="assistant-bubble-time" data-slot="assistant-bubble-time">{stamp()}</span>
+          </Show>
+        </div>
         <div data-slot="text-part-body">
           <PacedMarkdown text={props.text} cacheKey={props.id} streaming={props.message.time.completed === undefined} />
         </div>

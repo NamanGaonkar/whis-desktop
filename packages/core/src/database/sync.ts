@@ -10,6 +10,61 @@ type Database = EffectDrizzleSqlite.EffectSQLiteDatabase
 export function installTriggers(db: Database) {
   return Effect.gen(function* () {
     yield* db.run(sql`
+      CREATE TABLE IF NOT EXISTS session (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        workspace_id TEXT,
+        parent_id TEXT,
+        slug TEXT,
+        directory TEXT,
+        path TEXT,
+        title TEXT,
+        version TEXT,
+        share_url TEXT,
+        summary_additions INTEGER,
+        summary_deletions INTEGER,
+        summary_files INTEGER,
+        summary_diffs TEXT,
+        metadata TEXT,
+        cost REAL,
+        tokens_input INTEGER,
+        tokens_output INTEGER,
+        tokens_reasoning INTEGER,
+        tokens_cache_read INTEGER,
+        tokens_cache_write INTEGER,
+        revert TEXT,
+        permission TEXT,
+        agent TEXT,
+        model TEXT,
+        time_created INTEGER NOT NULL,
+        time_updated INTEGER NOT NULL,
+        time_compacting INTEGER,
+        time_archived INTEGER
+      )
+    `).pipe(Effect.orDie)
+
+    yield* db.run(sql`
+      CREATE TABLE IF NOT EXISTS message (
+        id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL,
+        time_created INTEGER NOT NULL,
+        time_updated INTEGER NOT NULL,
+        data TEXT NOT NULL
+      )
+    `).pipe(Effect.orDie)
+
+    yield* db.run(sql`
+      CREATE TABLE IF NOT EXISTS part (
+        id TEXT PRIMARY KEY,
+        message_id TEXT NOT NULL,
+        session_id TEXT NOT NULL,
+        time_created INTEGER NOT NULL,
+        time_updated INTEGER NOT NULL,
+        data TEXT NOT NULL
+      )
+    `).pipe(Effect.orDie)
+
+    yield* db.run(sql`
       CREATE TRIGGER IF NOT EXISTS sync_session_to_v2_insert
       AFTER INSERT ON session
       FOR EACH ROW
@@ -69,13 +124,13 @@ export function installTriggers(db: Database) {
       )
       BEGIN
         UPDATE session_v2 SET
-          title = NEW.title,
-          cost = NEW.cost,
-          tokens_input = NEW.tokens_input,
-          tokens_output = NEW.tokens_output,
-          tokens_reasoning = NEW.tokens_reasoning,
-          tokens_cache_read = NEW.tokens_cache_read,
-          tokens_cache_write = NEW.tokens_cache_write,
+          title = COALESCE(NEW.title, title),
+          cost = COALESCE(NEW.cost, 0),
+          tokens_input = COALESCE(NEW.tokens_input, 0),
+          tokens_output = COALESCE(NEW.tokens_output, 0),
+          tokens_reasoning = COALESCE(NEW.tokens_reasoning, 0),
+          tokens_cache_read = COALESCE(NEW.tokens_cache_read, 0),
+          tokens_cache_write = COALESCE(NEW.tokens_cache_write, 0),
           time_updated = NEW.time_updated,
           time_compacting = NEW.time_compacting,
           time_archived = NEW.time_archived
@@ -172,6 +227,26 @@ export function installTriggers(db: Database) {
       FOR EACH ROW
       BEGIN
         DELETE FROM session WHERE id = OLD.id;
+      END
+    `)
+
+    yield* db.run(sql`
+      CREATE TRIGGER IF NOT EXISTS sync_message_touch_session
+      AFTER INSERT ON message
+      FOR EACH ROW
+      BEGIN
+        UPDATE session SET time_updated = NEW.time_updated WHERE id = NEW.session_id;
+        UPDATE session_v2 SET time_updated = NEW.time_updated WHERE id = NEW.session_id;
+      END
+    `)
+
+    yield* db.run(sql`
+      CREATE TRIGGER IF NOT EXISTS sync_part_touch_session
+      AFTER INSERT ON part
+      FOR EACH ROW
+      BEGIN
+        UPDATE session SET time_updated = NEW.time_updated WHERE id = NEW.session_id;
+        UPDATE session_v2 SET time_updated = NEW.time_updated WHERE id = NEW.session_id;
       END
     `)
   })
@@ -334,6 +409,7 @@ export function reconcileSessionV1Messages(db: Database, sessionID: string) {
             .join("\n\n")
 
           const payload = {
+            version: 1,
             text,
             time: { created: m.time_created },
             ...(msgData.agent ? { agent: msgData.agent } : {}),
@@ -381,14 +457,13 @@ export function reconcileSessionV1Messages(db: Database, sessionID: string) {
           }
 
           const payload = {
+            version: 1,
             agent: msgData.agent || "build",
-            model: msgData.modelID
-              ? {
-                  providerID: msgData.providerID || "ollama-cloud",
-                  id: msgData.modelID,
-                  variant: msgData.variant || "default",
-                }
-              : undefined,
+            model: {
+              providerID: msgData.providerID || "ollama-cloud",
+              id: msgData.modelID || "whis-default",
+              variant: msgData.variant || "default",
+            },
             content,
             snapshot:
               startSnapshot || endSnapshot
@@ -469,6 +544,7 @@ export function syncV2MessageToV1(db: Database, sessionID: string, message: Sess
 
     if (message.type === "user") {
       const userMsgData = {
+        version: 1,
         role: "user",
         time: { created: timeCreated },
         agent: "build",
@@ -523,6 +599,7 @@ export function syncV2MessageToV1(db: Database, sessionID: string, message: Sess
       const cacheWrite = message.tokens?.cache?.write ?? 0
 
       const assistantMsgData = {
+        version: 1,
         ...(parentID ? { parentID } : {}),
         role: "assistant",
         mode: "build",
