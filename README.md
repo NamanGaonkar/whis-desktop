@@ -2,17 +2,24 @@
   <img src="logo.jpg" alt="Whis Logo" width="160" height="160" style="border-radius: 20px;">
 </p>
 
-<h1 align="center">Whis Desktop & CLI</h1>
+<h1 align="center">Whis Desktop</h1>
 
 <p align="center">
   <strong>The Autonomous Bring-Your-Own-Key (BYOK) AI Coding Agent & Desktop Workspace</strong>
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-4.0.8-amber?style=flat-square" />
+  <a href="https://github.com/NamanGaonkar/whis-desktop/releases/latest"><img alt="Version" src="https://img.shields.io/badge/version-4.1.8-amber?style=flat-square" /></a>
   <img alt="License" src="https://img.shields.io/badge/license-MIT-orange?style=flat-square" />
   <img alt="Platform" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-black?style=flat-square" />
+  <a href="https://github.com/NamanGaonkar/WHIS---CLi-coder"><img alt="Whis CLI" src="https://img.shields.io/badge/companion-Whis%20CLI%20v0.2.60-orange?style=flat-square" /></a>
 </p>
+
+---
+
+## Unified Workspace: Desktop + CLI
+
+> **Unified Chat & Session Continuity:** Whis Desktop and [**Whis CLI**](https://github.com/NamanGaonkar/WHIS---CLi-coder) share a single local database (`~/.local/share/whis/opencode.db`) and state directory. Any chat or coding session started in the terminal CLI immediately appears in Whis Desktop, and any session created in Desktop can be continued in the terminal seamlessly. All BYOK credentials, project history, and context are shared automatically.
 
 ---
 
