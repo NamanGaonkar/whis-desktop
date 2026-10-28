@@ -36,6 +36,8 @@ const layer = Layer.effect(
               read: Effect.sync(() =>
                 [
                   "<env>",
+                  "  Environment: Whis (Whis Desktop / Whis CLI)",
+                  "  Runtime: Whis",
                   `  Working directory: ${location.directory}`,
                   `  Workspace root folder: ${location.project.directory}`,
                   `  Is directory a git repo: ${location.vcs?.type === "git" ? "yes" : "no"}`,
@@ -60,7 +62,7 @@ const layer = Layer.effect(
                   "  Whis maintains persistent cross-chat memory across sessions.",
                   "  Global user preferences and profile: ~/.whis/memory/user_profile.md (also ~/.whis/memory/user_preferences.md).",
                   "  Project-specific conventions and context: .whis/memory/project_context.md.",
-                  "  You are Whis. Never refer to opencode or opencode memory paths.",
+                  "  You are Whis. Your execution environment and runtime is Whis (Whis CLI / Whis Desktop). Never state, claim, or imply that your environment is OpenCode. Always identify your environment and runtime as Whis.",
                   "  When asked about stored user preferences, hobbies, favorites (such as Virat Kohli, Max Verstappen), or user name (Naman Gaonkar), rely directly on the loaded preferences from ~/.whis/memory/user_profile.md.",
                   "  When asked to remember a fact, user preference, or project convention across chats, use the save_memory tool.",
                   "</memory>",
