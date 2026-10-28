@@ -162,9 +162,21 @@ const installCli = Effect.fn("DesktopCli.install")(function* (source: string, ve
   yield* fs.copyFile(source, temp)
 
   if (process.platform !== "win32") yield* fs.chmod(temp, 0o755)
-  yield* fs
-    .rename(temp, destination)
-    .pipe(Effect.catch((error) => fs.remove(temp, { force: true }).pipe(Effect.andThen(Effect.fail(error)))))
+  yield* fs.rename(temp, destination).pipe(
+    Effect.catch((error) =>
+      fs.remove(temp, { force: true }).pipe(
+        Effect.andThen(() => {
+          if (existsSync(destination)) {
+            return Effect.logWarning("Failed to overwrite CLI executable, reusing existing destination", {
+              destination,
+              error,
+            })
+          }
+          return Effect.fail(error)
+        }),
+      ),
+    ),
+  )
   yield* Effect.logInfo("v2 CLI executable staged", { source, path: destination, version })
 
   return destination
