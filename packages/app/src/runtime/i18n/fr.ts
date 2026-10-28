@@ -223,7 +223,7 @@ export const dict = {
   "settings.general.row.followUpBehavior.queue": "Mettre en attente",
   "settings.general.row.followUpBehavior.steer": "Orienter",
   "session.new.workspace.branch.search.placeholder": "Rechercher des branches",
-  "desktop.menu.app": "OpenCode",
+  "desktop.menu.app": "Whis",
   "desktop.menu.file": "Fichier",
   "desktop.menu.edit": "Édition",
   "desktop.menu.view": "Affichage",

@@ -211,7 +211,7 @@ export const dict = {
   "settings.general.row.followUpBehavior.queue": "In wachtrij plaatsen",
   "settings.general.row.followUpBehavior.steer": "Bijsturen",
   "session.new.workspace.branch.search.placeholder": "Branches zoeken",
-  "desktop.menu.app": "OpenCode",
+  "desktop.menu.app": "Whis",
   "desktop.menu.file": "Bestand",
   "desktop.menu.edit": "Bewerken",
   "desktop.menu.view": "Weergave",

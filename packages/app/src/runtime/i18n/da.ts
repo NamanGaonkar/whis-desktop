@@ -792,7 +792,7 @@ export const dict = {
   "error.childStore.persistedProjectIconCreateFailed": "Kunne ikke oprette vedvarende projektikon",
   "error.childStore.storeCreateFailed": "Kunne ikke oprette lager",
 
-  "desktop.menu.app": "OpenCode",
+  "desktop.menu.app": "Whis",
   "desktop.menu.file": "Arkiv",
   "desktop.menu.edit": "Rediger",
   "desktop.menu.view": "Oversigt",

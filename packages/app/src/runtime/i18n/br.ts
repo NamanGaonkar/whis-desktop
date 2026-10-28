@@ -219,7 +219,7 @@ export const dict = {
   "settings.general.row.followUpBehavior.queue": "Colocar na fila",
   "settings.general.row.followUpBehavior.steer": "Orientar",
   "session.new.workspace.branch.search.placeholder": "Pesquisar branches",
-  "desktop.menu.app": "OpenCode",
+  "desktop.menu.app": "Whis",
   "desktop.menu.file": "Arquivo",
   "desktop.menu.edit": "Editar",
   "desktop.menu.view": "Visualizar",

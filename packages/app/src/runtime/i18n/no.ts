@@ -203,7 +203,7 @@ export const dict = {
   "settings.general.row.followUpBehavior.queue": "Legg i kø",
   "settings.general.row.followUpBehavior.steer": "Styr",
   "session.new.workspace.branch.search.placeholder": "Søk etter grener",
-  "desktop.menu.app": "OpenCode",
+  "desktop.menu.app": "Whis",
   "desktop.menu.file": "Arkiv",
   "desktop.menu.edit": "Rediger",
   "desktop.menu.view": "Vis",

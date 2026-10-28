@@ -762,7 +762,7 @@ export const dict = {
   "error.childStore.persistedProjectMetadataCreateFailed": "Dauerhafte Projektmetadaten konnten nicht erstellt werden",
   "error.childStore.persistedProjectIconCreateFailed": "Dauerhaftes Projektsymbol konnte nicht erstellt werden",
   "error.childStore.storeCreateFailed": "Speicher konnte nicht erstellt werden",
-  "desktop.menu.app": "OpenCode",
+  "desktop.menu.app": "Whis",
   "desktop.menu.file": "Datei",
   "desktop.menu.edit": "Bearbeiten",
   "desktop.menu.view": "Ansicht",

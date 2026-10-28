@@ -221,7 +221,7 @@ export const dict = {
   "settings.general.row.followUpBehavior.queue": "Poner en cola",
   "settings.general.row.followUpBehavior.steer": "Orientar",
   "session.new.workspace.branch.search.placeholder": "Buscar ramas",
-  "desktop.menu.app": "OpenCode",
+  "desktop.menu.app": "Whis",
   "desktop.menu.file": "Archivo",
   "desktop.menu.edit": "Editar",
   "desktop.menu.view": "Ver",

@@ -1,6 +1,7 @@
 import { chmod, copyFile, mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
-import { dirname, join } from "node:path"
+import fs from "node:fs"
+import path, { dirname, join } from "node:path"
 import { Option, Schema } from "effect"
 
 const CLI_VERSION = "dev"
