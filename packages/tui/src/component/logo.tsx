@@ -66,15 +66,13 @@ export function Logo() {
           <For each={logo.left.slice(1)}>
             {(line, index) => {
               const rowColor = RGBA.fromHex(bannerColors[index() % bannerColors.length] as `#${string}`)
-              const leftColor = tint(rowColor, theme.text.muted, 0.55)
-              return <box flexDirection="row">{renderLine(line, leftColor, false)}</box>
+              return <box flexDirection="row">{renderLine(line, rowColor, true)}</box>
             }}
           </For>
           <For each={logo.right}>
             {(line, index) => {
               const rowColor = RGBA.fromHex(bannerColors[index() % bannerColors.length] as `#${string}`)
-              const rightColor = rowColor
-              return <box flexDirection="row">{renderLine(line, rightColor, true)}</box>
+              return <box flexDirection="row">{renderLine(line, rowColor, true)}</box>
             }}
           </For>
         </>
@@ -82,12 +80,10 @@ export function Logo() {
         <For each={logo.left}>
           {(line, index) => {
             const rowColor = RGBA.fromHex(bannerColors[index() % bannerColors.length] as `#${string}`)
-            const leftColor = tint(rowColor, theme.text.muted, 0.55)
-            const rightColor = rowColor
             return (
               <box flexDirection="row" gap={1}>
-                <box flexDirection="row">{renderLine(line, leftColor, false)}</box>
-                <box flexDirection="row">{renderLine(logo.right[index()], rightColor, true)}</box>
+                <box flexDirection="row">{renderLine(line, rowColor, true)}</box>
+                <box flexDirection="row">{renderLine(logo.right[index()], rowColor, true)}</box>
               </box>
             )
           }}
