@@ -46,7 +46,7 @@ const decodeVpPackages = Schema.decodeUnknownOption(
 )
 
 const installNames: Record<Method, string> = {
-  curl: "The OpenCode installer",
+  curl: "The Whis installer",
   npm: "npm",
   pnpm: "pnpm",
   bun: "Bun",
@@ -194,6 +194,13 @@ const make = Effect.gen(function* () {
     process.platform === "win32" ? "opencode.exe" : "opencode",
   )
   const curlBinary = yield* fs.realPath(curlPath).pipe(Effect.orElseSucceed(() => curlPath))
+  const whisPath = path.resolve(
+    global.home,
+    ".whis",
+    "bin",
+    process.platform === "win32" ? "whis.exe" : "whis",
+  )
+  const whisBinary = yield* fs.realPath(whisPath).pipe(Effect.orElseSucceed(() => whisPath))
 
   // On Windows a bare `bash` may be the WSL launcher, which cannot run the installer against Windows paths.
   const installerBash = Effect.fnUntraced(function* () {
@@ -204,18 +211,26 @@ const make = Effect.gen(function* () {
     if (bash && (yield* fs.exists(bash).pipe(Effect.orElseSucceed(() => false)))) return bash
     return yield* Effect.fail(
       new UpgradeError({
-        title: "Git Bash is required to update OpenCode",
-        detail: "The OpenCode installer runs with Git Bash on Windows, and it was not found.",
-        retry: "Install Git for Windows or set OPENCODE_GIT_BASH_PATH, then run opencode upgrade again.",
+        title: "Git Bash is required to update Whis",
+        detail: "The Whis installer runs with Git Bash on Windows, and it was not found.",
+        retry: "Install Git for Windows or set OPENCODE_GIT_BASH_PATH, then run whis upgrade again.",
       }),
     )
   })
 
   const method = Effect.fnUntraced(function* () {
-    if (executable === curlBinary) return "curl"
+    if (
+      executable === curlBinary ||
+      executable === whisBinary ||
+      executable.toLowerCase().includes(`${path.sep}.whis${path.sep}`) ||
+      executable.toLowerCase().includes(`${path.sep}.opencode${path.sep}`) ||
+      executable.toLowerCase().endsWith("whis.exe") ||
+      executable.toLowerCase().endsWith("whis")
+    )
+      return "curl"
     if (installedFormula) return "brew"
     if (installedWinget) return "winget"
-    if (!installedPackage) return
+    if (!installedPackage) return "curl"
 
     const parts = executable.toLowerCase().split(path.sep).map((part) => part.replace(/^\./, ""))
     const checks: Array<{ method: Method; command: string[] }> = [
@@ -274,8 +289,59 @@ const make = Effect.gen(function* () {
 
   const release = Effect.fnUntraced(function* (method?: Method) {
     const distribution = method === "brew" ? "homebrew" : "npm"
-    // Homebrew Core builds its formula on its own schedule, so the tap release does not describe it.
     const core = method === "brew" && installedFormula === "opencode"
+    if (method === "curl" || !method) {
+      const response = yield* Effect.tryPromise({
+        try: (signal) =>
+          fetch("https://api.github.com/repos/NamanGaonkar/WHIS---CLi-coder/releases/latest", {
+            headers: {
+              "User-Agent": "Whis-Updater/1.0",
+              Accept: "application/vnd.github.v3+json",
+            },
+            signal: AbortSignal.any([signal, AbortSignal.timeout(10_000)]),
+          }),
+        catch: (cause) =>
+          new UpgradeError(
+            {
+              title: "Could not check for Whis updates",
+              detail: errorDetail(cause),
+              retry: "Check your network, then run whis upgrade again.",
+            },
+            { cause },
+          ),
+      })
+      if (!response.ok)
+        return yield* Effect.fail(
+          new UpgradeError({
+            title: "Could not check for Whis updates",
+            detail: `GitHub returned HTTP ${response.status}.`,
+            retry: "Try again in a few minutes.",
+          }),
+        )
+      const data: { tag_name?: string } = yield* Effect.tryPromise({
+        try: () => response.json(),
+        catch: (cause) =>
+          new UpgradeError(
+            {
+              title: "Could not read Whis update information",
+              detail: errorDetail(cause),
+              retry: "Try again in a few minutes.",
+            },
+            { cause },
+          ),
+      })
+      const tag = data.tag_name ?? ""
+      const version = tag.replace(/^v/, "")
+      if (!version)
+        return yield* Effect.fail(
+          new UpgradeError({
+            title: "Could not read Whis update information",
+            detail: "The release tag was missing.",
+            retry: "Try again in a few minutes.",
+          }),
+        )
+      return { package: "whis", version }
+    }
     const response = yield* Effect.tryPromise({
       try: (signal) =>
         fetch(
@@ -291,7 +357,7 @@ const make = Effect.gen(function* () {
           {
             title: "Could not check for OpenCode updates",
             detail: errorDetail(cause),
-            retry: "Check your network, then run opencode upgrade again.",
+            retry: "Check your network, then run whis upgrade again.",
           },
           { cause },
         ),
@@ -398,7 +464,7 @@ const make = Effect.gen(function* () {
     const failure = (detail: string, cause?: unknown) =>
       new UpgradeError(
         {
-          title: input.title ?? `${installNames[input.method]} could not install OpenCode`,
+          title: input.title ?? `${installNames[input.method]} could not install Whis`,
           detail,
           command: (input.displayCommand ?? input.command).join(" "),
           retry: input.retry ?? "Fix the issue above, then run opencode upgrade again.",
@@ -473,24 +539,42 @@ const make = Effect.gen(function* () {
           )
         }
         if (method === "curl") {
-          const bash = yield* installerBash()
           yield* fs.makeDirectory(global.cache, { recursive: true })
           const directory = yield* temporaryDirectory("update-")
+          const targetVersion = version.startsWith("v") ? version : `v${version}`
+          if (process.platform === "win32") {
+            const downloadUrl = `https://github.com/NamanGaonkar/WHIS---CLi-coder/releases/download/${targetVersion}/whis.exe`
+            const tempExe = path.join(directory, "whis.exe")
+            yield* runUpgrade({
+              method,
+              command: ["curl", "-fsSL", "-o", tempExe, downloadUrl],
+              displayCommand: ["curl", "-fsSL", downloadUrl],
+              title: "Could not download the Whis update",
+              retry: "Check your network, then run whis upgrade again.",
+            })
+            const targetExe = executable
+            const oldExe = path.join(path.dirname(targetExe), "whis.old.exe")
+            yield* fs.remove(oldExe).pipe(Effect.ignore)
+            yield* fs.rename(targetExe, oldExe).pipe(Effect.ignore)
+            yield* fs.copyFile(tempExe, targetExe)
+            return
+          }
+          const bash = yield* installerBash()
           const installer = path.join(directory, "install")
           yield* runUpgrade({
             method,
-            command: ["curl", "-fsSL", "-o", installer, "https://opencode.ai/v2/install"],
-            displayCommand: ["curl", "-fsSL", "https://opencode.ai/v2/install"],
-            title: "Could not download the OpenCode installer",
-            retry: "Check your network, then run opencode upgrade again.",
+            command: ["curl", "-fsSL", "-o", installer, "https://raw.githubusercontent.com/NamanGaonkar/whis-desktop/main/install"],
+            displayCommand: ["curl", "-fsSL", "https://raw.githubusercontent.com/NamanGaonkar/whis-desktop/main/install"],
+            title: "Could not download the Whis installer",
+            retry: "Check your network, then run whis upgrade again.",
           })
           return yield* retaining(
             method,
             runUpgrade({
               method,
               command: [bash, installer, "--version", version, "--no-modify-path"],
-              displayCommand: ["opencode", "upgrade", version, "--method", "curl"],
-              title: "The OpenCode installer failed",
+              displayCommand: ["whis", "upgrade", version, "--method", "curl"],
+              title: "The Whis installer failed",
             }),
           )
         }
@@ -519,7 +603,7 @@ const make = Effect.gen(function* () {
           ? cause
           : new UpgradeError(
               {
-                title: "Could not prepare the OpenCode upgrade",
+                title: "Could not prepare the Whis upgrade",
                 detail: errorDetail(cause),
                 retry: "Fix the issue above, then run opencode upgrade again.",
               },
@@ -556,7 +640,7 @@ const make = Effect.gen(function* () {
       yield* Effect.logInfo("update check done", { action: "up-to-date" })
       return undefined
     }
-    yield* Effect.logInfo("OpenCode update available", { current, latest: version, action: next })
+    yield* Effect.logInfo("Whis update available", { current, latest: version, action: next })
     return { policy, version }
   })
 
@@ -569,7 +653,7 @@ const make = Effect.gen(function* () {
     const current = yield* Ref.get(installedVersion)
     yield* upgrade(detected, version)
     yield* Ref.set(installedVersion, version)
-    yield* Effect.logInfo("updated OpenCode", { from: current, to: version, method: detected })
+    yield* Effect.logInfo("updated Whis", { from: current, to: version, method: detected })
     return true
   })
 
@@ -586,7 +670,7 @@ const make = Effect.gen(function* () {
     if (OPENCODE_LOCAL)
       return {
         type: "unavailable" as const,
-        message: "This build runs from a source checkout. Use an installed OpenCode release to check for updates.",
+        message: "This build runs from a source checkout. Use an installed Whis release to check for updates.",
       }
     const detected = yield* method()
     if (!detected)

@@ -1,5 +1,4 @@
 import path from "node:path"
-import { OPENCODE_CHANNEL } from "./version"
 
 export function databasePath(data: string) {
   const filename = process.env.OPENCODE_DB ?? "opencode.db"
