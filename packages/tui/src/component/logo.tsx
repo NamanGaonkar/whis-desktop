@@ -1,16 +1,51 @@
 import { RGBA, TextAttributes } from "@opentui/core"
-import { For, type JSX } from "solid-js"
+import { createMemo, For, type JSX } from "solid-js"
 import { useTerminalDimensions } from "@opentui/solid"
-import { useTheme } from "../context/theme"
+import { useTheme, useThemes } from "../context/theme"
 import { tint } from "../theme/color"
 import { go, logo } from "../logo"
 
-// WHIS molten ember -> flame -> amber -> pale gold gradient banner
-const bannerColors = ["#7A3410", "#B45A16", "#E07B1F", "#FF9F1C", "#FFB84D", "#FFD166"]
+// WHIS molten ember -> flame -> amber -> pale gold gradient banner (dark mode)
+const whisDarkBannerColors = [
+  RGBA.fromHex("#7A3410"),
+  RGBA.fromHex("#B45A16"),
+  RGBA.fromHex("#E07B1F"),
+  RGBA.fromHex("#FF9F1C"),
+  RGBA.fromHex("#FFB84D"),
+  RGBA.fromHex("#FFD166"),
+]
+
+// WHIS amber -> flame gradient banner (light mode)
+const whisLightBannerColors = [
+  RGBA.fromHex("#99470E"),
+  RGBA.fromHex("#B45309"),
+  RGBA.fromHex("#C46831"),
+  RGBA.fromHex("#D37D4C"),
+  RGBA.fromHex("#E39266"),
+  RGBA.fromHex("#F2A77F"),
+]
 
 export function Logo() {
   const theme = useTheme()
+  const themes = useThemes()
   const dimensions = useTerminalDimensions()
+
+  const bannerColors = createMemo(() => {
+    const isWhis = !themes.selected || themes.selected === "whis"
+    const isLight = themes.mode?.() === "light"
+    if (isWhis) {
+      return isLight ? whisLightBannerColors : whisDarkBannerColors
+    }
+    const interactive = theme.hue?.interactive
+    if (interactive) {
+      const steps = isLight
+        ? ([100, 200, 300, 400, 500, 600] as const)
+        : ([700, 600, 500, 400, 300, 200] as const)
+      const list = steps.map((s) => interactive[s]).filter((c): c is RGBA => c !== undefined)
+      if (list.length === 6) return list
+    }
+    return isLight ? whisLightBannerColors : whisDarkBannerColors
+  })
 
   const renderLine = (line: string, fg: RGBA, bold: boolean): JSX.Element[] => {
     const shadow = tint(theme.background.base, fg, 0.25)
@@ -57,7 +92,8 @@ export function Logo() {
       {dimensions().height < 12 ? null : dimensions().width < 22 ? (
         <For each={go.right.slice(1)}>
           {(line, index) => {
-            const rowColor = RGBA.fromHex(bannerColors[index() % bannerColors.length] as `#${string}`)
+            const colors = bannerColors()
+            const rowColor = colors[index() % colors.length] ?? colors[0]
             return <box flexDirection="row">{renderLine(line, rowColor, true)}</box>
           }}
         </For>
@@ -65,13 +101,15 @@ export function Logo() {
         <>
           <For each={logo.left.slice(1)}>
             {(line, index) => {
-              const rowColor = RGBA.fromHex(bannerColors[index() % bannerColors.length] as `#${string}`)
+              const colors = bannerColors()
+              const rowColor = colors[index() % colors.length] ?? colors[0]
               return <box flexDirection="row">{renderLine(line, rowColor, true)}</box>
             }}
           </For>
           <For each={logo.right}>
             {(line, index) => {
-              const rowColor = RGBA.fromHex(bannerColors[index() % bannerColors.length] as `#${string}`)
+              const colors = bannerColors()
+              const rowColor = colors[index() % colors.length] ?? colors[0]
               return <box flexDirection="row">{renderLine(line, rowColor, true)}</box>
             }}
           </For>
@@ -79,7 +117,8 @@ export function Logo() {
       ) : (
         <For each={logo.left}>
           {(line, index) => {
-            const rowColor = RGBA.fromHex(bannerColors[index() % bannerColors.length] as `#${string}`)
+            const colors = bannerColors()
+            const rowColor = colors[index() % colors.length] ?? colors[0]
             return (
               <box flexDirection="row" gap={1}>
                 <box flexDirection="row">{renderLine(line, rowColor, true)}</box>

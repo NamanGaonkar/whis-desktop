@@ -1078,7 +1078,7 @@ function App() {
       {
         name: "server.pair",
         title: "Pair device",
-        slash: { name: "pair", aliases: ["web"] },
+
         run: () => {
           dialog.replace(() => <DialogPair />)
         },

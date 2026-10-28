@@ -247,7 +247,7 @@ export function SessionFrame(props: { sessionID: string; verticalTabsWidth: numb
               title: "New terminal",
               group: "Session",
               palette: true as const,
-              slash: { name: "terminal" },
+
               run: async () => {
                 dialog.clear()
                 await sessions.newTerminal(props.sessionID).catch(terminalError)
