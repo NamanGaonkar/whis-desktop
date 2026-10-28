@@ -117,7 +117,10 @@ export async function copyBuiltCliToResources(root: string, dest = windowsify("r
 // 200 MB binary on first launch.
 async function copyCliToResources(pkg: string, dest: string) {
   const cli = getCurrentCli()
-  await copyFile(join(pkg, "bin", cli.os === "win32" ? "opencode.exe" : "opencode"), dest)
+  const binName = cli.os === "win32" ? "whis.exe" : "whis";
+  const fallback = cli.os === "win32" ? "opencode.exe" : "opencode";
+  const src = fs.existsSync(path.join(pkg, "bin", binName)) ? path.join(pkg, "bin", binName) : path.join(pkg, "bin", fallback);
+  await copyFile(src, dest)
   await prepareCli(dest)
 
   const manifest = Option.getOrUndefined(
