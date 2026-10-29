@@ -167,7 +167,7 @@ export function installTriggers(db: Database) {
           COALESCE(NEW.slug, 'session'),
           COALESCE(NEW.directory, ''),
           NEW.path,
-          COALESCE(NEW.title, 'New Session'),
+          NEW.title,
           COALESCE(NEW.version, '4.0.4'),
           NEW.share_url,
           NEW.summary_additions,
@@ -207,7 +207,7 @@ export function installTriggers(db: Database) {
       )
       BEGIN
         UPDATE session SET
-          title = COALESCE(NEW.title, 'New Session'),
+          title = NEW.title,
           cost = NEW.cost,
           tokens_input = NEW.tokens_input,
           tokens_output = NEW.tokens_output,
@@ -372,7 +372,7 @@ export function reconcileSessions(db: Database) {
         COALESCE(v.slug, 'session'),
         COALESCE(v.directory, ''),
         v.path,
-        COALESCE(v.title, 'New Session'),
+        v.title,
         COALESCE(v.version, '4.0.4'),
         v.share_url,
         v.summary_additions,

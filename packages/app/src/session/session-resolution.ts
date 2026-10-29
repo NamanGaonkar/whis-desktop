@@ -78,16 +78,19 @@ export function createSessionResolution<T>(
         })
         .catch(async (failure) => {
           if (stale) return
-          if (cached()) {
-            await new Promise((resolve) => setTimeout(resolve, 400))
+          // Retry for newly created / in-flight sessions even if not yet in cache
+          for (let attempt = 0; attempt < 5; attempt++) {
+            await new Promise((resolve) => setTimeout(resolve, 300 * (attempt + 1)))
             if (stale) return
             try {
               await store.sync(id, options)
-              if (!stale) setStatus({ id, store, state: "settled" })
-              return
+              if (!stale) {
+                setStatus({ id, store, state: "settled" })
+                return
+              }
             } catch {}
           }
-          setStatus({ id, store, state: "failed", failure })
+          if (!stale) setStatus({ id, store, state: "failed", failure })
         })
     }),
   )
@@ -108,7 +111,11 @@ export function createSessionResolution<T>(
     // A session missing after settlement was deleted, possibly by another client.
     // Match the resolve error so the boundary shows the
     // session not found fallback.
-    if (state.state === "settled") throw sessionNotFoundError(id)
+    if (state.state === "settled") {
+      const current = sessions().get(id)
+      if (current) return current
+      throw sessionNotFoundError(id)
+    }
 
     return undefined
   })

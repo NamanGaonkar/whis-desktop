@@ -37,13 +37,23 @@ const conversationPrompt = (text: string) =>
   `Here is the conversation so far:\n\n<conversation>\n${text}\n</conversation>\n\nReply with only the title.`
 export const isUntitled = (session: SessionSchema.Info) =>
   !session.title ||
-  session.title === "New session" ||
-  session.title === "Child session" ||
+  session.title.toLowerCase() === "new session" ||
+  session.title.toLowerCase() === "child session" ||
   isFallbackTitle(session.title) ||
   isExactRootFallback({
     title: session.title,
     time: { created: DateTime.toEpochMillis(session.time.created) },
   })
+
+export const deriveContextTitle = (rawText: string) => {
+  const cleaned = rawText
+    .trim()
+    .split("\n")[0]
+    .replace(/^[#>\-\s*`_~]+/, "")
+    .replace(/[#*`_~]+/g, "")
+    .trim()
+  return cleaned.length > 0 ? truncate(cleaned) : undefined
+}
 
 export const layer = Layer.effect(
   Service,
@@ -106,16 +116,6 @@ export const layer = Layer.effect(
         .find((line) => line.length > 0)
     })
 
-    const deriveContextTitle = (rawText: string) => {
-      const cleaned = rawText
-        .trim()
-        .split("\n")[0]
-        .replace(/^[#>\-\s*`_~]+/, "")
-        .replace(/[#*`_~]+/g, "")
-        .trim()
-      return cleaned.length > 0 ? truncate(cleaned) : undefined
-    }
-
     const generate = Effect.fn("SessionTitle.generate")(function* (sessionID: SessionSchema.ID) {
       const session = yield* store.get(sessionID)
       if (!session) return
@@ -151,22 +151,19 @@ export const layer = Layer.effect(
             ? yield* attempt({ session, agent: selection.agent, text, model: selection.primary })
             : undefined))
         : undefined
-      const title = candidateTitle ?? deriveContextTitle(firstUser.text)
+      const title = candidateTitle
       if (!title) return
-      const expectedSequence = (yield* Bus.latestSequence(db, sessionID)) + 1
       const current = yield* store.get(sessionID)
-      if (!current || (!isUntitled(current) && current.title !== session.title) || current.title === truncate(title))
-        return
-      yield* bus
-        .publish(
-          SessionEvent.Renamed,
-          {
-            sessionID: session.id,
-            title: truncate(title),
-          },
-          { commit: (sequence) => (sequence === expectedSequence ? Effect.void : Effect.die(titleChanged)) },
-        )
-        .pipe(Effect.catchDefect((defect) => (defect === titleChanged ? Effect.void : Effect.die(defect))))
+      if (!current) return
+      const isEligibleToRename = (s: SessionSchema.Info) =>
+        isUntitled(s) ||
+        (s.metadata as Record<string, unknown> | undefined)?.autoTitle === true ||
+        s.title === session.title
+      if (!isEligibleToRename(current) || current.title === truncate(title)) return
+      yield* bus.publish(SessionEvent.Renamed, {
+        sessionID: session.id,
+        title: truncate(title),
+      })
     })
     return Service.of({ generate })
   }),

@@ -1,6 +1,6 @@
 export * as SessionTitleFallback from "./session-title-fallback.js"
 
-const pattern = /^(New session|Child session)( - \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)?$/
+const pattern = /^(New session|Child session)( - \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)?$/i
 
 interface Info {
   readonly title?: string
@@ -18,22 +18,29 @@ export function withTimestampedFallback(info: Info) {
 /** Supplies a compact human label and collapses historical timestamped fallbacks. */
 export function displayLabel(info: Pick<Info, "title" | "parentID">) {
   if (!info.title) return info.parentID ? "Child session" : "New session"
+  const normalized = info.title.trim().toLowerCase()
+  if (normalized === "new session") return "New session"
+  if (normalized === "child session") return "Child session"
   return info.title.match(pattern)?.[1] ?? info.title
 }
 
 /** Recognizes missing and historical root or child fallback titles. */
 export function isFallbackTitle(title?: string) {
-  return title === undefined || pattern.test(title) || title === "New session" || title === "Child session"
+  return (
+    title === undefined ||
+    pattern.test(title) ||
+    title.toLowerCase() === "new session" ||
+    title.toLowerCase() === "child session"
+  )
 }
 
 /** Recognizes a missing title or the exact root fallback for this session. */
 export function isExactRootFallback(info: Pick<Info, "title" | "time">) {
   return (
     info.title === undefined ||
-    info.title === "New session" ||
-    info.title === "Child session" ||
-    info.title === fallback({ time: info.time }) ||
-    pattern.test(info.title)
+    info.title.toLowerCase() === "new session" ||
+    info.title.toLowerCase() === "child session" ||
+    info.title === fallback({ time: info.time })
   )
 }
 

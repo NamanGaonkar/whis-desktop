@@ -29,6 +29,7 @@ import { SessionShell } from "./shell.js"
 import { SessionSkill } from "./skill.js"
 import { SessionSchema } from "./schema.js"
 import { SessionStore } from "./store.js"
+import { SessionTitle } from "./title.js"
 
 type PromptRequest = SessionPrompt.Input & {
   id?: SessionMessage.ID
@@ -156,6 +157,16 @@ export const make = Effect.fn("Session.make")(function* () {
     Effect.uninterruptibleMask((restore) =>
       Effect.gen(function* () {
         const session = yield* get(sessionID)
+        if (SessionTitle.isUntitled(session) && input.text) {
+          const immediateTitle = SessionTitle.deriveContextTitle(input.text)
+          if (immediateTitle) {
+            yield* bus.publish(SessionEvent.Renamed, { sessionID: session.id, title: immediateTitle })
+            yield* bus.publish(SessionEvent.MetadataUpdated, {
+              sessionID: session.id,
+              metadata: { ...(session.metadata ?? {}), autoTitle: true },
+            })
+          }
+        }
         const messageID = input.id ?? SessionMessage.ID.create()
         const admitted = yield* Effect.gen(function* () {
           const existing = yield* admission.reconcile({
