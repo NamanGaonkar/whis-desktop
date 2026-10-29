@@ -76,8 +76,18 @@ export function createSessionResolution<T>(
         .then(() => {
           if (!stale) setStatus({ id, store, state: "settled" })
         })
-        .catch((failure) => {
-          if (!stale) setStatus({ id, store, state: "failed", failure })
+        .catch(async (failure) => {
+          if (stale) return
+          if (cached()) {
+            await new Promise((resolve) => setTimeout(resolve, 400))
+            if (stale) return
+            try {
+              await store.sync(id, options)
+              if (!stale) setStatus({ id, store, state: "settled" })
+              return
+            } catch {}
+          }
+          setStatus({ id, store, state: "failed", failure })
         })
     }),
   )

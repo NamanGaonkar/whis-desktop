@@ -1493,6 +1493,8 @@ export function createData(config: CreateDataInput) {
         },
         sync(sessionID: string) {
           return sync.run(`session.pending:${sessionID}`, async () => {
+            const inFlight = creating.get(sessionID)
+            if (inFlight) await inFlight.catch(() => undefined)
             const updates = new Map<string, SessionInboxInfo | SessionInbox.Delivery | undefined>()
             pendingUpdates.set(sessionID, updates)
             try {
@@ -1684,6 +1686,8 @@ export function createData(config: CreateDataInput) {
       },
       sync(sessionID: string, options?: { children?: boolean }) {
         return sync.run(options?.children ? `session.family:${sessionID}` : `session:${sessionID}`, async () => {
+          const inFlight = creating.get(sessionID)
+          if (inFlight) await inFlight.catch(() => undefined)
           const [info, children] = await Promise.all([
             api().session.get({ sessionID }),
             options?.children ? listChildren({ parentID: sessionID, order: "desc", limit: CHILD_PAGE }) : [],
@@ -1718,6 +1722,8 @@ export function createData(config: CreateDataInput) {
         },
         sync(sessionID: string) {
           return sync.run(`session.message:${sessionID}`, async () => {
+            const inFlight = creating.get(sessionID)
+            if (inFlight) await inFlight.catch(() => undefined)
             let response: Awaited<ReturnType<ReturnType<typeof api>["message"]["list"]>>
             try {
               response = await api().message.list({

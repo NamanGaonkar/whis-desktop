@@ -7,7 +7,7 @@ import { Context, DateTime, Effect, Layer, Stream } from "effect"
 import { Database } from "../database/database.js"
 import { Bus } from "../bus.js"
 import { makeLocationNode } from "@opencode/util/effect/app-node"
-import { isExactRootFallback } from "@opencode/util/session-title-fallback"
+import { isExactRootFallback, isFallbackTitle } from "@opencode/util/session-title-fallback"
 import { llmClient } from "../effect/app-node-platform.js"
 import { SessionContext } from "./context.js"
 import { SessionEvent } from "./event.js"
@@ -36,6 +36,10 @@ const messagePrompt = (text: string) =>
 const conversationPrompt = (text: string) =>
   `Here is the conversation so far:\n\n<conversation>\n${text}\n</conversation>\n\nReply with only the title.`
 export const isUntitled = (session: SessionSchema.Info) =>
+  !session.title ||
+  session.title === "New session" ||
+  session.title === "Child session" ||
+  isFallbackTitle(session.title) ||
   isExactRootFallback({
     title: session.title,
     time: { created: DateTime.toEpochMillis(session.time.created) },
@@ -102,6 +106,16 @@ export const layer = Layer.effect(
         .find((line) => line.length > 0)
     })
 
+    const deriveContextTitle = (rawText: string) => {
+      const cleaned = rawText
+        .trim()
+        .split("\n")[0]
+        .replace(/^[#>\-\s*`_~]+/, "")
+        .replace(/[#*`_~]+/g, "")
+        .trim()
+      return cleaned.length > 0 ? truncate(cleaned) : undefined
+    }
+
     const generate = Effect.fn("SessionTitle.generate")(function* (sessionID: SessionSchema.ID) {
       const session = yield* store.get(sessionID)
       if (!session) return
@@ -131,16 +145,18 @@ export const layer = Layer.effect(
           )
         : messagePrompt(firstUser.text)
       const selection = yield* context.selectTitle(session)
-      if (!selection) return
-      const title =
-        (yield* attempt({ session, agent: selection.agent, text, model: selection.selected })) ??
-        (selection.primary && !isDeepStrictEqual(selection.selected.ref, selection.primary.ref)
-          ? yield* attempt({ session, agent: selection.agent, text, model: selection.primary })
-          : undefined)
+      const candidateTitle = selection
+        ? ((yield* attempt({ session, agent: selection.agent, text, model: selection.selected })) ??
+          (selection.primary && !isDeepStrictEqual(selection.selected.ref, selection.primary.ref)
+            ? yield* attempt({ session, agent: selection.agent, text, model: selection.primary })
+            : undefined))
+        : undefined
+      const title = candidateTitle ?? deriveContextTitle(firstUser.text)
       if (!title) return
       const expectedSequence = (yield* Bus.latestSequence(db, sessionID)) + 1
       const current = yield* store.get(sessionID)
-      if (!current || current.title !== session.title || current.title === truncate(title)) return
+      if (!current || (!isUntitled(current) && current.title !== session.title) || current.title === truncate(title))
+        return
       yield* bus
         .publish(
           SessionEvent.Renamed,

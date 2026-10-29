@@ -1,6 +1,6 @@
 export * as SessionTitleFallback from "./session-title-fallback.js"
 
-const pattern = /^(New session|Child session) - \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
+const pattern = /^(New session|Child session)( - \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)?$/
 
 interface Info {
   readonly title?: string
@@ -23,12 +23,18 @@ export function displayLabel(info: Pick<Info, "title" | "parentID">) {
 
 /** Recognizes missing and historical root or child fallback titles. */
 export function isFallbackTitle(title?: string) {
-  return title === undefined || pattern.test(title)
+  return title === undefined || pattern.test(title) || title === "New session" || title === "Child session"
 }
 
 /** Recognizes a missing title or the exact root fallback for this session. */
 export function isExactRootFallback(info: Pick<Info, "title" | "time">) {
-  return info.title === undefined || info.title === fallback({ time: info.time })
+  return (
+    info.title === undefined ||
+    info.title === "New session" ||
+    info.title === "Child session" ||
+    info.title === fallback({ time: info.time }) ||
+    pattern.test(info.title)
+  )
 }
 
 function fallback(info: Pick<Info, "parentID" | "time">) {
