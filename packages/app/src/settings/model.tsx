@@ -307,7 +307,7 @@ export const defaultSettings: Settings = {
   },
   voice: {
     autoSpeak: false,
-    voice: "en-US-ChristopherNeural",
+    voice: "",
     speed: 1.0,
     autoSend: false,
   },

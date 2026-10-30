@@ -8,39 +8,68 @@ export interface VoiceOption {
   isNatural: boolean
 }
 
-export const PRESET_VOICES: { id: string; name: string; match: string }[] = [
-  { id: "en-US-ChristopherNeural", name: "Christopher (Natural US Male)", match: "Christopher" },
-  { id: "en-US-JennyNeural", name: "Jenny (Natural US Female)", match: "Jenny" },
-  { id: "en-US-GuyNeural", name: "Guy (Natural US Male)", match: "Guy" },
-  { id: "en-US-EricNeural", name: "Eric (Natural US Male)", match: "Eric" },
-  { id: "en-US-AriaNeural", name: "Aria (Natural US Female)", match: "Aria" },
-  { id: "system-default", name: "System Default Voice", match: "" },
-]
-
 const [isSpeaking, setIsSpeaking] = createSignal(false)
 const [availableVoices, setAvailableVoices] = createSignal<VoiceOption[]>([])
 
 let currentUtterance: SpeechSynthesisUtterance | null = null
+let watchdogInterval: ReturnType<typeof setInterval> | null = null
+
+function cleanVoiceName(rawName: string, lang: string): string {
+  let name = rawName
+    .replace(/^Microsoft\s+/i, "")
+    .replace(/^Google\s+/i, "")
+    .replace(/\s+-\s+English\s+\(United States\)/i, "")
+    .replace(/\s+-\s+English\s+\(United Kingdom\)/i, " (UK)")
+    .replace(/\s+-\s+English\s+\(India\)/i, " (India)")
+    .replace(/\s+-\s+English\s+\(Australia\)/i, " (AU)")
+    .replace(/\s+Online\s+\(Natural\)/i, " (Natural)")
+
+  const langTag = lang ? ` [${lang}]` : ""
+  return `${name}${langTag}`
+}
 
 function updateVoices() {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return
   const raw = window.speechSynthesis.getVoices()
-  const options: VoiceOption[] = raw.map((v) => ({
+  if (!raw || raw.length === 0) return
+
+  const list: VoiceOption[] = raw.map((v) => ({
     id: v.name,
-    name: v.name,
+    name: cleanVoiceName(v.name, v.lang),
     lang: v.lang,
-    isNatural: v.name.toLowerCase().includes("natural") || v.name.toLowerCase().includes("neural"),
+    isNatural: v.name.toLowerCase().includes("natural") || v.name.toLowerCase().includes("online"),
   }))
-  setAvailableVoices(options)
+
+  // Prioritize English voices first, then natural/online, then alphabetical
+  list.sort((a, b) => {
+    const aEn = a.lang.toLowerCase().startsWith("en") ? 1 : 0
+    const bEn = b.lang.toLowerCase().startsWith("en") ? 1 : 0
+    if (aEn !== bEn) return bEn - aEn
+    if (a.isNatural !== b.isNatural) return a.isNatural ? -1 : 1
+    return a.name.localeCompare(b.name)
+  })
+
+  setAvailableVoices(list)
 }
 
 if (typeof window !== "undefined" && "speechSynthesis" in window) {
   updateVoices()
-  window.speechSynthesis.onvoiceschanged = updateVoices
+  window.speechSynthesis.onvoiceschanged = () => {
+    updateVoices()
+  }
 }
 
 export function useTextToSpeech() {
+  // Ensure voices are requested whenever hook is accessed
+  if (availableVoices().length === 0) {
+    updateVoices()
+  }
+
   function stop() {
+    if (watchdogInterval) {
+      clearInterval(watchdogInterval)
+      watchdogInterval = null
+    }
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return
     window.speechSynthesis.cancel()
     currentUtterance = null
@@ -53,7 +82,7 @@ export function useTextToSpeech() {
     stop()
 
     const text = normalizeForSpeech(rawText)
-    if (!text) return
+    if (!text.trim()) return
 
     const utterance = new SpeechSynthesisUtterance(text)
     currentUtterance = utterance
@@ -61,41 +90,63 @@ export function useTextToSpeech() {
     const rate = options?.speed ?? 1.0
     utterance.rate = Math.max(0.5, Math.min(2.0, rate))
 
-    const preferred = options?.voice ?? "en-US-ChristopherNeural"
+    const preferred = options?.voice
     const voices = window.speechSynthesis.getVoices()
 
-    let matchedVoice = voices.find((v) => v.name.includes(preferred))
+    let matchedVoice: SpeechSynthesisVoice | undefined
 
-    if (!matchedVoice) {
-      // Find preset voice match
-      const preset = PRESET_VOICES.find((p) => p.id === preferred)
-      if (preset && preset.match) {
-        matchedVoice = voices.find((v) => v.name.toLowerCase().includes(preset.match.toLowerCase()))
+    if (preferred && preferred.trim()) {
+      matchedVoice = voices.find((v) => v.name === preferred || v.voiceURI === preferred)
+      if (!matchedVoice) {
+        matchedVoice = voices.find((v) => v.name.toLowerCase().includes(preferred.toLowerCase()))
       }
     }
 
-    if (!matchedVoice) {
-      // Fallback: pick any natural or English voice
+    if (!matchedVoice && voices.length > 0) {
+      // Pick first English voice or default
       matchedVoice =
-        voices.find(
-          (v) =>
-            v.lang.startsWith("en") &&
-            (v.name.toLowerCase().includes("natural") || v.name.toLowerCase().includes("online")),
-        ) ?? voices.find((v) => v.lang.startsWith("en"))
+        voices.find((v) => v.default) ??
+        voices.find((v) => v.lang.toLowerCase().startsWith("en-us")) ??
+        voices.find((v) => v.lang.toLowerCase().startsWith("en")) ??
+        voices[0]
     }
 
     if (matchedVoice) {
       utterance.voice = matchedVoice
     }
 
-    utterance.onstart = () => setIsSpeaking(true)
+    utterance.onstart = () => {
+      setIsSpeaking(true)
+      // Watchdog interval keeps speech synthesis alive on long text in Chromium/Electron
+      if (watchdogInterval) clearInterval(watchdogInterval)
+      watchdogInterval = setInterval(() => {
+        if (typeof window !== "undefined" && window.speechSynthesis.speaking) {
+          window.speechSynthesis.pause()
+          window.speechSynthesis.resume()
+        } else if (watchdogInterval) {
+          clearInterval(watchdogInterval)
+          watchdogInterval = null
+        }
+      }, 8000)
+    }
+
     utterance.onend = () => {
+      if (watchdogInterval) {
+        clearInterval(watchdogInterval)
+        watchdogInterval = null
+      }
       if (currentUtterance === utterance) {
         currentUtterance = null
         setIsSpeaking(false)
       }
     }
-    utterance.onerror = () => {
+
+    utterance.onerror = (e) => {
+      console.warn("TTS utterance error:", e)
+      if (watchdogInterval) {
+        clearInterval(watchdogInterval)
+        watchdogInterval = null
+      }
       if (currentUtterance === utterance) {
         currentUtterance = null
         setIsSpeaking(false)

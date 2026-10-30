@@ -501,32 +501,16 @@ function MessageTimelineView(
                 </Show>
               </div>
               <div class="shrink-0 flex items-center gap-2">
-                <div class="flex items-center rounded-lg border border-v2-border-subtle bg-v2-background-bg-base p-0.5">
-                  <button
+                <Tooltip placement="bottom" value="Return to Chat">
+                  <IconButton
                     type="button"
-                    class="flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium transition-colors"
-                    classList={{
-                      "bg-v2-background-bg-surface-elevated text-v2-text-text-base shadow-xs": viewMode() === "chat",
-                      "text-v2-text-text-muted hover:text-v2-text-text-base": viewMode() !== "chat",
-                    }}
+                    variant="ghost-muted"
+                    size="large"
                     onClick={() => setViewMode("chat")}
-                  >
-                    <Icon name="bubble-5" size="small" />
-                    <span>Chat</span>
-                  </button>
-                  <button
-                    type="button"
-                    class="flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium transition-colors"
-                    classList={{
-                      "bg-v2-background-bg-surface-elevated text-v2-text-text-base shadow-xs": viewMode() === "graph",
-                      "text-v2-text-text-muted hover:text-v2-text-text-base": viewMode() !== "graph",
-                    }}
-                    onClick={() => setViewMode("graph")}
-                  >
-                    <Icon name="graph" size="small" />
-                    <span>Graph</span>
-                  </button>
-                </div>
+                    aria-label="Return to Chat"
+                    icon={<Icon name="bubble-5" />}
+                  />
+                </Tooltip>
               </div>
             </div>
           </SessionTitleHeader>
@@ -710,32 +694,20 @@ function MessageTimelineView(
                 {(_id) => (
                   <div class="shrink-0 flex items-center gap-2">
                     {props.search}
-                    <div class="flex items-center rounded-lg border border-v2-border-subtle bg-v2-background-bg-base p-0.5">
-                      <button
+                    <Tooltip
+                      placement="bottom"
+                      value={viewMode() === "graph" ? "Back to Chat" : "Codebase Knowledge Graph"}
+                    >
+                      <IconButton
                         type="button"
-                        class="flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium transition-colors"
-                        classList={{
-                          "bg-v2-background-bg-surface-elevated text-v2-text-text-base shadow-xs": viewMode() === "chat",
-                          "text-v2-text-text-muted hover:text-v2-text-text-base": viewMode() !== "chat",
-                        }}
-                        onClick={() => setViewMode("chat")}
-                      >
-                        <Icon name="bubble-5" size="small" />
-                        <span>Chat</span>
-                      </button>
-                      <button
-                        type="button"
-                        class="flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium transition-colors"
-                        classList={{
-                          "bg-v2-background-bg-surface-elevated text-v2-text-text-base shadow-xs": viewMode() === "graph",
-                          "text-v2-text-text-muted hover:text-v2-text-text-base": viewMode() !== "graph",
-                        }}
-                        onClick={() => setViewMode("graph")}
-                      >
-                        <Icon name="graph" size="small" />
-                        <span>Graph</span>
-                      </button>
-                    </div>
+                        variant="ghost-muted"
+                        size="large"
+                        state={viewMode() === "graph" ? "pressed" : undefined}
+                        onClick={() => setViewMode(viewMode() === "graph" ? "chat" : "graph")}
+                        aria-label="Toggle Codebase Knowledge Graph"
+                        icon={<Icon name="graph" />}
+                      />
+                    </Tooltip>
                     <ExtensionSlot
                       at="session.header"
                       input={{

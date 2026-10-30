@@ -40,7 +40,7 @@ export const ComposerVoiceInputButton: Component<{
     <Show when={stt.isSupported}>
       <Tooltip
         placement="top"
-        value={stt.isListening() ? "Listening... (Click to stop)" : "Voice Input (Click to speak)"}
+        value={stt.error() ?? (stt.isListening() ? "Listening... (Click to stop)" : "Voice Input (Click to speak)")}
       >
         <IconButton
           data-action="composer-voice-input"

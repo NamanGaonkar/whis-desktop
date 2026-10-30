@@ -4,6 +4,7 @@ import {
   onCleanup,
   onMount,
   Show,
+  For,
 } from "solid-js"
 import cytoscape, { type Core, type EventObject } from "cytoscape"
 import { Icon } from "@opencode/ui/icon"
@@ -11,6 +12,14 @@ import { IconButton } from "@opencode/ui/icon-button"
 import { Button } from "@opencode/ui/button"
 import { useServerSDK } from "@/runtime/server/client"
 import { scanCodebaseGraph, type GraphData, type GraphNode } from "./scanner"
+
+const KIND_COLORS: Record<string, string> = {
+  component: "#38bdf8",
+  module: "#e5a93c",
+  server: "#f43f5e",
+  config: "#10b981",
+  type: "#a855f7",
+}
 
 export const CodebaseKnowledgeGraph: Component<{
   directory?: string
@@ -20,6 +29,7 @@ export const CodebaseKnowledgeGraph: Component<{
   const client = useServerSDK()
   let containerRef: HTMLDivElement | undefined
   let cy: Core | null = null
+  let resizeObserver: ResizeObserver | null = null
 
   const [loading, setLoading] = createSignal(true)
   const [graphData, setGraphData] = createSignal<GraphData>({
@@ -30,13 +40,22 @@ export const CodebaseKnowledgeGraph: Component<{
   })
   const [selectedNode, setSelectedNode] = createSignal<GraphNode["data"] | null>(null)
   const [searchQuery, setSearchQuery] = createSignal("")
+  const [activeFilter, setActiveFilter] = createSignal<string>("all")
 
   async function loadGraph() {
     setLoading(true)
-    const data = await scanCodebaseGraph(client.api, props.directory)
-    setGraphData(data)
-    setLoading(false)
-    initCytoscape(data)
+    try {
+      const data = await scanCodebaseGraph(client.api, props.directory)
+      setGraphData(data)
+      setLoading(false)
+      // Small timeout allows DOM to compute dimensions before Cytoscape initializes
+      setTimeout(() => {
+        initCytoscape(data)
+      }, 50)
+    } catch (err) {
+      console.warn("Failed to load codebase graph:", err)
+      setLoading(false)
+    }
   }
 
   function initCytoscape(data: GraphData) {
@@ -47,25 +66,39 @@ export const CodebaseKnowledgeGraph: Component<{
       cy = null
     }
 
-    // Dynamic styling adapted from active CSS variables
     const isDark = typeof document !== "undefined" && !document.documentElement.classList.contains("light")
 
-    const nodeBg = isDark ? "#24201b" : "#f4efe9"
-    const nodeBorder = isDark ? "#4d4233" : "#d8cdbf"
-    const nodeText = isDark ? "#f0ebe1" : "#2a241c"
-    const edgeColor = isDark ? "#3f3528" : "#cfc2b2"
-    const accentColor = isDark ? "#e5a93c" : "#b87c14" // Whis gold accent
+    const nodeBg = isDark ? "#24201b" : "#fdfbf7"
+    const nodeText = isDark ? "#ede6dd" : "#2a241c"
+    const edgeColor = isDark ? "#3f362a" : "#d4c8b8"
+    const accentColor = "#e5a93c" // Whis gold
+
+    // Format elements with styling attributes
+    const formattedNodes = data.nodes.map((node) => {
+      const kind = node.data.kind ?? "module"
+      const color = KIND_COLORS[kind] ?? accentColor
+      const size = Math.max(26, Math.min(46, 26 + (node.data.degree ?? 0) * 3))
+
+      return {
+        data: {
+          ...node.data,
+          borderColor: color,
+          nodeBg,
+          nodeSize: size,
+        },
+      }
+    })
 
     cy = cytoscape({
       container: containerRef,
-      elements: [...data.nodes, ...data.edges],
+      elements: [...formattedNodes, ...data.edges],
       layout: {
         name: "cose",
         animate: true,
-        animationDuration: 800,
+        animationDuration: 600,
         randomize: false,
-        nodeRepulsion: () => 8000,
-        idealEdgeLength: () => 90,
+        nodeRepulsion: () => 12000,
+        idealEdgeLength: () => 80,
         edgeElasticity: () => 100,
         nestingFactor: 1.2,
       },
@@ -73,17 +106,20 @@ export const CodebaseKnowledgeGraph: Component<{
         {
           selector: "node",
           style: {
-            "background-color": nodeBg,
-            "border-color": nodeBorder,
-            "border-width": 1.5,
+            "background-color": "data(nodeBg)",
+            "border-color": "data(borderColor)",
+            "border-width": 2,
             label: "data(label)",
             color: nodeText,
-            "font-size": "11px",
-            "font-family": "ui-sans-serif, system-ui, sans-serif",
+            "font-size": "10px",
+            "font-family": "var(--font-family-mono, monospace)",
             "text-valign": "bottom",
-            "text-margin-y": 4,
-            width: 28,
-            height: 28,
+            "text-margin-y": 5,
+            width: "data(nodeSize)",
+            height: "data(nodeSize)",
+            shape: "round-rectangle",
+            "transition-property": "opacity, border-width, border-color, background-color",
+            "transition-duration": 0.2,
           },
         },
         {
@@ -91,7 +127,7 @@ export const CodebaseKnowledgeGraph: Component<{
           style: {
             "background-color": accentColor,
             "border-color": "#ffffff",
-            "border-width": 2.5,
+            "border-width": 3,
             color: accentColor,
             "font-weight": "bold",
           },
@@ -104,8 +140,10 @@ export const CodebaseKnowledgeGraph: Component<{
             "target-arrow-color": edgeColor,
             "target-arrow-shape": "triangle",
             "curve-style": "bezier",
-            "arrow-scale": 0.8,
-            opacity: 0.8,
+            "arrow-scale": 0.75,
+            opacity: 0.75,
+            "transition-property": "line-color, width, opacity",
+            "transition-duration": 0.2,
           },
         },
         {
@@ -123,34 +161,75 @@ export const CodebaseKnowledgeGraph: Component<{
     cy.on("tap", "node", (event: EventObject) => {
       const node = event.target
       setSelectedNode(node.data())
+
+      // Highlight immediate neighborhood and dim others
+      if (cy) {
+        const neighborhood = node.neighborhood().add(node)
+        cy.elements().style({ opacity: 0.25 })
+        neighborhood.style({ opacity: 1 })
+        node.connectedEdges().style({ "line-color": accentColor, "target-arrow-color": accentColor, width: 2 })
+      }
     })
 
     cy.on("tap", (event: EventObject) => {
       if (event.target === cy) {
         setSelectedNode(null)
+        if (cy) {
+          cy.elements().style({ opacity: 1 })
+          cy.edges().style({ width: 1.2, "line-color": edgeColor, "target-arrow-color": edgeColor })
+        }
       }
     })
+
+    // Resize and fit nicely
+    cy.resize()
+    cy.fit(undefined, 40)
   }
 
   function handleSearch(query: string) {
     setSearchQuery(query)
-    if (!cy || !query.trim()) return
+    if (!cy) return
 
+    if (!query.trim()) {
+      cy.elements().style({ opacity: 1 })
+      return
+    }
+
+    const lower = query.toLowerCase()
     const matched = cy.nodes().filter((n) => {
       const label = (n.data("label") || "").toLowerCase()
       const path = (n.data("path") || "").toLowerCase()
-      return label.includes(query.toLowerCase()) || path.includes(query.toLowerCase())
+      return label.includes(lower) || path.includes(lower)
     })
 
     if (matched.length > 0) {
+      cy.elements().style({ opacity: 0.2 })
+      matched.style({ opacity: 1 })
+      matched.connectedEdges().style({ opacity: 0.7 })
+
       cy.animate({
         center: { eles: matched.first() },
-        zoom: 1.5,
-        duration: 400,
+        zoom: 1.4,
+        duration: 350,
       })
       matched.first().select()
       setSelectedNode(matched.first().data())
     }
+  }
+
+  function filterByKind(kind: string) {
+    setActiveFilter(kind)
+    if (!cy) return
+
+    if (kind === "all") {
+      cy.elements().style({ opacity: 1 })
+      return
+    }
+
+    const matched = cy.nodes().filter((n) => n.data("kind") === kind)
+    cy.elements().style({ opacity: 0.2 })
+    matched.style({ opacity: 1 })
+    matched.connectedEdges().style({ opacity: 0.6 })
   }
 
   function zoomIn() {
@@ -162,14 +241,28 @@ export const CodebaseKnowledgeGraph: Component<{
   }
 
   function fitView() {
-    cy?.fit(undefined, 30)
+    cy?.fit(undefined, 40)
   }
 
   onMount(() => {
     void loadGraph()
+
+    // Watch for size changes so Cytoscape never renders blank or misaligned
+    if (containerRef && typeof ResizeObserver !== "undefined") {
+      resizeObserver = new ResizeObserver(() => {
+        if (cy && containerRef && containerRef.clientWidth > 0 && containerRef.clientHeight > 0) {
+          cy.resize()
+        }
+      })
+      resizeObserver.observe(containerRef)
+    }
   })
 
   onCleanup(() => {
+    if (resizeObserver) {
+      resizeObserver.disconnect()
+      resizeObserver = null
+    }
     if (cy) {
       cy.destroy()
       cy = null
@@ -178,29 +271,67 @@ export const CodebaseKnowledgeGraph: Component<{
 
   return (
     <div class="relative w-full h-full flex flex-col bg-v2-background-bg-base overflow-hidden select-none">
-      {/* Top Action Bar */}
-      <div class="flex items-center justify-between px-3 py-2 border-b border-v2-border-subtle bg-v2-background-bg-surface-elevated z-10">
+      {/* Top Floating Glassmorphic Toolbar */}
+      <div class="absolute top-3 left-3 right-3 z-10 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-v2-border-subtle bg-v2-background-bg-surface-elevated/90 px-3 py-2 shadow-lg backdrop-blur-md">
         <div class="flex items-center gap-2">
-          <Icon name="graph" size="small" class="text-v2-accent" />
-          <span class="text-xs font-semibold text-v2-text-text-base">Codebase Graph</span>
-          <span class="text-[11px] text-v2-text-text-muted">
-            ({graphData().fileCount} modules · {graphData().dependencyCount} links)
-          </span>
-        </div>
-
-        <div class="flex items-center gap-2">
-          {/* Search filter */}
+          {/* Search box */}
           <div class="relative flex items-center">
+            <Icon name="magnifying-glass" size="small" class="absolute left-2.5 text-v2-text-text-muted pointer-events-none" />
             <input
               type="text"
-              placeholder="Search files or modules..."
+              placeholder="Filter modules..."
               value={searchQuery()}
               onInput={(e) => handleSearch(e.currentTarget.value)}
-              class="h-7 w-48 sm:w-64 rounded-md border border-v2-border-subtle bg-v2-background-bg-base px-2.5 text-xs text-v2-text-text-base placeholder:text-v2-text-text-muted focus:outline-none focus:border-v2-accent"
+              class="h-7 w-40 sm:w-56 rounded-md border border-v2-border-subtle bg-v2-background-bg-base ps-8 pe-2.5 text-xs text-v2-text-text-base placeholder:text-v2-text-text-muted focus:outline-none focus:border-v2-accent"
             />
           </div>
 
-          {/* Controls */}
+          {/* Quick filter chips */}
+          <div class="hidden sm:flex items-center gap-1 text-[11px]">
+            <button
+              type="button"
+              class="px-2 py-0.5 rounded-md transition-colors"
+              classList={{
+                "bg-v2-accent/15 text-v2-accent font-medium": activeFilter() === "all",
+                "text-v2-text-text-muted hover:text-v2-text-text-base": activeFilter() !== "all",
+              }}
+              onClick={() => filterByKind("all")}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              class="px-2 py-0.5 rounded-md transition-colors flex items-center gap-1"
+              classList={{
+                "bg-[#38bdf8]/15 text-[#38bdf8] font-medium": activeFilter() === "component",
+                "text-v2-text-text-muted hover:text-v2-text-text-base": activeFilter() !== "component",
+              }}
+              onClick={() => filterByKind("component")}
+            >
+              <span class="w-1.5 h-1.5 rounded-full bg-[#38bdf8]" />
+              UI
+            </button>
+            <button
+              type="button"
+              class="px-2 py-0.5 rounded-md transition-colors flex items-center gap-1"
+              classList={{
+                "bg-[#e5a93c]/15 text-[#e5a93c] font-medium": activeFilter() === "module",
+                "text-v2-text-text-muted hover:text-v2-text-text-base": activeFilter() !== "module",
+              }}
+              onClick={() => filterByKind("module")}
+            >
+              <span class="w-1.5 h-1.5 rounded-full bg-[#e5a93c]" />
+              Logic
+            </button>
+          </div>
+        </div>
+
+        {/* Right Stats & Controls */}
+        <div class="flex items-center gap-2">
+          <span class="text-[11px] text-v2-text-text-muted font-mono">
+            {graphData().fileCount} files · {graphData().dependencyCount} links
+          </span>
+
           <div class="flex items-center border-s border-v2-border-subtle ps-2 gap-1">
             <IconButton
               icon={<Icon name="plus" size="small" />}
@@ -223,27 +354,58 @@ export const CodebaseKnowledgeGraph: Component<{
               aria-label="Fit view"
               onClick={fitView}
             />
+            <IconButton
+              icon={<Icon name="arrow-clockwise" size="small" />}
+              size="small"
+              variant="ghost-muted"
+              aria-label="Rescan"
+              onClick={() => void loadGraph()}
+            />
           </div>
         </div>
       </div>
 
-      {/* Graph Canvas */}
-      <div class="relative flex-1 w-full h-full">
+      {/* Graph Canvas Container */}
+      <div
+        class="relative flex-1 w-full h-full"
+        style={{
+          "background-image": "radial-gradient(circle, var(--v2-border-subtle) 1px, transparent 1px)",
+          "background-size": "24px 24px",
+        }}
+      >
         <Show when={loading()}>
-          <div class="absolute inset-0 z-20 flex flex-col items-center justify-center bg-v2-background-bg-base/70 backdrop-blur-xs">
-            <span class="text-xs text-v2-text-text-muted animate-pulse">Scanning project modules...</span>
+          <div class="absolute inset-0 z-20 flex flex-col items-center justify-center bg-v2-background-bg-base/75 backdrop-blur-xs gap-3">
+            <div class="w-6 h-6 border-2 border-v2-accent border-t-transparent rounded-full animate-spin" />
+            <span class="text-xs text-v2-text-text-muted font-mono">Mapping codebase architecture...</span>
           </div>
         </Show>
+
+        <Show when={!loading() && graphData().fileCount === 0}>
+          <div class="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 p-4">
+            <Icon name="graph" size="large" class="text-v2-text-text-muted opacity-40" />
+            <span class="text-xs text-v2-text-text-muted">No code files detected in this workspace directory.</span>
+            <Button variant="outline" size="small" onClick={() => void loadGraph()}>
+              Scan Again
+            </Button>
+          </div>
+        </Show>
+
         <div ref={containerRef} class="w-full h-full" />
 
-        {/* Selected Node Drawer */}
+        {/* Selected Node Detail Drawer */}
         <Show when={selectedNode()}>
           {(node) => (
-            <div class="absolute bottom-4 right-4 z-20 w-80 rounded-xl border border-v2-border-subtle bg-v2-background-bg-surface-elevated p-4 shadow-xl backdrop-blur-md">
+            <div class="absolute bottom-4 right-4 z-20 w-80 rounded-xl border border-v2-border-subtle bg-v2-background-bg-surface-elevated/95 p-4 shadow-2xl backdrop-blur-md">
               <div class="flex items-start justify-between gap-2 mb-2">
                 <div class="min-w-0">
-                  <h4 class="text-xs font-semibold text-v2-text-text-base truncate">{node().label}</h4>
-                  <p class="text-[11px] text-v2-text-text-muted truncate">{node().path}</p>
+                  <div class="flex items-center gap-1.5">
+                    <span
+                      class="w-2 h-2 rounded-full"
+                      style={{ "background-color": KIND_COLORS[node().kind ?? "module"] ?? "#e5a93c" }}
+                    />
+                    <h4 class="text-xs font-semibold text-v2-text-text-base truncate font-mono">{node().label}</h4>
+                  </div>
+                  <p class="text-[11px] text-v2-text-text-muted truncate mt-0.5 font-mono">{node().path}</p>
                 </div>
                 <IconButton
                   icon={<Icon name="close" size="small" />}
@@ -255,12 +417,15 @@ export const CodebaseKnowledgeGraph: Component<{
               </div>
 
               <div class="flex items-center gap-2 my-3 text-[11px] text-v2-text-text-muted">
-                <span class="px-2 py-0.5 rounded-md bg-v2-background-bg-base border border-v2-border-subtle">
-                  {node().ext ? `.${node().ext}` : "module"}
+                <span class="px-2 py-0.5 rounded-md bg-v2-background-bg-base border border-v2-border-subtle font-mono">
+                  {node().ext ? `.${node().ext}` : "file"}
                 </span>
-                <Show when={node().package}>
-                  <span class="px-2 py-0.5 rounded-md bg-v2-background-bg-base border border-v2-border-subtle">
-                    pkg: {node().package}
+                <span class="px-2 py-0.5 rounded-md bg-v2-background-bg-base border border-v2-border-subtle font-mono">
+                  {node().kind ?? "module"}
+                </span>
+                <Show when={node().degree !== undefined && node().degree! > 0}>
+                  <span class="px-2 py-0.5 rounded-md bg-v2-background-bg-base border border-v2-border-subtle font-mono">
+                    {node().degree} connections
                   </span>
                 </Show>
               </div>
@@ -269,7 +434,7 @@ export const CodebaseKnowledgeGraph: Component<{
                 <Button
                   variant="contrast"
                   size="small"
-                  class="w-full justify-center gap-1.5"
+                  class="w-full justify-center gap-1.5 mt-2"
                   onClick={() => {
                     props.onSelectModule?.(node().path ?? node().id)
                   }}

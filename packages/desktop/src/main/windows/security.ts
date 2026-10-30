@@ -3,7 +3,14 @@ import { SidecarCredentials } from "../service/sidecar-credentials"
 import { addRendererHeaders, hasHeader, upsertHeader } from "./headers"
 import { isRendererUrl } from "./scheme"
 
-const rendererPermissions = new Set(["clipboard-sanitized-write", "notifications"])
+const rendererPermissions = new Set([
+  "clipboard-sanitized-write",
+  "notifications",
+  "media",
+  "audioCapture",
+  "speech",
+  "microphone",
+])
 
 export function allowRendererPermissions(win: BrowserWindow) {
   const webContentsId = win.webContents.id

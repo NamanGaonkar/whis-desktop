@@ -7,7 +7,7 @@ import { useLanguage } from "@/runtime/i18n/language"
 import { SettingsList } from "@/settings/list"
 import { SettingsRow } from "@/settings/row"
 import { useSettings } from "@/settings/model"
-import { PRESET_VOICES, useTextToSpeech } from "@/runtime/speech/tts"
+import { useTextToSpeech, type VoiceOption } from "@/runtime/speech/tts"
 import "@/settings/settings.css"
 
 const speedOptions = [
@@ -22,15 +22,17 @@ export const SettingsVoice: Component = () => {
   const settings = useSettings()
   const tts = useTextToSpeech()
 
-  const voiceOptions = createMemo(() => {
-    const list = [...PRESET_VOICES]
-    const detected = tts.availableVoices()
-    for (const v of detected) {
-      if (!list.some((item) => item.id === v.id)) {
-        list.push({ id: v.id, name: v.name, match: v.name })
-      }
-    }
-    return list
+  const voiceOptions = createMemo((): VoiceOption[] => {
+    const list = tts.availableVoices()
+    if (list.length > 0) return list
+    return [{ id: "", name: "Default System Voice", lang: "en", isNatural: false }]
+  })
+
+  const selectedVoice = createMemo(() => {
+    const currentId = settings.voice.voice()
+    const options = voiceOptions()
+    if (!currentId) return options[0]
+    return options.find((opt) => opt.id === currentId) ?? options[0]
   })
 
   function handleTestVoice() {
@@ -72,12 +74,16 @@ export const SettingsVoice: Component = () => {
               <Select
                 data-action="settings-voice-select"
                 options={voiceOptions()}
-                current={voiceOptions().find((opt) => opt.id === settings.voice.voice()) ?? voiceOptions()[0]}
+                current={selectedVoice()}
                 value={(opt) => opt.id}
                 label={(opt) => opt.name}
                 placement="bottom-end"
                 gutter={6}
-                onSelect={(opt) => opt && settings.voice.setVoice(opt.id)}
+                onSelect={(opt) => {
+                  if (opt) {
+                    settings.voice.setVoice(opt.id)
+                  }
+                }}
               />
               <Button
                 type="button"
