@@ -32,17 +32,16 @@ export function useSpeechToText() {
   let animFrameId: number | null = null
   let recognition: any = null
   let speechResultCleanup: (() => void) | null = null
-  let silenceTimer: ReturnType<typeof setTimeout> | null = null
-  let userHasSpoken = false
+  let autoSendIntervalId: ReturnType<typeof setInterval> | null = null
 
   function cleanupAudio() {
     if (animFrameId) {
       cancelAnimationFrame(animFrameId)
       animFrameId = null
     }
-    if (silenceTimer) {
-      clearTimeout(silenceTimer)
-      silenceTimer = null
+    if (autoSendIntervalId) {
+      clearInterval(autoSendIntervalId)
+      autoSendIntervalId = null
     }
     if (activeStream) {
       activeStream.getTracks().forEach((track) => track.stop())
@@ -55,7 +54,6 @@ export function useSpeechToText() {
       audioCtx = null
     }
     analyser = null
-    userHasSpoken = false
     setAudioLevel(0)
   }
 
@@ -90,12 +88,19 @@ export function useSpeechToText() {
     onTranscript: (text: string, isFinal: boolean) => void
     onAutoSend?: () => void
     autoSendEnabled?: boolean
+    getEditorText?: () => string
   }) {
     stop()
     setError(null)
-    userHasSpoken = false
 
-    // 1. Acquire live microphone stream for Audio Analysis & VAD (Silence Detection)
+    const initialText = options.getEditorText ? options.getEditorText().trim() : ""
+    let lastSpeechOrTextTime = Date.now()
+    let hasSpoken = false
+    let ambientNoiseFloor = 10
+    let noiseSamples = 0
+    let lastRecordedTextLength = initialText.length
+
+    // 1. Acquire live microphone stream for Audio Analysis
     let stream: MediaStream | null = null
     if (typeof navigator !== "undefined" && navigator.mediaDevices?.getUserMedia) {
       try {
@@ -117,7 +122,7 @@ export function useSpeechToText() {
 
     setIsListening(true)
 
-    // 2. Set up Web Audio Analyser for Real-time Voice Activity Detection (VAD)
+    // 2. Set up Web Audio Analyser
     if (stream && typeof AudioContext !== "undefined") {
       try {
         const ctx = new AudioContext()
@@ -140,21 +145,15 @@ export function useSpeechToText() {
           const avg = sum / buffer.length
           setAudioLevel(Math.min(100, Math.round((avg / 128) * 100)))
 
-          // Speech detection threshold
-          if (avg > 14) {
-            userHasSpoken = true
-            if (silenceTimer) {
-              clearTimeout(silenceTimer)
-              silenceTimer = null
-            }
-          } else if (userHasSpoken && options.autoSendEnabled && options.onAutoSend) {
-            // User was speaking, now there is silence
-            if (!silenceTimer) {
-              silenceTimer = setTimeout(() => {
-                stop()
-                options.onAutoSend?.()
-              }, 1500)
-            }
+          // Adaptive noise floor calibration
+          if (noiseSamples < 30) {
+            ambientNoiseFloor = Math.max(8, (ambientNoiseFloor * noiseSamples + avg) / (noiseSamples + 1))
+            noiseSamples++
+          }
+
+          // Real speech detected by audio volume
+          if (avg > ambientNoiseFloor + 12) {
+            lastSpeechOrTextTime = Date.now()
           }
 
           animFrameId = requestAnimationFrame(monitorAudio)
@@ -162,29 +161,28 @@ export function useSpeechToText() {
 
         monitorAudio()
       } catch (err) {
-        console.warn("AudioContext analyzer setup failed:", err)
+        console.warn("AudioContext setup failed:", err)
       }
     }
 
-    // 3. Prefer Native Electron Speech Recognition (Windows System.Speech)
+    // 3. Trigger Native Windows Voice Typing (Win + H) if running in Desktop Electron
     const electronSpeech = typeof window !== "undefined" ? (window as IWindowWithSpeech).electron?.speech : undefined
-
     if (electronSpeech) {
       try {
         speechResultCleanup = electronSpeech.onResult((text: string) => {
           if (text && text.trim()) {
-            userHasSpoken = true
+            hasSpoken = true
+            lastSpeechOrTextTime = Date.now()
             options.onTranscript(text.trim(), true)
           }
         })
         electronSpeech.start()
-        return
       } catch (err) {
         console.warn("Native electron speech start failed:", err)
       }
     }
 
-    // 4. Web Speech API Fallback
+    // 4. Web Speech API (runs in parallel or as fallback)
     const SpeechRec =
       (window as IWindowWithSpeech).webkitSpeechRecognition ||
       (window as IWindowWithSpeech).SpeechRecognition
@@ -210,10 +208,12 @@ export function useSpeechToText() {
           }
 
           if (finalChunk) {
-            userHasSpoken = true
+            hasSpoken = true
+            lastSpeechOrTextTime = Date.now()
             options.onTranscript(finalChunk, true)
           } else if (interimChunk) {
-            userHasSpoken = true
+            hasSpoken = true
+            lastSpeechOrTextTime = Date.now()
             options.onTranscript(interimChunk, false)
           }
         }
@@ -238,6 +238,39 @@ export function useSpeechToText() {
         console.warn("SpeechRec start failed:", err)
       }
     }
+
+    // 5. Rock-Solid Auto-Send Monitor Loop (100ms interval)
+    // Tracks both dictated text growth in the editor and speech pause duration
+    autoSendIntervalId = setInterval(() => {
+      const now = Date.now()
+      const currentEditorText = options.getEditorText ? options.getEditorText().trim() : ""
+      const currentLength = currentEditorText.length
+
+      // Detect if text was dictated or typed into editor
+      if (currentLength > 0) {
+        if (currentLength !== lastRecordedTextLength) {
+          hasSpoken = true
+          lastSpeechOrTextTime = now
+          lastRecordedTextLength = currentLength
+        }
+      }
+
+      // If user has dictated text and auto-send is enabled:
+      if (hasSpoken && currentLength > 0 && options.autoSendEnabled !== false && options.onAutoSend) {
+        const silenceDuration = now - lastSpeechOrTextTime
+        // 1.0s silence after speech completion = Send immediately
+        if (silenceDuration >= 1000) {
+          stop()
+          options.onAutoSend()
+          return
+        }
+      }
+
+      // Safety: Idle timeout if user opened mic but never spoke for 15 seconds
+      if (!hasSpoken && now - lastSpeechOrTextTime > 15000) {
+        stop()
+      }
+    }, 100)
   }
 
   return {

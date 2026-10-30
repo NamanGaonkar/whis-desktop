@@ -783,35 +783,53 @@ export function AssistantTextContent(props: {
               label={i18n.t("ui.message.voice")}
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => {
-                if (typeof window !== "undefined" && "speechSynthesis" in window) {
-                  if (window.speechSynthesis.speaking) {
-                    window.speechSynthesis.cancel()
-                  } else {
-                    const clean = normalizeForSpeech(props.text)
-                    if (!clean) return
-                    const utt = new SpeechSynthesisUtterance(clean)
-                    const preferredVoice = (typeof localStorage !== "undefined" && localStorage.getItem("whis_voice")) || ""
-                    const speed = (typeof localStorage !== "undefined" && parseFloat(localStorage.getItem("whis_speed") || "1.0")) || 1.0
-                    utt.rate = Math.max(0.5, Math.min(2.0, speed))
-                    const voices = window.speechSynthesis.getVoices()
-                    let chosen: SpeechSynthesisVoice | undefined
-                    if (preferredVoice && preferredVoice.trim()) {
-                      const pv = preferredVoice.trim().toLowerCase()
-                      chosen =
-                        voices.find((v) => v.name === preferredVoice || v.voiceURI === preferredVoice) ??
-                        voices.find((v) => v.name.toLowerCase() === pv || v.voiceURI.toLowerCase() === pv) ??
-                        voices.find((v) => v.name.toLowerCase().includes(pv) || pv.includes(v.name.toLowerCase()))
-                    }
-                    if (!chosen && voices.length > 0) {
-                      chosen =
-                        voices.find((v) => v.default) ??
-                        voices.find((v) => v.lang.toLowerCase().startsWith("en-us")) ??
-                        voices.find((v) => v.lang.toLowerCase().startsWith("en")) ??
-                        voices[0]
-                    }
-                    if (chosen) utt.voice = chosen
-                    window.speechSynthesis.speak(utt)
+                if (typeof window === "undefined" || !("speechSynthesis" in window)) return
+                if (window.speechSynthesis.speaking) {
+                  window.speechSynthesis.cancel()
+                  return
+                }
+
+                const clean = normalizeForSpeech(props.text)
+                if (!clean) return
+
+                function executeSpeak() {
+                  if (typeof window === "undefined" || !("speechSynthesis" in window)) return
+                  window.speechSynthesis.cancel()
+                  const utt = new SpeechSynthesisUtterance(clean)
+                  const preferredVoice = (typeof localStorage !== "undefined" && localStorage.getItem("whis_voice")) || ""
+                  const speed = (typeof localStorage !== "undefined" && parseFloat(localStorage.getItem("whis_speed") || "1.0")) || 1.0
+                  utt.rate = Math.max(0.5, Math.min(2.0, speed))
+
+                  const voices = window.speechSynthesis.getVoices()
+                  let chosen: SpeechSynthesisVoice | undefined
+                  if (preferredVoice && preferredVoice.trim()) {
+                    const pv = preferredVoice.trim().toLowerCase()
+                    const cleanPV = pv.replace(/microsoft|google|desktop/gi, "").trim()
+                    chosen =
+                      voices.find((v) => v.name === preferredVoice || v.voiceURI === preferredVoice) ??
+                      voices.find((v) => v.name.toLowerCase() === pv || v.voiceURI.toLowerCase() === pv) ??
+                      voices.find((v) => v.name.toLowerCase().includes(pv) || pv.includes(v.name.toLowerCase())) ??
+                      voices.find((v) => cleanPV && v.name.toLowerCase().includes(cleanPV))
                   }
+                  if (!chosen && voices.length > 0) {
+                    chosen =
+                      voices.find((v) => v.default) ??
+                      voices.find((v) => v.lang.toLowerCase().startsWith("en-us")) ??
+                      voices.find((v) => v.lang.toLowerCase().startsWith("en")) ??
+                      voices[0]
+                  }
+                  if (chosen) utt.voice = chosen
+                  window.speechSynthesis.speak(utt)
+                }
+
+                const initialVoices = window.speechSynthesis.getVoices()
+                if (initialVoices.length === 0) {
+                  window.speechSynthesis.onvoiceschanged = () => {
+                    executeSpeak()
+                  }
+                  setTimeout(executeSpeak, 60)
+                } else {
+                  executeSpeak()
                 }
               }}
               aria-label={i18n.t("ui.message.voice")}

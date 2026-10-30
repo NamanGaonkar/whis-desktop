@@ -183,25 +183,6 @@ function MessageTimelineView(
     ),
   )
 
-  onMount(() => {
-    const handleVoiceCommand = (e: Event) => {
-      const customEvent = e as CustomEvent<{ command: string }>
-      const cmd = customEvent.detail?.command
-      if (cmd === "show-graph") {
-        setViewMode("graph")
-      } else if (cmd === "show-chat") {
-        setViewMode("chat")
-      } else if (cmd === "new-session") {
-        const btn = document.querySelector<HTMLButtonElement>('[data-action="new-session"]')
-        btn?.click()
-      }
-    }
-    window.addEventListener("whis:command", handleVoiceCommand)
-    onCleanup(() => {
-      window.removeEventListener("whis:command", handleVoiceCommand)
-    })
-  })
-
   const project = createMemo(() => {
     const session = props.session.data.info()
     const projects = server.ctx.sync.data.project

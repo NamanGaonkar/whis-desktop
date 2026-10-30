@@ -215,10 +215,18 @@ export async function scanCodebaseGraph(
   for (let i = 0; i < inspectionLimit; i++) {
     const filePath = validFiles[i]
     try {
-      const fileBytes = await client.file.read({
-        location: loc,
-        path: filePath,
-      })
+      const cleanPath = filePath.replace(/^[/\\]+/, "").replaceAll("\\", "/")
+      let fileBytes: Uint8Array | undefined
+      try {
+        fileBytes = await client.file.read({
+          location: loc,
+          path: cleanPath,
+        })
+      } catch {
+        fileBytes = await client.file.read({
+          path: cleanPath,
+        })
+      }
 
       const content = fileBytes ? new TextDecoder().decode(fileBytes) : ""
       if (!content) continue
@@ -306,7 +314,7 @@ export async function scanCodebaseGraph(
         imports,
       })
     } catch {
-      // Skip unreadable files
+      // Continue to next file
     }
   }
 
@@ -315,13 +323,13 @@ export async function scanCodebaseGraph(
     for (const importSpec of item.imports) {
       if (importSpec.startsWith("@") && !importSpec.includes("/")) continue
 
+      const specBase = importSpec.split(/[/\\]/).at(-1)?.replace(/\.[a-zA-Z0-9]+$/, "")
+      if (!specBase) continue
+
       const matchedTarget = validFiles.find((f) => {
-        if (importSpec.startsWith(".")) {
-          const specBase = importSpec.split(/[/\\]/).at(-1)
-          return f !== item.filePath && Boolean(specBase && f.includes(specBase))
-        }
-        const specBase = importSpec.split(/[/\\]/).at(-1)
-        return f !== item.filePath && Boolean(specBase && f.includes(specBase))
+        if (f === item.filePath) return false
+        const targetBase = f.split(/[/\\]/).at(-1)?.replace(/\.[a-zA-Z0-9]+$/, "")
+        return targetBase === specBase
       })
 
       if (matchedTarget) {
@@ -330,12 +338,10 @@ export async function scanCodebaseGraph(
     }
   }
 
-  // Pass 3: Cross-Reference Symbol Linking (Especially for Go, Python, Rust where files share packages)
-  // Build symbol registry: Map<SymbolName, FilePath[]>
+  // Pass 3: Cross-Reference Symbol Linking
   const symbolToFile = new Map<string, string[]>()
   for (const item of fileCache) {
     for (const sym of item.symbols) {
-      // Only index meaningful symbols (>3 chars, not generic keywords)
       if (sym.length < 4) continue
       if (["init", "main", "test", "data", "type", "error"].includes(sym.toLowerCase())) continue
       const list = symbolToFile.get(sym) ?? []
@@ -344,56 +350,111 @@ export async function scanCodebaseGraph(
     }
   }
 
-  // For each file, check if it invokes or references symbols declared in other files
   for (const item of fileCache) {
     for (const [sym, declaringFiles] of symbolToFile.entries()) {
       for (const targetFile of declaringFiles) {
         if (targetFile === item.filePath) continue
-
-        // Quick word boundary check
         const regex = new RegExp(`\\b${sym}\\b`)
         if (regex.test(item.content)) {
           addEdge(item.filePath, targetFile, "dependency")
         }
       }
     }
+  }
 
-    // Connect test files to implementation files (e.g., foo_test.go -> foo.go)
-    const baseName = item.filePath.replace(/([._-](?:test|spec))?\.[a-zA-Z0-9]+$/, "")
-    const targetImp = validFiles.find((f) => {
-      if (f === item.filePath) return false
-      const targetBase = f.replace(/([._-](?:test|spec))?\.[a-zA-Z0-9]+$/, "")
-      return targetBase === baseName
+  // Pass 4: Universal Test-to-Implementation Matching (Runs across ALL validFiles)
+  for (const file of validFiles) {
+    const isTest = /(?:_test|\.test|\.spec)\.[a-zA-Z0-9]+$/i.test(file)
+    if (!isTest) continue
+
+    const baseName = file
+      .split(/[/\\]/)
+      .at(-1)!
+      .replace(/(?:_test|\.test|\.spec)\.[a-zA-Z0-9]+$/i, "")
+      .toLowerCase()
+
+    // Find direct counterpart (e.g. classifier_test.go -> classifier.go)
+    const exactMatch = validFiles.find((f) => {
+      if (f === file) return false
+      const fBase = f.split(/[/\\]/).at(-1)!.replace(/\.[a-zA-Z0-9]+$/i, "").toLowerCase()
+      return fBase === baseName
     })
-    if (targetImp) {
-      addEdge(item.filePath, targetImp, "dependency")
+
+    if (exactMatch) {
+      addEdge(file, exactMatch, "dependency")
+    } else {
+      // Find counterpart sharing the stem prefix (e.g. table_test.go -> table.go)
+      const prefixMatch = validFiles.find((f) => {
+        if (f === file) return false
+        const fBase = f.split(/[/\\]/).at(-1)!.replace(/\.[a-zA-Z0-9]+$/i, "").toLowerCase()
+        return fBase.startsWith(baseName) || baseName.startsWith(fBase)
+      })
+      if (prefixMatch) {
+        addEdge(file, prefixMatch, "dependency")
+      }
     }
   }
 
-  // Pass 4: Intra-directory semantic cohesion (Ensure files in small directories have structural ties)
-  const dirToFile = new Map<string, string[]>()
-  for (const f of validFiles) {
-    const parts = f.split(/[/\\]/)
-    const dir = parts.length > 1 ? parts.slice(0, -1).join("/") : "root"
-    const list = dirToFile.get(dir) ?? []
-    list.push(f)
-    dirToFile.set(dir, list)
+  // Pass 5: Domain Stem Clustering (e.g., torrent_client.go <-> torrent.go, http_dl.go <-> http.go)
+  for (const file of validFiles) {
+    const filename = file.split(/[/\\]/).at(-1)!.toLowerCase()
+    const stem = filename.split(/[._-]/)[0]
+    if (!stem || stem.length < 3) continue
+
+    // Find sibling files in validFiles that share this domain stem
+    const domainSiblings = validFiles.filter((f) => {
+      if (f === file) return false
+      const otherName = f.split(/[/\\]/).at(-1)!.toLowerCase()
+      const otherStem = otherName.split(/[._-]/)[0]
+      return otherStem === stem
+    })
+
+    if (domainSiblings.length > 0) {
+      // Find leader file (e.g., torrent.go over torrent_client.go, http.go over http_dl.go)
+      const leader = domainSiblings.find((f) => {
+        const base = f.split(/[/\\]/).at(-1)!.replace(/\.[a-zA-Z0-9]+$/i, "").toLowerCase()
+        return base === stem
+      }) ?? domainSiblings[0]
+
+      if (leader !== file) {
+        addEdge(file, leader, "dependency")
+      }
+    }
   }
 
-  // If a directory has disconnected files, link them to the main/entry or adjacent file in that directory
-  for (const [dir, filesInDir] of dirToFile.entries()) {
-    if (filesInDir.length <= 1) continue
-    const mainFile = filesInDir.find((f) => {
-      const lower = f.toLowerCase()
-      return lower.includes("main.") || lower.includes("index.") || lower.includes("mod.") || lower.includes("app.")
-    }) || filesInDir[0]
+  // Pass 6: Architectural Entrypoint & Hub Topology
+  // Identify root entrypoints and major hubs
+  const entrypoints = validFiles.filter((f) => {
+    const lower = f.toLowerCase()
+    return (
+      lower.endsWith("main.go") ||
+      lower.endsWith("app.go") ||
+      lower.endsWith("index.ts") ||
+      lower.endsWith("index.js") ||
+      lower.endsWith("main.py") ||
+      lower.endsWith("app.py") ||
+      lower.endsWith("main.rs") ||
+      lower.endsWith("lib.rs") ||
+      lower.endsWith("server.ts")
+    )
+  })
 
-    for (const other of filesInDir) {
-      if (other === mainFile) continue
-      // If node currently has degree 0, link it to the directory anchor
-      if ((degreeMap.get(other) ?? 0) === 0) {
-        addEdge(other, mainFile, "dependency")
-      }
+  const primaryHub = entrypoints.length > 0 ? entrypoints[0] : validFiles[0]
+
+  // Connect secondary entrypoints to primary hub
+  for (const ep of entrypoints) {
+    if (ep !== primaryHub) {
+      addEdge(ep, primaryHub, "dependency")
+    }
+  }
+
+  // Pass 7: Ensure Zero Orphan Nodes
+  // Any file with degree 0 gets linked to the most appropriate hub or main module
+  for (const file of validFiles) {
+    const curDegree = degreeMap.get(file) ?? 0
+    if (curDegree === 0 && file !== primaryHub) {
+      // Connect to primary hub or nearest domain leader
+      addEdge(file, primaryHub, "dependency")
     }
   }
 

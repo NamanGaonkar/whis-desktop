@@ -398,6 +398,7 @@ export function ComposerEditor(props: ComposerEditorProps) {
             </Show>
             <ComposerVoiceInputButton
               editor={() => editor}
+              controller={props.controller}
               onSubmit={() => props.controller.submit()}
               disabled={view.submit.stopping()}
             />

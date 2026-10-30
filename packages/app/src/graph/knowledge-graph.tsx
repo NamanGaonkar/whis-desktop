@@ -88,7 +88,7 @@ export const CodebaseKnowledgeGraph: Component<{
     const nodeBg = dark ? "#181410" : "#ffffff"
     const nodeText = dark ? "#ede6dd" : "#241e15"
     // Brighter connecting lines in both themes (warm amber gold in dark, rich caramel bronze in light)
-    const edgeColor = dark ? "#d9a043" : "#8c672b"
+    const edgeColor = dark ? "#f59e0b" : "#b45309"
     const accentColor = "#e5a93c" // Whis gold
 
     const formattedNodes = data.nodes.map((node) => {
@@ -113,23 +113,23 @@ export const CodebaseKnowledgeGraph: Component<{
       elements,
       boxSelectionEnabled: false,
       autounselectify: false,
-      // Snappy and responsive mouse wheel scrolling
-      wheelSensitivity: 1.2,
+      // Fast, snappy and responsive mouse wheel scrolling
+      wheelSensitivity: 2.5,
       minZoom: 0.15,
-      maxZoom: 3.5,
+      maxZoom: 4.0,
       layout: {
         name: "cose",
         animate: true,
         animationDuration: 600,
-        nodeRepulsion: () => 65000,
-        nodeOverlap: 40,
-        idealEdgeLength: () => 140,
+        nodeRepulsion: () => 180000,
+        nodeOverlap: 60,
+        idealEdgeLength: () => 160,
         edgeElasticity: () => 100,
         nestingFactor: 1.2,
-        gravity: 30,
+        gravity: 25,
         numIter: 400,
         coolingFactor: 0.95,
-        padding: 40,
+        padding: 50,
       },
       style: [
         {
@@ -137,11 +137,11 @@ export const CodebaseKnowledgeGraph: Component<{
           style: {
             label: "data(label)",
             "font-family": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-            "font-size": 11,
+            "font-size": 10,
             "font-weight": "500",
             "text-valign": "bottom",
-            "text-margin-y": 6,
-            "text-max-width": "90px",
+            "text-margin-y": 8,
+            "text-max-width": "75px",
             "text-wrap": "ellipsis",
             "text-overflow-wrap": "anywhere",
             color: nodeText,
@@ -162,18 +162,18 @@ export const CodebaseKnowledgeGraph: Component<{
             "background-color": accentColor,
             color: accentColor,
             "font-weight": "bold",
-            "font-size": 12,
+            "font-size": 11,
           },
         },
         {
           selector: "edge",
           style: {
-            width: 1.8,
+            width: 2.2,
             "line-color": edgeColor,
             "target-arrow-color": edgeColor,
             "target-arrow-shape": "triangle",
             "curve-style": "bezier",
-            opacity: 0.85,
+            opacity: 0.9,
             "arrow-scale": 0.9,
             "transition-property": "line-color, target-arrow-color, width, opacity",
             "transition-duration": 200,
@@ -182,9 +182,9 @@ export const CodebaseKnowledgeGraph: Component<{
         {
           selector: "edge:selected",
           style: {
-            width: 3.0,
-            "line-color": dark ? "#ffd166" : "#b47818",
-            "target-arrow-color": dark ? "#ffd166" : "#b47818",
+            width: 3.2,
+            "line-color": dark ? "#fde047" : "#ca8a04",
+            "target-arrow-color": dark ? "#fde047" : "#ca8a04",
             opacity: 1,
           },
         },
@@ -199,8 +199,8 @@ export const CodebaseKnowledgeGraph: Component<{
         const neighborhood = node.neighborhood().add(node)
         cy.elements().style({ opacity: 0.25 })
         neighborhood.style({ opacity: 1 })
-        const highlightColor = isDark() ? "#ffd166" : "#b47818"
-        node.connectedEdges().style({ "line-color": highlightColor, "target-arrow-color": highlightColor, width: 2.5, opacity: 1 })
+        const highlightColor = isDark() ? "#fde047" : "#ca8a04"
+        node.connectedEdges().style({ "line-color": highlightColor, "target-arrow-color": highlightColor, width: 2.8, opacity: 1 })
       }
     })
 
@@ -209,8 +209,8 @@ export const CodebaseKnowledgeGraph: Component<{
         setSelectedNode(null)
         if (cy) {
           cy.elements().style({ opacity: 1 })
-          const normalColor = isDark() ? "#d9a043" : "#8c672b"
-          cy.edges().style({ width: 1.8, "line-color": normalColor, "target-arrow-color": normalColor, opacity: 0.85 })
+          const normalColor = isDark() ? "#f59e0b" : "#b45309"
+          cy.edges().style({ width: 2.2, "line-color": normalColor, "target-arrow-color": normalColor, opacity: 0.9 })
         }
       }
     })
@@ -223,8 +223,8 @@ export const CodebaseKnowledgeGraph: Component<{
   createEffect(() => {
     const dark = isDark()
     if (!cy) return
-    const curEdgeColor = dark ? "#d9a043" : "#8c672b"
-    const curSelectedEdgeColor = dark ? "#ffd166" : "#b47818"
+    const curEdgeColor = dark ? "#f59e0b" : "#b45309"
+    const curSelectedEdgeColor = dark ? "#fde047" : "#ca8a04"
     const curNodeText = dark ? "#ede6dd" : "#241e15"
     const curNodeBg = dark ? "#181410" : "#ffffff"
 
@@ -238,15 +238,15 @@ export const CodebaseKnowledgeGraph: Component<{
       .style({
         "line-color": curEdgeColor,
         "target-arrow-color": curEdgeColor,
-        opacity: 0.85,
-        width: 1.8,
+        opacity: 0.9,
+        width: 2.2,
       })
       .selector("edge:selected")
       .style({
         "line-color": curSelectedEdgeColor,
         "target-arrow-color": curSelectedEdgeColor,
         opacity: 1,
-        width: 3.0,
+        width: 3.2,
       })
       .update()
   })
@@ -491,7 +491,7 @@ export const CodebaseKnowledgeGraph: Component<{
               onClick={zoomOut}
             />
             <IconButton
-              icon={<Icon name="square-split-horizontal" size="small" />}
+              icon={<Icon name="expand" size="small" />}
               size="small"
               variant="ghost-muted"
               aria-label="Fit view"

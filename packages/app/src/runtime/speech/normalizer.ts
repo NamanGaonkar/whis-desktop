@@ -1,3 +1,28 @@
+const TWO_DIGIT_WORDS: Record<string, string> = {
+  "10": "ten", "11": "eleven", "12": "twelve", "13": "thirteen", "14": "fourteen",
+  "15": "fifteen", "16": "sixteen", "17": "seventeen", "18": "eighteen", "19": "nineteen",
+  "20": "twenty", "25": "twenty-five",
+  "30": "thirty", "35": "thirty-five",
+  "40": "forty", "45": "forty-five",
+  "50": "fifty", "55": "fifty-five",
+  "60": "sixty", "65": "sixty-five",
+  "70": "seventy", "75": "seventy-five",
+  "80": "eighty", "85": "eighty-five",
+  "90": "ninety", "95": "ninety-five",
+  "00": "hundred",
+}
+
+function twoDigitsToWords(n: string): string {
+  if (TWO_DIGIT_WORDS[n]) return TWO_DIGIT_WORDS[n]
+  const tens = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"]
+  const units = ["", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"]
+  const d1 = parseInt(n[0], 10)
+  const d2 = parseInt(n[1], 10)
+  if (d1 === 0) return units[d2] || ""
+  if (d1 === 1) return TWO_DIGIT_WORDS[n] || n
+  return `${tens[d1]} ${units[d2]}`.trim()
+}
+
 /**
  * Normalizes markdown/assistant technical output into natural human speech.
  * Skips raw code blocks, syntax clutter, and expands technical terms and units.
@@ -47,10 +72,13 @@ export function normalizeForSpeech(text: string): string {
   cleaned = cleaned.replace(/<[^>]+>/g, "")
 
   // 12. GPU and Hardware Model Pronunciation
-  // Pronounce 4-digit GPU models naturally in pairs (e.g. RTX 4050 -> RTX 40 50, spoken as "RTX forty fifty" instead of "four thousand fifty")
+  // Pronounce 4-digit GPU models naturally in words (e.g. RTX 4050 -> RTX forty fifty instead of "four thousand fifty")
   cleaned = cleaned.replace(
-    /\b(RTX|GTX|RX|GeForce|Radeon|Arc|Intel|Core|Ryzen)\s*(\d{2})(\d{2})\b/gi,
-    "$1 $2 $3",
+    /\b(RTX|GTX|RX|GeForce|Radeon|Arc|Intel|Core|Ryzen|NVIDIA)?\s*([1-9]\d)(00|10|20|30|40|50|60|70|80|90|50|60|70|80|90|\d{2})\b/gi,
+    (_match, prefix, high, low) => {
+      const p = prefix ? `${prefix} ` : ""
+      return `${p}${twoDigitsToWords(high)} ${twoDigitsToWords(low)}`
+    },
   )
 
   // 13. Electrical and Power Units

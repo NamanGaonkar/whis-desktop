@@ -43,6 +43,8 @@ export const additionalIcons = {
   "magnifying-glass": `<path d="M13 13L10.6418 10.6418M11.9552 7.47761C11.9552 9.95053 9.95053 11.9552 7.47761 11.9552C5.0047 11.9552 3 9.95053 3 7.47761C3 5.0047 5.0047 3 7.47761 3C9.95053 3 11.9552 5.0047 11.9552 7.47761Z" stroke="currentColor" stroke-linecap="square" vector-effect="non-scaling-stroke"/>`,
   "plus-small": `<path d="M9.99984 5.41699V10.0003M9.99984 10.0003V14.5837M9.99984 10.0003H5.4165M9.99984 10.0003H14.5832" stroke="currentColor" stroke-linecap="square"/>`,
   plus: `<path d="M9.9987 2.20703V9.9987M9.9987 9.9987V17.7904M9.9987 9.9987H2.20703M9.9987 9.9987H17.7904" stroke="currentColor" stroke-linecap="square"/>`,
+  minus: `<path d="M3.33398 10H16.6673" stroke="currentColor" stroke-width="1.8" stroke-linecap="square"/>`,
+  "arrow-clockwise": `<path d="M16.5 10A6.5 6.5 0 1 1 14.5 5.5L17 5.5M17 2V6H13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>`,
   "new-session": `<path d="M12 2H2V18H18V8M6 11.3818V14H8.61818L18 4.61818L15.3818 2L6 11.3818Z" stroke="currentColor"/>`,
   "new-session-active": `<path d="M6 11.3818V14H8.61818L18 4.61818L15.3818 2L6 11.3818Z" fill="currentColor" fill-opacity="0.1"/>
 <path d="M12 2H2V18H18V8M6 11.3818V14H8.61818L18 4.61818L15.3818 2L6 11.3818Z" stroke="currentColor"/>`,
