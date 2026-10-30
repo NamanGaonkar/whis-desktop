@@ -163,6 +163,13 @@ const soundsSchema = Persistence.struct({
   errors: Schema.String,
 })
 
+const voiceSchema = Persistence.struct({
+  autoSpeak: Schema.Boolean,
+  voice: Schema.String,
+  speed: Schema.Number,
+  autoSend: Schema.Boolean,
+})
+
 export const settingsSchema = Persistence.struct({
   general: generalSchema,
   // Owned by the details extension, which copies it out once; kept so settings rewrites cannot drop it first.
@@ -175,6 +182,7 @@ export const settingsSchema = Persistence.struct({
   workspaces: workspacesSchema,
   notifications: notificationsSchema,
   sounds: soundsSchema,
+  voice: Persistence.optional(voiceSchema),
 })
 
 function storedTimelineCategory(category: TimelineCategory) {
@@ -296,6 +304,12 @@ export const defaultSettings: Settings = {
     permissions: "staplebops-02",
     errorsEnabled: true,
     errors: "nope-03",
+  },
+  voice: {
+    autoSpeak: false,
+    voice: "en-US-ChristopherNeural",
+    speed: 1.0,
+    autoSend: false,
   },
 }
 
@@ -510,6 +524,24 @@ export const { use: useSettings, provider: SettingsProvider } = createSimpleCont
         errors: withFallback(() => store.sounds?.errors, defaultSettings.sounds.errors),
         setErrors(value: string) {
           setStore("sounds", "errors", value)
+        },
+      },
+      voice: {
+        autoSpeak: withFallback(() => store.voice?.autoSpeak, false),
+        setAutoSpeak(value: boolean) {
+          setStore("voice", "autoSpeak", value)
+        },
+        voice: withFallback(() => store.voice?.voice, "en-US-ChristopherNeural"),
+        setVoice(value: string) {
+          setStore("voice", "voice", value)
+        },
+        speed: withFallback(() => store.voice?.speed, 1.0),
+        setSpeed(value: number) {
+          setStore("voice", "speed", value)
+        },
+        autoSend: withFallback(() => store.voice?.autoSend, false),
+        setAutoSend(value: boolean) {
+          setStore("voice", "autoSend", value)
         },
       },
     }

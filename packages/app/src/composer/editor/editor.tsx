@@ -1,3 +1,4 @@
+import { ComposerVoiceInputButton } from "./voice-button"
 import {
   createEffect,
   createMemo,
@@ -395,6 +396,11 @@ export function ComposerEditor(props: ComposerEditorProps) {
                 </span>
               </Button>
             </Show>
+            <ComposerVoiceInputButton
+              editor={() => editor}
+              onSubmit={() => props.controller.submit()}
+              disabled={view.submit.stopping()}
+            />
             <ComposerEditorSubmitButton
               mode={state.mode}
               stopping={view.submit.stopping()}

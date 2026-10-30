@@ -31,6 +31,7 @@ import { SettingsAppearance } from "./appearance/appearance"
 import { experimentalSettingsAvailable, SettingsExperimental } from "./experimental/experimental"
 import { SettingsKeybinds } from "./keybinds/keybinds"
 import { SettingsNotifications } from "./notifications/notifications"
+import { SettingsVoice } from "./voice/voice"
 import { SettingsProviders } from "./providers/providers"
 import { SettingsModels } from "./models/models"
 import { SettingsServerGeneral } from "./servers/servers"
@@ -60,6 +61,7 @@ const GuiExtensionsSettings = import.meta.env.DEV
 const rootClientTabs = [
   { value: "general", icon: pageIcons.general, label: "settings.tab.preferences" },
   { value: "appearance", icon: pageIcons.appearance, label: "settings.general.section.appearance" },
+  { value: "voice", icon: pageIcons.voice, label: "settings.tab.voice" },
   { value: "notifications", icon: pageIcons.notifications, label: "settings.tab.notifications" },
   { value: "shortcuts", icon: pageIcons.shortcuts, label: "settings.tab.shortcuts" },
 ] as const
@@ -361,6 +363,9 @@ function RootSettings() {
       </Tabs.Content>
       <Tabs.Content value="appearance" class="settings-panel">
         <SettingsAppearance />
+      </Tabs.Content>
+      <Tabs.Content value="voice" class="settings-panel">
+        <SettingsVoice />
       </Tabs.Content>
       <Tabs.Content value="notifications" class="settings-panel">
         <SettingsNotifications />

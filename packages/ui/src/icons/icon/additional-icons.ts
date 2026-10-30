@@ -109,6 +109,9 @@ export const additionalIcons = {
   cube: `<path d="M10 2.5L16.5 6.25V13.75L10 17.5L3.5 13.75V6.25L10 2.5Z" stroke="currentColor"/><path d="M10 10L16.5 6.25M10 10V17.5M10 10L3.5 6.25" stroke="currentColor"/>`,
   "post-skill": `<rect x="2.5" y="3.5" width="15" height="13" rx="1.5" stroke="currentColor"/><path d="M5.5 7.5H10.5M5.5 10.5H14.5" stroke="currentColor"/>`,
   "arrow-undo-down": `<path d="M4.08333 11.0859L1.75 8.7526L4.08333 6.41927M2.33333 8.7526L12.5417 8.7526L12.5417 3.21094L7 3.21094" stroke="currentColor" stroke-width="1" stroke-linecap="square"/>`,
+  microphone: `<path d="M10 2.5C8.62 2.5 7.5 3.62 7.5 5V9.5C7.5 10.88 8.62 12 10 12C11.38 12 12.5 10.88 12.5 9.5V5C12.5 3.62 11.38 2.5 10 2.5Z" stroke="currentColor" stroke-width="1.2" fill="none"/><path d="M5 8.5V9.5C5 12.26 7.24 14.5 10 14.5C12.76 14.5 15 12.26 15 9.5V8.5M10 14.5V17.5M7 17.5H13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>`,
+  volume: `<path d="M3.5 7H6.5L11 3.5V16.5L6.5 13H3.5V7Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" fill="none"/><path d="M13.5 7.5C14.5 8.5 14.5 11.5 13.5 12.5M15.5 5.5C17.5 7.5 17.5 12.5 15.5 14.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>`,
+  graph: `<circle cx="5" cy="5" r="2.5" stroke="currentColor" stroke-width="1.2" fill="none"/><circle cx="15" cy="5" r="2.5" stroke="currentColor" stroke-width="1.2" fill="none"/><circle cx="10" cy="15" r="2.5" stroke="currentColor" stroke-width="1.2" fill="none"/><path d="M7 6.5L13 13.5M13 6.5L7 13.5M7.5 5H12.5" stroke="currentColor" stroke-width="1.2"/>`,
 }
 
 export function additionalIconViewBox(name: keyof typeof additionalIcons) {

@@ -101,7 +101,7 @@ function modelLabel(
 
 function MessageActionButton(
   props: Pick<ComponentProps<"button">, "disabled" | "onMouseDown" | "onClick" | "aria-label"> & {
-    icon: "check" | "copy" | "reset" | "arrow-down-to-line" | "outline-trash"
+    icon: "check" | "copy" | "reset" | "arrow-down-to-line" | "outline-trash" | "volume"
     label: JSX.Element
   },
 ) {
@@ -298,7 +298,6 @@ export function CurrentUserMessageDisplay(props: {
   const agents = createMemo(() => props.message.agents ?? [])
   const comments = createMemo(() => props.comments ?? [])
   const model = createMemo(() => modelLabel(data, i18n, props.model))
-  const timefmt = createMemo(() => new Intl.DateTimeFormat(i18n.locale(), { timeStyle: "short" }))
 
   // Mobile shows the current agent and model in the composer and switch notices, so repeating them per message is noise.
   const mobile = createMediaQuery("(max-width: 767px)")
@@ -699,7 +698,6 @@ export function AssistantTextContent(props: {
   const data = useData()
   const i18n = useI18n()
   const numfmt = createMemo(() => new Intl.NumberFormat(i18n.locale()))
-  const timefmt = createMemo(() => new Intl.DateTimeFormat(i18n.locale(), { timeStyle: "short" }))
   const stamp = createMemo(() => (props.message.time.created ? formatMessageTime(props.message.time.created, i18n.locale()) : ""))
 
   const interrupted = () => {
@@ -778,6 +776,30 @@ export function AssistantTextContent(props: {
               onMouseDown={(event) => event.preventDefault()}
               onClick={copy}
               aria-label={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copyResponse")}
+            />
+            <MessageActionButton
+              icon="volume"
+              label={i18n.t("ui.message.voice")}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                if (typeof window !== "undefined" && "speechSynthesis" in window) {
+                  if (window.speechSynthesis.speaking) {
+                    window.speechSynthesis.cancel()
+                  } else {
+                    const clean = props.text
+                      .replace(/```[\s\S]*?```/g, " [Here is the code.] ")
+                      .replace(/`([^`]+)`/g, "$1")
+                      .replace(/[*_#>]/g, "")
+                      .trim()
+                    const utt = new SpeechSynthesisUtterance(clean)
+                    const voices = window.speechSynthesis.getVoices()
+                    const natural = voices.find(v => v.lang.startsWith("en") && (v.name.includes("Natural") || v.name.includes("Christopher") || v.name.includes("Jenny"))) ?? voices.find(v => v.lang.startsWith("en"))
+                    if (natural) utt.voice = natural
+                    window.speechSynthesis.speak(utt)
+                  }
+                }
+              }}
+              aria-label={i18n.t("ui.message.voice")}
             />
             <Show when={meta()}>
               <span data-slot="text-part-meta" class="text-12-regular text-text-weak cursor-default">

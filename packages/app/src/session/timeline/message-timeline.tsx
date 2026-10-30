@@ -28,6 +28,9 @@ import { useCommand } from "@/shell/commands/command"
 import { SessionAncestorTrail, SessionProjectMenu, SessionTitleHeader } from "../session-identity-header"
 import { SessionHeaderSpacer } from "@/session/header/session-header"
 import { SessionRunningMenu } from "@/session/header/session-running-menu"
+import { CodebaseKnowledgeGraph } from "@/graph/knowledge-graph"
+import { useTextToSpeech } from "@/runtime/speech/tts"
+import { useSettings } from "@/settings/model"
 
 type BlockingTask = { type: "shell" | "subagent"; partID: string; id?: string; label?: string }
 
@@ -139,6 +142,39 @@ function MessageTimelineView(
   const childTitle = props.data.childTitle
   const projection = props.data.projection
   const sessionDirectory = createMemo(() => props.session.data.info()?.location.directory ?? sdk().directory)
+  const [viewMode, setViewMode] = createSignal<"chat" | "graph">("chat")
+  const tts = useTextToSpeech()
+  const settings = useSettings()
+
+  let lastSpokenMessageID: string | null = null
+
+  createEffect(
+    on(
+      () => props.data.status(),
+      (status, prevStatus) => {
+        if (prevStatus?.type === "busy" && status?.type === "idle" && settings.voice.autoSpeak()) {
+          const rows = props.data.projection.rows()
+          for (let i = rows.length - 1; i >= 0; i--) {
+            const row = rows[i]
+            if (row && Predicate.isTagged(row, "AssistantPart") && row.group.type === "part") {
+              const msgID = row.group.ref.messageID
+              if (lastSpokenMessageID === msgID) break
+              lastSpokenMessageID = msgID
+              const msg = props.data.projection.messageByID().get(msgID)
+              if (msg && "text" in msg && typeof msg.text === "string" && msg.text) {
+                tts.speak(msg.text, {
+                  voice: settings.voice.voice(),
+                  speed: settings.voice.speed(),
+                })
+              }
+              break
+            }
+          }
+        }
+      },
+      { defer: true },
+    ),
+  )
 
   const project = createMemo(() => {
     const session = props.session.data.info()
@@ -447,7 +483,64 @@ function MessageTimelineView(
   )
 
   return (
-    <VirtualizedTimeline
+    <div class="relative w-full h-full flex flex-col overflow-hidden">
+      <Show when={viewMode() === "graph"}>
+        <div class="absolute inset-0 z-20 flex flex-col bg-v2-background-bg-base">
+          <SessionTitleHeader>
+            <div class="h-12 w-full flex items-center justify-between gap-2">
+              <div class="flex items-center gap-1 min-w-0 flex-1">
+                <SessionProjectMenu
+                  project={headerProject()}
+                  directory={sessionDirectory()}
+                  workspace={workspaceSession()}
+                />
+                <Show when={!parentID() && childTitle()}>
+                  <h1 class="truncate text-[13px] font-[530] text-v2-text-text-base">
+                    {childTitle()}
+                  </h1>
+                </Show>
+              </div>
+              <div class="shrink-0 flex items-center gap-2">
+                <div class="flex items-center rounded-lg border border-v2-border-subtle bg-v2-background-bg-base p-0.5">
+                  <button
+                    type="button"
+                    class="flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium transition-colors"
+                    classList={{
+                      "bg-v2-background-bg-surface-elevated text-v2-text-text-base shadow-xs": viewMode() === "chat",
+                      "text-v2-text-text-muted hover:text-v2-text-text-base": viewMode() !== "chat",
+                    }}
+                    onClick={() => setViewMode("chat")}
+                  >
+                    <Icon name="bubble-5" size="small" />
+                    <span>Chat</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium transition-colors"
+                    classList={{
+                      "bg-v2-background-bg-surface-elevated text-v2-text-text-base shadow-xs": viewMode() === "graph",
+                      "text-v2-text-text-muted hover:text-v2-text-text-base": viewMode() !== "graph",
+                    }}
+                    onClick={() => setViewMode("graph")}
+                  >
+                    <Icon name="graph" size="small" />
+                    <span>Graph</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </SessionTitleHeader>
+          <div class="flex-1 w-full h-full min-h-0">
+            <CodebaseKnowledgeGraph
+              directory={sessionDirectory()}
+              onSelectModule={() => {
+                setViewMode("chat")
+              }}
+            />
+          </div>
+        </div>
+      </Show>
+      <VirtualizedTimeline
       workspaceSession={workspaceSession}
       bottomSpacer={<Show when={!activityRow()}>{activity()}</Show>}
       deferred={(row) => {
@@ -617,6 +710,32 @@ function MessageTimelineView(
                 {(_id) => (
                   <div class="shrink-0 flex items-center gap-2">
                     {props.search}
+                    <div class="flex items-center rounded-lg border border-v2-border-subtle bg-v2-background-bg-base p-0.5">
+                      <button
+                        type="button"
+                        class="flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium transition-colors"
+                        classList={{
+                          "bg-v2-background-bg-surface-elevated text-v2-text-text-base shadow-xs": viewMode() === "chat",
+                          "text-v2-text-text-muted hover:text-v2-text-text-base": viewMode() !== "chat",
+                        }}
+                        onClick={() => setViewMode("chat")}
+                      >
+                        <Icon name="bubble-5" size="small" />
+                        <span>Chat</span>
+                      </button>
+                      <button
+                        type="button"
+                        class="flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium transition-colors"
+                        classList={{
+                          "bg-v2-background-bg-surface-elevated text-v2-text-text-base shadow-xs": viewMode() === "graph",
+                          "text-v2-text-text-muted hover:text-v2-text-text-base": viewMode() !== "graph",
+                        }}
+                        onClick={() => setViewMode("graph")}
+                      >
+                        <Icon name="graph" size="small" />
+                        <span>Graph</span>
+                      </button>
+                    </div>
                     <ExtensionSlot
                       at="session.header"
                       input={{
@@ -641,5 +760,6 @@ function MessageTimelineView(
         </>
       }
     />
+    </div>
   )
 }
