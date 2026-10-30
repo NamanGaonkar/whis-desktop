@@ -682,6 +682,8 @@ export const dict = {
   "settings.voice.section.input": "Voice Input (Speech-to-Text)",
   "settings.voice.autoSend.title": "Auto-send on silence",
   "settings.voice.autoSend.description": "Automatically send prompt after pausing for 1.5 seconds",
+  "settings.voice.wakeWord.title": "Wake word & voice commands",
+  "settings.voice.wakeWord.description": "Say 'Hey Whis' or commands like 'new session', 'clear', 'submit', 'show graph'",
   "settings.voice.preview": "Test Voice",
   "settings.voice.listening": "Listening...",
   "graph.view.chat": "Chat",

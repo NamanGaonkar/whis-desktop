@@ -168,6 +168,7 @@ const voiceSchema = Persistence.struct({
   voice: Schema.String,
   speed: Schema.Number,
   autoSend: Schema.Boolean,
+  wakeWord: Schema.optional(Schema.Boolean),
 })
 
 export const settingsSchema = Persistence.struct({
@@ -310,6 +311,7 @@ export const defaultSettings: Settings = {
     voice: typeof localStorage !== "undefined" ? (localStorage.getItem("whis_voice") ?? "") : "",
     speed: typeof localStorage !== "undefined" && localStorage.getItem("whis_speed") ? parseFloat(localStorage.getItem("whis_speed")) : 1.0,
     autoSend: typeof localStorage !== "undefined" ? localStorage.getItem("whis_autosend") === "true" : false,
+    wakeWord: typeof localStorage !== "undefined" ? localStorage.getItem("whis_wakeword") !== "false" : true,
   },
 }
 
@@ -546,6 +548,11 @@ export const { use: useSettings, provider: SettingsProvider } = createSimpleCont
         setAutoSend(value: boolean) {
           if (typeof localStorage !== "undefined") localStorage.setItem("whis_autosend", String(value))
           setStore("voice", (prev) => ({ ...(prev ?? defaultSettings.voice), autoSend: value }))
+        },
+        wakeWord: withFallback(() => store.voice?.wakeWord, defaultSettings.voice.wakeWord),
+        setWakeWord(value: boolean) {
+          if (typeof localStorage !== "undefined") localStorage.setItem("whis_wakeword", String(value))
+          setStore("voice", (prev) => ({ ...(prev ?? defaultSettings.voice), wakeWord: value }))
         },
       },
     }

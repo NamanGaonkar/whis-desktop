@@ -1,5 +1,6 @@
 import {
   Component,
+  createEffect,
   createSignal,
   For,
   onCleanup,
@@ -10,6 +11,7 @@ import cytoscape, { type Core, type EventObject } from "cytoscape"
 import { Icon } from "@opencode/ui/icon"
 import { IconButton } from "@opencode/ui/icon-button"
 import { Button } from "@opencode/ui/button"
+import { useTheme } from "@opencode/ui/theme"
 import { useServerSDK } from "@/runtime/server/client"
 import { scanCodebaseGraph, type GraphData, type GraphNode } from "./scanner"
 
@@ -35,6 +37,15 @@ export const CodebaseKnowledgeGraph: Component<{
   onClose?: () => void
 }> = (props) => {
   const client = useServerSDK()
+  const theme = useTheme()
+  const isDark = () => {
+    try {
+      return theme.mode() === "dark"
+    } catch {
+      return true
+    }
+  }
+
   let containerRef: HTMLDivElement | undefined
   let cy: Core | null = null
   let resizeObserver: ResizeObserver | null = null
@@ -73,11 +84,11 @@ export const CodebaseKnowledgeGraph: Component<{
       cy = null
     }
 
-    const isDark = typeof document !== "undefined" && !document.documentElement.classList.contains("light")
-
-    const nodeBg = isDark ? "#181410" : "#fdfbf7"
-    const nodeText = isDark ? "#ede6dd" : "#2a241c"
-    const edgeColor = isDark ? "#3f362a" : "#d4c8b8"
+    const dark = isDark()
+    const nodeBg = dark ? "#181410" : "#ffffff"
+    const nodeText = dark ? "#ede6dd" : "#241e15"
+    // Brighter connecting lines in both themes (warm amber gold in dark, rich caramel bronze in light)
+    const edgeColor = dark ? "#d9a043" : "#8c672b"
     const accentColor = "#e5a93c" // Whis gold
 
     const formattedNodes = data.nodes.map((node) => {
@@ -102,7 +113,8 @@ export const CodebaseKnowledgeGraph: Component<{
       elements,
       boxSelectionEnabled: false,
       autounselectify: false,
-      wheelSensitivity: 0.25,
+      // Snappy and responsive mouse wheel scrolling
+      wheelSensitivity: 1.2,
       minZoom: 0.15,
       maxZoom: 3.5,
       layout: {
@@ -124,11 +136,12 @@ export const CodebaseKnowledgeGraph: Component<{
           selector: "node",
           style: {
             label: "data(label)",
-            "font-family": "monospace",
-            "font-size": 10,
+            "font-family": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+            "font-size": 11,
+            "font-weight": "500",
             "text-valign": "bottom",
             "text-margin-y": 6,
-            "text-max-width": "80px",
+            "text-max-width": "90px",
             "text-wrap": "ellipsis",
             "text-overflow-wrap": "anywhere",
             color: nodeText,
@@ -155,13 +168,13 @@ export const CodebaseKnowledgeGraph: Component<{
         {
           selector: "edge",
           style: {
-            width: 1.2,
+            width: 1.8,
             "line-color": edgeColor,
             "target-arrow-color": edgeColor,
             "target-arrow-shape": "triangle",
             "curve-style": "bezier",
-            opacity: 0.65,
-            "arrow-scale": 0.8,
+            opacity: 0.85,
+            "arrow-scale": 0.9,
             "transition-property": "line-color, target-arrow-color, width, opacity",
             "transition-duration": 200,
           },
@@ -169,9 +182,9 @@ export const CodebaseKnowledgeGraph: Component<{
         {
           selector: "edge:selected",
           style: {
-            width: 2.5,
-            "line-color": accentColor,
-            "target-arrow-color": accentColor,
+            width: 3.0,
+            "line-color": dark ? "#ffd166" : "#b47818",
+            "target-arrow-color": dark ? "#ffd166" : "#b47818",
             opacity: 1,
           },
         },
@@ -186,7 +199,8 @@ export const CodebaseKnowledgeGraph: Component<{
         const neighborhood = node.neighborhood().add(node)
         cy.elements().style({ opacity: 0.25 })
         neighborhood.style({ opacity: 1 })
-        node.connectedEdges().style({ "line-color": accentColor, "target-arrow-color": accentColor, width: 2 })
+        const highlightColor = isDark() ? "#ffd166" : "#b47818"
+        node.connectedEdges().style({ "line-color": highlightColor, "target-arrow-color": highlightColor, width: 2.5, opacity: 1 })
       }
     })
 
@@ -195,7 +209,8 @@ export const CodebaseKnowledgeGraph: Component<{
         setSelectedNode(null)
         if (cy) {
           cy.elements().style({ opacity: 1 })
-          cy.edges().style({ width: 1.2, "line-color": edgeColor, "target-arrow-color": edgeColor })
+          const normalColor = isDark() ? "#d9a043" : "#8c672b"
+          cy.edges().style({ width: 1.8, "line-color": normalColor, "target-arrow-color": normalColor, opacity: 0.85 })
         }
       }
     })
@@ -203,6 +218,38 @@ export const CodebaseKnowledgeGraph: Component<{
     cy.resize()
     cy.fit(undefined, 40)
   }
+
+  // Reactive theme synchronizer for Cytoscape canvas colors
+  createEffect(() => {
+    const dark = isDark()
+    if (!cy) return
+    const curEdgeColor = dark ? "#d9a043" : "#8c672b"
+    const curSelectedEdgeColor = dark ? "#ffd166" : "#b47818"
+    const curNodeText = dark ? "#ede6dd" : "#241e15"
+    const curNodeBg = dark ? "#181410" : "#ffffff"
+
+    cy.style()
+      .selector("node")
+      .style({
+        color: curNodeText,
+        "border-color": curNodeBg,
+      })
+      .selector("edge")
+      .style({
+        "line-color": curEdgeColor,
+        "target-arrow-color": curEdgeColor,
+        opacity: 0.85,
+        width: 1.8,
+      })
+      .selector("edge:selected")
+      .style({
+        "line-color": curSelectedEdgeColor,
+        "target-arrow-color": curSelectedEdgeColor,
+        opacity: 1,
+        width: 3.0,
+      })
+      .update()
+  })
 
   function handleSearch(query: string) {
     setSearchQuery(query)
@@ -223,7 +270,7 @@ export const CodebaseKnowledgeGraph: Component<{
     if (matched.length > 0) {
       cy.elements().style({ opacity: 0.2 })
       matched.style({ opacity: 1 })
-      matched.connectedEdges().style({ opacity: 0.7 })
+      matched.connectedEdges().style({ opacity: 0.85 })
 
       cy.animate({
         center: { eles: matched.first() },
@@ -247,7 +294,7 @@ export const CodebaseKnowledgeGraph: Component<{
     const matched = cy.nodes().filter((n) => n.data("kind") === kind)
     cy.elements().style({ opacity: 0.2 })
     matched.style({ opacity: 1 })
-    matched.connectedEdges().style({ opacity: 0.6 })
+    matched.connectedEdges().style({ opacity: 0.85 })
   }
 
   function zoomIn() {
@@ -297,9 +344,21 @@ export const CodebaseKnowledgeGraph: Component<{
   })
 
   return (
-    <div class="relative w-full h-full flex flex-col bg-[#080502] text-[#ede6dd] overflow-hidden select-none">
+    <div
+      class="relative w-full h-full flex flex-col overflow-hidden select-none transition-colors duration-200"
+      classList={{
+        "bg-[#080502] text-[#ede6dd]": isDark(),
+        "bg-[#fcfbfa] text-[#1f1912]": !isDark(),
+      }}
+    >
       {/* Top Glassmorphic Navigation Bar */}
-      <div class="absolute top-2.5 left-3 right-3 z-30 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[#140f0a]/90 px-3 py-1.5 shadow-md backdrop-blur-md border border-[#261f17]">
+      <div
+        class="absolute top-2.5 left-3 right-3 z-30 flex flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-1.5 shadow-md backdrop-blur-md border transition-colors duration-200"
+        classList={{
+          "bg-[#140f0a]/90 border-[#261f17]": isDark(),
+          "bg-[#ffffff]/90 border-[#e5dcce] shadow-sm": !isDark(),
+        }}
+      >
         <div class="flex items-center gap-2.5">
           <div class="flex items-center gap-1.5 text-xs font-semibold text-[#e5a93c] tracking-wide uppercase">
             <Icon name="graph" size="small" />
@@ -308,13 +367,25 @@ export const CodebaseKnowledgeGraph: Component<{
 
           {/* Search box */}
           <div class="relative flex items-center">
-            <Icon name="magnifying-glass" size="small" class="absolute left-2 text-[#7d7162] pointer-events-none" />
+            <Icon
+              name="magnifying-glass"
+              size="small"
+              class="absolute left-2 pointer-events-none"
+              classList={{
+                "text-[#7d7162]": isDark(),
+                "text-[#8c7f70]": !isDark(),
+              }}
+            />
             <input
               type="text"
               placeholder="Search modules..."
               value={searchQuery()}
               onInput={(e) => handleSearch(e.currentTarget.value)}
-              class="h-7 w-36 sm:w-48 rounded-md bg-[#18130e] ps-7 pe-2 text-xs text-[#ede6dd] placeholder:text-[#7d7162] border border-[#2c2217] focus:outline-none focus:border-[#e5a93c]"
+              class="h-7 w-36 sm:w-48 rounded-md ps-7 pe-2 text-xs border focus:outline-none focus:border-[#e5a93c] transition-colors"
+              classList={{
+                "bg-[#18130e] text-[#ede6dd] placeholder:text-[#7d7162] border-[#2c2217]": isDark(),
+                "bg-[#f4efe8] text-[#1f1912] placeholder:text-[#8c7f70] border-[#ded3c3]": !isDark(),
+              }}
             />
           </div>
 
@@ -325,7 +396,8 @@ export const CodebaseKnowledgeGraph: Component<{
               class="px-2 py-0.5 rounded transition-colors"
               classList={{
                 "bg-[#e5a93c]/20 text-[#e5a93c] font-medium": activeFilter() === "all",
-                "text-[#7d7162] hover:text-[#ede6dd]": activeFilter() !== "all",
+                "text-[#7d7162] hover:text-[#ede6dd]": activeFilter() !== "all" && isDark(),
+                "text-[#706456] hover:text-[#1f1912]": activeFilter() !== "all" && !isDark(),
               }}
               onClick={() => filterByKind("all")}
             >
@@ -336,7 +408,8 @@ export const CodebaseKnowledgeGraph: Component<{
               class="px-2 py-0.5 rounded transition-colors flex items-center gap-1"
               classList={{
                 "bg-[#38bdf8]/20 text-[#38bdf8] font-medium": activeFilter() === "component",
-                "text-[#7d7162] hover:text-[#ede6dd]": activeFilter() !== "component",
+                "text-[#7d7162] hover:text-[#ede6dd]": activeFilter() !== "component" && isDark(),
+                "text-[#706456] hover:text-[#1f1912]": activeFilter() !== "component" && !isDark(),
               }}
               onClick={() => filterByKind("component")}
             >
@@ -348,7 +421,8 @@ export const CodebaseKnowledgeGraph: Component<{
               class="px-2 py-0.5 rounded transition-colors flex items-center gap-1"
               classList={{
                 "bg-[#e5a93c]/20 text-[#e5a93c] font-medium": activeFilter() === "module",
-                "text-[#7d7162] hover:text-[#ede6dd]": activeFilter() !== "module",
+                "text-[#7d7162] hover:text-[#ede6dd]": activeFilter() !== "module" && isDark(),
+                "text-[#706456] hover:text-[#1f1912]": activeFilter() !== "module" && !isDark(),
               }}
               onClick={() => filterByKind("module")}
             >
@@ -360,7 +434,8 @@ export const CodebaseKnowledgeGraph: Component<{
               class="px-2 py-0.5 rounded transition-colors flex items-center gap-1"
               classList={{
                 "bg-[#f43f5e]/20 text-[#f43f5e] font-medium": activeFilter() === "server",
-                "text-[#7d7162] hover:text-[#ede6dd]": activeFilter() !== "server",
+                "text-[#7d7162] hover:text-[#ede6dd]": activeFilter() !== "server" && isDark(),
+                "text-[#706456] hover:text-[#1f1912]": activeFilter() !== "server" && !isDark(),
               }}
               onClick={() => filterByKind("server")}
             >
@@ -372,7 +447,8 @@ export const CodebaseKnowledgeGraph: Component<{
               class="px-2 py-0.5 rounded transition-colors flex items-center gap-1"
               classList={{
                 "bg-[#10b981]/20 text-[#10b981] font-medium": activeFilter() === "config",
-                "text-[#7d7162] hover:text-[#ede6dd]": activeFilter() !== "config",
+                "text-[#7d7162] hover:text-[#ede6dd]": activeFilter() !== "config" && isDark(),
+                "text-[#706456] hover:text-[#1f1912]": activeFilter() !== "config" && !isDark(),
               }}
               onClick={() => filterByKind("config")}
             >
@@ -384,10 +460,22 @@ export const CodebaseKnowledgeGraph: Component<{
 
         {/* Right Controls */}
         <div class="flex items-center gap-2">
-          <span class="text-[11px] text-[#7d7162] font-mono">
+          <span
+            class="text-[11px] font-mono"
+            classList={{
+              "text-[#7d7162]": isDark(),
+              "text-[#807466]": !isDark(),
+            }}
+          >
             {graphData().fileCount} files · {graphData().dependencyCount} links
           </span>
-          <div class="flex items-center border-s border-[#2c2217] ps-1.5 gap-0.5">
+          <div
+            class="flex items-center border-s ps-1.5 gap-0.5"
+            classList={{
+              "border-[#2c2217]": isDark(),
+              "border-[#ded3c3]": !isDark(),
+            }}
+          >
             <IconButton
               icon={<Icon name="plus" size="small" />}
               size="small"
@@ -423,9 +511,23 @@ export const CodebaseKnowledgeGraph: Component<{
       {/* Main Cytoscape Graph Canvas */}
       <div class="relative w-full h-full flex-1">
         <Show when={loading()}>
-          <div class="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#080502]/80 backdrop-blur-sm">
+          <div
+            class="absolute inset-0 z-20 flex flex-col items-center justify-center backdrop-blur-sm"
+            classList={{
+              "bg-[#080502]/80": isDark(),
+              "bg-[#fcfbfa]/80": !isDark(),
+            }}
+          >
             <div class="w-6 h-6 border-2 border-[#e5a93c] border-t-transparent rounded-full animate-spin mb-2" />
-            <span class="text-xs text-[#a59a8c] font-mono">Analyzing codebase topology...</span>
+            <span
+              class="text-xs font-mono"
+              classList={{
+                "text-[#a59a8c]": isDark(),
+                "text-[#635748]": !isDark(),
+              }}
+            >
+              Analyzing codebase topology...
+            </span>
           </div>
         </Show>
 
@@ -435,7 +537,13 @@ export const CodebaseKnowledgeGraph: Component<{
       {/* Floating Node Inspection Card */}
       <Show when={selectedNode()}>
         {(node) => (
-          <div class="absolute bottom-4 right-4 z-30 w-80 max-w-[calc(100vw-2rem)] rounded-xl bg-[#140f0a]/95 border border-[#30261c] p-4 shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <div
+            class="absolute bottom-4 right-4 z-30 w-80 max-w-[calc(100vw-2rem)] rounded-xl border p-4 shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 duration-200"
+            classList={{
+              "bg-[#140f0a]/95 border-[#30261c] text-[#ede6dd]": isDark(),
+              "bg-[#ffffff]/95 border-[#e5dcce] text-[#1f1912] shadow-xl": !isDark(),
+            }}
+          >
             <div class="flex items-start justify-between gap-2 mb-2">
               <div class="min-w-0">
                 <div class="flex items-center gap-1.5 mb-1">
@@ -443,11 +551,24 @@ export const CodebaseKnowledgeGraph: Component<{
                     class="w-2 h-2 rounded-full shrink-0"
                     style={{ "background-color": KIND_COLORS[node().kind ?? "module"] ?? "#e5a93c" }}
                   />
-                  <span class="text-xs font-mono font-semibold text-[#ede6dd] truncate">
+                  <span
+                    class="text-xs font-mono font-semibold truncate"
+                    classList={{
+                      "text-[#ede6dd]": isDark(),
+                      "text-[#1f1912]": !isDark(),
+                    }}
+                  >
                     {node().label}
                   </span>
                 </div>
-                <span class="text-[10px] text-[#7d7162] font-mono block truncate" title={node().path}>
+                <span
+                  class="text-[10px] font-mono block truncate"
+                  title={node().path}
+                  classList={{
+                    "text-[#7d7162]": isDark(),
+                    "text-[#807466]": !isDark(),
+                  }}
+                >
                   {node().path}
                 </span>
               </div>
@@ -470,7 +591,13 @@ export const CodebaseKnowledgeGraph: Component<{
               >
                 {KIND_LABELS[node().kind ?? "module"] ?? "Module"}
               </span>
-              <span class="text-[10px] text-[#7d7162] font-mono">
+              <span
+                class="text-[10px] font-mono"
+                classList={{
+                  "text-[#7d7162]": isDark(),
+                  "text-[#807466]": !isDark(),
+                }}
+              >
                 {node().dependencies?.length ?? 0} imports · {node().dependents?.length ?? 0} callers
               </span>
             </div>
@@ -478,13 +605,25 @@ export const CodebaseKnowledgeGraph: Component<{
             {/* Exported symbols */}
             <Show when={(node().symbols?.length ?? 0) > 0}>
               <div class="mb-3">
-                <span class="text-[10px] text-[#7d7162] font-mono block mb-1 uppercase tracking-wider">
+                <span
+                  class="text-[10px] font-mono block mb-1 uppercase tracking-wider"
+                  classList={{
+                    "text-[#7d7162]": isDark(),
+                    "text-[#807466]": !isDark(),
+                  }}
+                >
                   Exported Symbols
                 </span>
                 <div class="flex flex-wrap gap-1 max-h-20 overflow-y-auto">
                   <For each={node().symbols}>
                     {(sym) => (
-                      <span class="px-1.5 py-0.5 rounded bg-[#1c1610] text-[#ede6dd] text-[10px] font-mono border border-[#2c2217]">
+                      <span
+                        class="px-1.5 py-0.5 rounded text-[10px] font-mono border"
+                        classList={{
+                          "bg-[#1c1610] text-[#ede6dd] border-[#2c2217]": isDark(),
+                          "bg-[#f4efe8] text-[#1f1912] border-[#ded3c3]": !isDark(),
+                        }}
+                      >
                         {sym}
                       </span>
                     )}
@@ -494,7 +633,13 @@ export const CodebaseKnowledgeGraph: Component<{
             </Show>
 
             {/* Action buttons */}
-            <div class="flex flex-col gap-1.5 pt-1 border-t border-[#261f17]">
+            <div
+              class="flex flex-col gap-1.5 pt-1 border-t"
+              classList={{
+                "border-[#261f17]": isDark(),
+                "border-[#ded3c3]": !isDark(),
+              }}
+            >
               <Button
                 type="button"
                 variant="primary"
@@ -509,7 +654,11 @@ export const CodebaseKnowledgeGraph: Component<{
                 type="button"
                 variant="outline"
                 size="small"
-                class="w-full justify-center gap-1.5 text-xs text-[#a59a8c] border-[#2c2217] hover:text-[#ede6dd] hover:bg-[#1c1610]"
+                class="w-full justify-center gap-1.5 text-xs transition-colors"
+                classList={{
+                  "text-[#a59a8c] border-[#2c2217] hover:text-[#ede6dd] hover:bg-[#1c1610]": isDark(),
+                  "text-[#635748] border-[#ded3c3] hover:text-[#1f1912] hover:bg-[#f4efe8]": !isDark(),
+                }}
                 onClick={() => handleMentionInChat(node())}
               >
                 <Icon name="at" size="small" />

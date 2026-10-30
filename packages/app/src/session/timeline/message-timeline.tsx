@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, on, onCleanup, Show, type Accessor, type JSX } from "solid-js"
+import { createEffect, createMemo, createSignal, on, onCleanup, onMount, Show, type Accessor, type JSX } from "solid-js"
 import { createStore } from "solid-js/store"
 import { Predicate } from "effect"
 import { createAnimatedPresence } from "@/runtime/animated-presence"
@@ -182,6 +182,25 @@ function MessageTimelineView(
       { defer: true },
     ),
   )
+
+  onMount(() => {
+    const handleVoiceCommand = (e: Event) => {
+      const customEvent = e as CustomEvent<{ command: string }>
+      const cmd = customEvent.detail?.command
+      if (cmd === "show-graph") {
+        setViewMode("graph")
+      } else if (cmd === "show-chat") {
+        setViewMode("chat")
+      } else if (cmd === "new-session") {
+        const btn = document.querySelector<HTMLButtonElement>('[data-action="new-session"]')
+        btn?.click()
+      }
+    }
+    window.addEventListener("whis:command", handleVoiceCommand)
+    onCleanup(() => {
+      window.removeEventListener("whis:command", handleVoiceCommand)
+    })
+  })
 
   const project = createMemo(() => {
     const session = props.session.data.info()

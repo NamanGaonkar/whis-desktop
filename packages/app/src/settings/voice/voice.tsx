@@ -130,6 +130,18 @@ export const SettingsVoice: Component = () => {
               />
             </div>
           </SettingsRow>
+
+          <SettingsRow
+            title={language.t("settings.voice.wakeWord.title")}
+            description={language.t("settings.voice.wakeWord.description")}
+          >
+            <div data-action="settings-voice-wakeword">
+              <Switch
+                checked={settings.voice.wakeWord()}
+                onChange={(checked) => settings.voice.setWakeWord(checked)}
+              />
+            </div>
+          </SettingsRow>
         </SettingsList>
       </section>
     </div>
