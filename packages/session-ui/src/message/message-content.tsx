@@ -792,9 +792,30 @@ export function AssistantTextContent(props: {
                       .replace(/[*_#>]/g, "")
                       .trim()
                     const utt = new SpeechSynthesisUtterance(clean)
+                    let preferredVoice = ""
+                    let speed = 1.0
+                    try {
+                      const raw = localStorage.getItem("settings.v3")
+                      if (raw) {
+                        const parsed = JSON.parse(raw)
+                        if (parsed?.voice?.voice) preferredVoice = parsed.voice.voice
+                        if (parsed?.voice?.speed) speed = parsed.voice.speed
+                      }
+                    } catch {}
+                    utt.rate = Math.max(0.5, Math.min(2.0, speed))
                     const voices = window.speechSynthesis.getVoices()
-                    const natural = voices.find(v => v.lang.startsWith("en") && (v.name.includes("Natural") || v.name.includes("Christopher") || v.name.includes("Jenny"))) ?? voices.find(v => v.lang.startsWith("en"))
-                    if (natural) utt.voice = natural
+                    let chosen = preferredVoice
+                      ? (voices.find((v) => v.name === preferredVoice || v.voiceURI === preferredVoice) ??
+                         voices.find((v) => v.name.toLowerCase().includes(preferredVoice.toLowerCase())))
+                      : undefined
+                    if (!chosen && voices.length > 0) {
+                      chosen =
+                        voices.find((v) => v.default) ??
+                        voices.find((v) => v.lang.toLowerCase().startsWith("en-us")) ??
+                        voices.find((v) => v.lang.toLowerCase().startsWith("en")) ??
+                        voices[0]
+                    }
+                    if (chosen) utt.voice = chosen
                     window.speechSynthesis.speak(utt)
                   }
                 }

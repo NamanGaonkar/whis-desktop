@@ -38,6 +38,10 @@ const icons = {
     viewBox: "0 0 16 16",
     body: `<path d="M10.4225 3.35355L12.9024 5.83344L10.4225 8.31333" stroke="currentColor"/><path d="M1 12.2852H4.23042C4.89912 12.2852 5.52359 11.951 5.89452 11.3946L9.00783 6.72462C8.37877 6.16823 10.0032 5.83402 10.6719 5.83402H12.9024" stroke="currentColor"/><path d="M8.5 12.2852H14" stroke="currentColor" stroke-linejoin="round"/>`,
   },
+  graph: {
+    viewBox: "0 0 16 16",
+    body: `<circle cx="4" cy="4" r="2" stroke="currentColor" fill="none" stroke-width="1.2"/><circle cx="12" cy="5" r="2" stroke="currentColor" fill="none" stroke-width="1.2"/><circle cx="7" cy="12" r="2" stroke="currentColor" fill="none" stroke-width="1.2"/><path d="M5.6 5l4.8 0.8M4.8 5.7l1.5 4.6M10.8 6.7l-2.6 3.8" stroke="currentColor" stroke-width="1.2"/>`,
+  },
   "grid-plus": {
     viewBox: "0 0 16 16",
     body: `<path d="M13.9948 11.668H9.32812M11.6641 9.33203V13.9987M6.66667 9.33203V13.9987H2V9.33203H6.66667ZM6.66667 2V6.66667H2V2H6.66667ZM13.9948 2V6.66667H9.32812V2H13.9948Z" stroke="currentColor" stroke-miterlimit="10" stroke-linecap="square"/>`,

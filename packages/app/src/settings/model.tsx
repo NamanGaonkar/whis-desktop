@@ -527,21 +527,21 @@ export const { use: useSettings, provider: SettingsProvider } = createSimpleCont
         },
       },
       voice: {
-        autoSpeak: withFallback(() => store.voice?.autoSpeak, false),
+        autoSpeak: withFallback(() => store.voice?.autoSpeak, defaultSettings.voice.autoSpeak),
         setAutoSpeak(value: boolean) {
-          setStore("voice", "autoSpeak", value)
+          setStore("voice", (prev) => ({ ...(prev ?? defaultSettings.voice), autoSpeak: value }))
         },
-        voice: withFallback(() => store.voice?.voice, "en-US-ChristopherNeural"),
+        voice: withFallback(() => store.voice?.voice, defaultSettings.voice.voice),
         setVoice(value: string) {
-          setStore("voice", "voice", value)
+          setStore("voice", (prev) => ({ ...(prev ?? defaultSettings.voice), voice: value }))
         },
-        speed: withFallback(() => store.voice?.speed, 1.0),
+        speed: withFallback(() => store.voice?.speed, defaultSettings.voice.speed),
         setSpeed(value: number) {
-          setStore("voice", "speed", value)
+          setStore("voice", (prev) => ({ ...(prev ?? defaultSettings.voice), speed: value }))
         },
-        autoSend: withFallback(() => store.voice?.autoSend, false),
+        autoSend: withFallback(() => store.voice?.autoSend, defaultSettings.voice.autoSend),
         setAutoSend(value: boolean) {
-          setStore("voice", "autoSend", value)
+          setStore("voice", (prev) => ({ ...(prev ?? defaultSettings.voice), autoSend: value }))
         },
       },
     }

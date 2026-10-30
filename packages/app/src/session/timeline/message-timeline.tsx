@@ -162,11 +162,17 @@ function MessageTimelineView(
               if (lastSpokenMessageID === msgID) break
               lastSpokenMessageID = msgID
               const msg = props.data.projection.messageByID().get(msgID)
-              if (msg && "text" in msg && typeof msg.text === "string" && msg.text) {
-                tts.speak(msg.text, {
-                  voice: settings.voice.voice(),
-                  speed: settings.voice.speed(),
-                })
+              if (msg && msg.type === "assistant" && Array.isArray(msg.content)) {
+                const texts = msg.content
+                  .filter((c: any) => c.type === "text" && typeof c.text === "string" && c.text.trim().length > 0)
+                  .map((c: any) => c.text)
+                const textToSpeak = texts.join("\n\n")
+                if (textToSpeak) {
+                  tts.speak(textToSpeak, {
+                    voice: settings.voice.voice(),
+                    speed: settings.voice.speed(),
+                  })
+                }
               }
               break
             }

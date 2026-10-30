@@ -16,7 +16,7 @@ export function allowRendererPermissions(win: BrowserWindow) {
   const webContentsId = win.webContents.id
   win.webContents.session.setPermissionRequestHandler((webContents, permission, callback, details) => {
     callback(
-      rendererPermissions.has(permission) && isRendererUrl(details.requestingUrl) && webContents.id === webContentsId,
+      rendererPermissions.has(permission) && (!webContents || webContents.id === webContentsId) && (!details.requestingUrl || isRendererUrl(details.requestingUrl)),
     )
   })
   win.webContents.session.setPermissionCheckHandler((webContents, permission, requestingOrigin, details) => {
@@ -24,7 +24,7 @@ export function allowRendererPermissions(win: BrowserWindow) {
 
     if (webContents && webContents.id !== webContentsId) return false
 
-    return isRendererUrl(details.requestingUrl) || isRendererUrl(requestingOrigin)
+    return !requestingOrigin || isRendererUrl(requestingOrigin) || !details.requestingUrl || isRendererUrl(details.requestingUrl)
   })
 }
 
@@ -66,6 +66,16 @@ export function wireRendererHeaders(win: BrowserWindow) {
   win.webContents.session.webRequest.onHeadersReceived((details, callback) => {
     const responseHeaders = details.responseHeaders ?? {}
     addRendererHeaders(responseHeaders, { document: isRendererUrl(details.url, true) })
+    if (details.url.includes(":9749")) {
+      delete responseHeaders["x-frame-options"]
+      delete responseHeaders["X-Frame-Options"]
+      const cspKey = Object.keys(responseHeaders).find((k) => k.toLowerCase() === "content-security-policy")
+      if (cspKey && responseHeaders[cspKey]) {
+        responseHeaders[cspKey] = responseHeaders[cspKey].map((val) =>
+          val.replace(/frame-ancestors\s+[^;]+;?/gi, ""),
+        )
+      }
+    }
     callback({ responseHeaders })
   })
 }

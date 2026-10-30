@@ -68,13 +68,13 @@ export async function scanCodebaseGraph(
   // Collect candidate project files
   const filePaths: string[] = []
 
-  // Strategy 1: Try client.file.find with "." wildcard
+  // Strategy 1: Try client.file.find with empty query to match all files
   try {
     const res = await client.file.find({
       location: loc,
-      query: ".",
+      query: "",
       type: "file",
-      limit: 300,
+      limit: 500,
     })
 
     if (res?.data && res.data.length > 0) {
