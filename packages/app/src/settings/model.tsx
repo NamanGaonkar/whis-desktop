@@ -306,10 +306,10 @@ export const defaultSettings: Settings = {
     errors: "nope-03",
   },
   voice: {
-    autoSpeak: false,
-    voice: "",
-    speed: 1.0,
-    autoSend: false,
+    autoSpeak: typeof localStorage !== "undefined" ? localStorage.getItem("whis_autospeak") === "true" : false,
+    voice: typeof localStorage !== "undefined" ? (localStorage.getItem("whis_voice") ?? "") : "",
+    speed: typeof localStorage !== "undefined" && localStorage.getItem("whis_speed") ? parseFloat(localStorage.getItem("whis_speed")) : 1.0,
+    autoSend: typeof localStorage !== "undefined" ? localStorage.getItem("whis_autosend") === "true" : false,
   },
 }
 
@@ -529,18 +529,22 @@ export const { use: useSettings, provider: SettingsProvider } = createSimpleCont
       voice: {
         autoSpeak: withFallback(() => store.voice?.autoSpeak, defaultSettings.voice.autoSpeak),
         setAutoSpeak(value: boolean) {
+          if (typeof localStorage !== "undefined") localStorage.setItem("whis_autospeak", String(value))
           setStore("voice", (prev) => ({ ...(prev ?? defaultSettings.voice), autoSpeak: value }))
         },
         voice: withFallback(() => store.voice?.voice, defaultSettings.voice.voice),
         setVoice(value: string) {
+          if (typeof localStorage !== "undefined") localStorage.setItem("whis_voice", value)
           setStore("voice", (prev) => ({ ...(prev ?? defaultSettings.voice), voice: value }))
         },
         speed: withFallback(() => store.voice?.speed, defaultSettings.voice.speed),
         setSpeed(value: number) {
+          if (typeof localStorage !== "undefined") localStorage.setItem("whis_speed", String(value))
           setStore("voice", (prev) => ({ ...(prev ?? defaultSettings.voice), speed: value }))
         },
         autoSend: withFallback(() => store.voice?.autoSend, defaultSettings.voice.autoSend),
         setAutoSend(value: boolean) {
+          if (typeof localStorage !== "undefined") localStorage.setItem("whis_autosend", String(value))
           setStore("voice", (prev) => ({ ...(prev ?? defaultSettings.voice), autoSend: value }))
         },
       },

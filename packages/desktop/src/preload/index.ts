@@ -29,4 +29,15 @@ contextBridge.exposeInMainWorld("electron", {
   storageSnapshot: snapshot.then((snapshot) => snapshot.storage),
   extensions: snapshot.then((snapshot) => snapshot.extensions),
   getPathForFile: (file: File) => webUtils.getPathForFile(file),
+  speech: {
+    start: () => ipcRenderer.send("whis-speech-start"),
+    stop: () => ipcRenderer.send("whis-speech-stop"),
+    onResult: (callback: (text: string) => void) => {
+      const handler = (_event: unknown, text: string) => callback(text)
+      ipcRenderer.on("whis-speech-result", handler)
+      return () => {
+        ipcRenderer.removeListener("whis-speech-result", handler)
+      }
+    },
+  },
 })

@@ -524,8 +524,18 @@ function MessageTimelineView(
           <div class="flex-1 w-full h-full min-h-0">
             <CodebaseKnowledgeGraph
               directory={sessionDirectory()}
-              onSelectModule={() => {
+              onSelectModule={(filePath, promptText) => {
                 setViewMode("chat")
+                if (promptText) {
+                  setTimeout(() => {
+                    const editor = document.querySelector<HTMLDivElement>('[data-component="composer-editor"]')
+                    if (editor) {
+                      editor.focus()
+                      document.execCommand("selectAll", false)
+                      document.execCommand("insertText", false, promptText)
+                    }
+                  }, 80)
+                }
               }}
             />
           </div>

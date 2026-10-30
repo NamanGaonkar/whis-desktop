@@ -3,6 +3,7 @@ import { marks } from "./lifecycle/marks"
 import { app } from "electron"
 import { acquireApplicationLock, configureApplication } from "./lifecycle/configure"
 import { startSidecarProbe } from "./service/sidecar-probe"
+import { registerSpeechRecognitionHandler } from "./speech/recognition"
 import { registerStorageSnapshotHandler } from "./storage/snapshot"
 import { createEarlyWindow } from "./windows/early"
 import { rendererAssetsServed } from "./windows/protocol"
@@ -21,6 +22,7 @@ if (acquireApplicationLock()) {
   void app.whenReady().then(async () => {
     marks.ready = Date.now()
     registerStorageSnapshotHandler()
+    registerSpeechRecognitionHandler()
     createEarlyWindow()
     marks.window = Date.now()
     startSidecarProbe()

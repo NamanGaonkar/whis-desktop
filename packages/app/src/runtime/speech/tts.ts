@@ -90,16 +90,19 @@ export function useTextToSpeech() {
     const rate = options?.speed ?? 1.0
     utterance.rate = Math.max(0.5, Math.min(2.0, rate))
 
-    const preferred = options?.voice
+    const preferred =
+      options?.voice ||
+      (typeof localStorage !== "undefined" ? localStorage.getItem("whis_voice") || undefined : undefined)
     const voices = window.speechSynthesis.getVoices()
 
     let matchedVoice: SpeechSynthesisVoice | undefined
 
     if (preferred && preferred.trim()) {
-      matchedVoice = voices.find((v) => v.name === preferred || v.voiceURI === preferred)
-      if (!matchedVoice) {
-        matchedVoice = voices.find((v) => v.name.toLowerCase().includes(preferred.toLowerCase()))
-      }
+      const p = preferred.trim().toLowerCase()
+      matchedVoice =
+        voices.find((v) => v.name === preferred || v.voiceURI === preferred) ??
+        voices.find((v) => v.name.toLowerCase() === p || v.voiceURI.toLowerCase() === p) ??
+        voices.find((v) => v.name.toLowerCase().includes(p) || p.includes(v.name.toLowerCase()))
     }
 
     if (!matchedVoice && voices.length > 0) {

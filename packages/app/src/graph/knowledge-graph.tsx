@@ -1,6 +1,7 @@
 import {
   Component,
   createSignal,
+  For,
   onCleanup,
   onMount,
   Show,
@@ -20,9 +21,17 @@ const KIND_COLORS: Record<string, string> = {
   type: "#a855f7",
 }
 
+const KIND_LABELS: Record<string, string> = {
+  component: "UI Component",
+  module: "Logic Module",
+  server: "Server / Route",
+  config: "Configuration",
+  type: "Type Definition",
+}
+
 export const CodebaseKnowledgeGraph: Component<{
   directory?: string
-  onSelectModule?: (filePath: string) => void
+  onSelectModule?: (filePath: string, promptText?: string) => void
   onClose?: () => void
 }> = (props) => {
   const client = useServerSDK()
@@ -30,8 +39,6 @@ export const CodebaseKnowledgeGraph: Component<{
   let cy: Core | null = null
   let resizeObserver: ResizeObserver | null = null
 
-  const [cbmAvailable, setCbmAvailable] = createSignal(false)
-  const [activeTab, setActiveTab] = createSignal<"cbm" | "native">("native")
   const [loading, setLoading] = createSignal(true)
   const [graphData, setGraphData] = createSignal<GraphData>({
     nodes: [],
@@ -43,18 +50,6 @@ export const CodebaseKnowledgeGraph: Component<{
   const [searchQuery, setSearchQuery] = createSignal("")
   const [activeFilter, setActiveFilter] = createSignal<string>("all")
 
-  async function checkCbmLens() {
-    try {
-      // Use no-cors probe to detect if CBM Lens is running on port 9749
-      await fetch("http://localhost:9749/", { method: "HEAD", mode: "no-cors" })
-      setCbmAvailable(true)
-      setActiveTab("cbm")
-    } catch {
-      setCbmAvailable(false)
-      setActiveTab("native")
-    }
-  }
-
   async function loadGraph() {
     setLoading(true)
     try {
@@ -62,9 +57,7 @@ export const CodebaseKnowledgeGraph: Component<{
       setGraphData(data)
       setLoading(false)
       setTimeout(() => {
-        if (activeTab() === "native") {
-          initCytoscape(data)
-        }
+        initCytoscape(data)
       }, 50)
     } catch (err) {
       console.warn("Failed to load codebase graph:", err)
@@ -90,7 +83,7 @@ export const CodebaseKnowledgeGraph: Component<{
     const formattedNodes = data.nodes.map((node) => {
       const kind = node.data.kind ?? "module"
       const color = KIND_COLORS[kind] ?? accentColor
-      const size = Math.max(26, Math.min(46, 26 + (node.data.degree ?? 0) * 3))
+      const size = Math.max(26, Math.min(48, 26 + (node.data.degree ?? 0) * 3))
 
       return {
         ...node,
@@ -266,8 +259,17 @@ export const CodebaseKnowledgeGraph: Component<{
     cy?.fit(undefined, 40)
   }
 
+  function handleAskWhis(node: GraphNode["data"]) {
+    const prompt = `Can you explain the structure, purpose, and responsibilities of @${node.path} and how it connects with other modules in this project?`
+    props.onSelectModule?.(node.path, prompt)
+  }
+
+  function handleMentionInChat(node: GraphNode["data"]) {
+    const prompt = `@${node.path} `
+    props.onSelectModule?.(node.path, prompt)
+  }
+
   onMount(() => {
-    void checkCbmLens()
     void loadGraph()
 
     if (containerRef && typeof ResizeObserver !== "undefined") {
@@ -293,240 +295,226 @@ export const CodebaseKnowledgeGraph: Component<{
 
   return (
     <div class="relative w-full h-full flex flex-col bg-[#080502] text-[#ede6dd] overflow-hidden select-none">
-      {/* Top Floating Whis Glassmorphic Bar */}
+      {/* Top Glassmorphic Navigation Bar */}
       <div class="absolute top-2.5 left-3 right-3 z-30 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[#140f0a]/90 px-3 py-1.5 shadow-md backdrop-blur-md border border-[#261f17]">
-        <div class="flex items-center gap-2">
-          {/* Mode Switcher */}
-          <div class="flex items-center bg-[#1c1610] rounded-md p-0.5 border border-[#30261c] text-xs">
-            <Show when={cbmAvailable()}>
-              <button
-                type="button"
-                class="px-2.5 py-1 rounded transition-colors flex items-center gap-1.5"
-                classList={{
-                  "bg-[#e5a93c] text-[#080502] font-semibold": activeTab() === "cbm",
-                  "text-[#a59a8c] hover:text-[#ede6dd]": activeTab() !== "cbm",
-                }}
-                onClick={() => setActiveTab("cbm")}
-              >
-                <span>🌌 CBM 3D Lens</span>
-              </button>
-            </Show>
-            <button
-              type="button"
-              class="px-2.5 py-1 rounded transition-colors flex items-center gap-1.5"
-              classList={{
-                "bg-[#e5a93c] text-[#080502] font-semibold": activeTab() === "native",
-                "text-[#a59a8c] hover:text-[#ede6dd]": activeTab() !== "native",
-              }}
-              onClick={() => {
-                setActiveTab("native")
-                setTimeout(() => {
-                  if (graphData().nodes.length > 0) initCytoscape(graphData())
-                }, 50)
-              }}
-            >
-              <Icon name="graph" size="small" />
-              <span>Whis Topology</span>
-            </button>
+        <div class="flex items-center gap-2.5">
+          <div class="flex items-center gap-1.5 text-xs font-semibold text-[#e5a93c] tracking-wide uppercase">
+            <Icon name="graph" size="small" />
+            <span>Codebase Topology</span>
           </div>
 
-          <Show when={activeTab() === "native"}>
-            {/* Search box */}
-            <div class="relative flex items-center">
-              <Icon name="magnifying-glass" size="small" class="absolute left-2 text-[#7d7162] pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Search modules..."
-                value={searchQuery()}
-                onInput={(e) => handleSearch(e.currentTarget.value)}
-                class="h-7 w-36 sm:w-48 rounded-md bg-[#18130e] ps-7 pe-2 text-xs text-[#ede6dd] placeholder:text-[#7d7162] border border-[#2c2217] focus:outline-none focus:border-[#e5a93c]"
-              />
-            </div>
+          {/* Search box */}
+          <div class="relative flex items-center">
+            <Icon name="magnifying-glass" size="small" class="absolute left-2 text-[#7d7162] pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search modules..."
+              value={searchQuery()}
+              onInput={(e) => handleSearch(e.currentTarget.value)}
+              class="h-7 w-36 sm:w-48 rounded-md bg-[#18130e] ps-7 pe-2 text-xs text-[#ede6dd] placeholder:text-[#7d7162] border border-[#2c2217] focus:outline-none focus:border-[#e5a93c]"
+            />
+          </div>
 
-            {/* Quick filter chips */}
-            <div class="hidden md:flex items-center gap-1 text-[11px]">
-              <button
-                type="button"
-                class="px-2 py-0.5 rounded transition-colors"
-                classList={{
-                  "bg-[#e5a93c]/20 text-[#e5a93c] font-medium": activeFilter() === "all",
-                  "text-[#7d7162] hover:text-[#ede6dd]": activeFilter() !== "all",
-                }}
-                onClick={() => filterByKind("all")}
-              >
-                All
-              </button>
-              <button
-                type="button"
-                class="px-2 py-0.5 rounded transition-colors flex items-center gap-1"
-                classList={{
-                  "bg-[#38bdf8]/20 text-[#38bdf8] font-medium": activeFilter() === "component",
-                  "text-[#7d7162] hover:text-[#ede6dd]": activeFilter() !== "component",
-                }}
-                onClick={() => filterByKind("component")}
-              >
-                <span class="w-1.5 h-1.5 rounded-full bg-[#38bdf8]" />
-                UI
-              </button>
-              <button
-                type="button"
-                class="px-2 py-0.5 rounded transition-colors flex items-center gap-1"
-                classList={{
-                  "bg-[#e5a93c]/20 text-[#e5a93c] font-medium": activeFilter() === "module",
-                  "text-[#7d7162] hover:text-[#ede6dd]": activeFilter() !== "module",
-                }}
-                onClick={() => filterByKind("module")}
-              >
-                <span class="w-1.5 h-1.5 rounded-full bg-[#e5a93c]" />
-                Logic
-              </button>
-            </div>
-          </Show>
+          {/* Quick filter chips */}
+          <div class="hidden md:flex items-center gap-1 text-[11px]">
+            <button
+              type="button"
+              class="px-2 py-0.5 rounded transition-colors"
+              classList={{
+                "bg-[#e5a93c]/20 text-[#e5a93c] font-medium": activeFilter() === "all",
+                "text-[#7d7162] hover:text-[#ede6dd]": activeFilter() !== "all",
+              }}
+              onClick={() => filterByKind("all")}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              class="px-2 py-0.5 rounded transition-colors flex items-center gap-1"
+              classList={{
+                "bg-[#38bdf8]/20 text-[#38bdf8] font-medium": activeFilter() === "component",
+                "text-[#7d7162] hover:text-[#ede6dd]": activeFilter() !== "component",
+              }}
+              onClick={() => filterByKind("component")}
+            >
+              <span class="w-1.5 h-1.5 rounded-full bg-[#38bdf8]" />
+              UI
+            </button>
+            <button
+              type="button"
+              class="px-2 py-0.5 rounded transition-colors flex items-center gap-1"
+              classList={{
+                "bg-[#e5a93c]/20 text-[#e5a93c] font-medium": activeFilter() === "module",
+                "text-[#7d7162] hover:text-[#ede6dd]": activeFilter() !== "module",
+              }}
+              onClick={() => filterByKind("module")}
+            >
+              <span class="w-1.5 h-1.5 rounded-full bg-[#e5a93c]" />
+              Logic
+            </button>
+            <button
+              type="button"
+              class="px-2 py-0.5 rounded transition-colors flex items-center gap-1"
+              classList={{
+                "bg-[#f43f5e]/20 text-[#f43f5e] font-medium": activeFilter() === "server",
+                "text-[#7d7162] hover:text-[#ede6dd]": activeFilter() !== "server",
+              }}
+              onClick={() => filterByKind("server")}
+            >
+              <span class="w-1.5 h-1.5 rounded-full bg-[#f43f5e]" />
+              Server
+            </button>
+            <button
+              type="button"
+              class="px-2 py-0.5 rounded transition-colors flex items-center gap-1"
+              classList={{
+                "bg-[#10b981]/20 text-[#10b981] font-medium": activeFilter() === "config",
+                "text-[#7d7162] hover:text-[#ede6dd]": activeFilter() !== "config",
+              }}
+              onClick={() => filterByKind("config")}
+            >
+              <span class="w-1.5 h-1.5 rounded-full bg-[#10b981]" />
+              Config
+            </button>
+          </div>
         </div>
 
         {/* Right Controls */}
         <div class="flex items-center gap-2">
-          <Show when={activeTab() === "native"}>
-            <span class="text-[11px] text-[#7d7162] font-mono">
-              {graphData().fileCount} files · {graphData().dependencyCount} links
-            </span>
-            <div class="flex items-center border-s border-[#2c2217] ps-1.5 gap-0.5">
-              <IconButton
-                icon={<Icon name="plus" size="small" />}
-                size="small"
-                variant="ghost-muted"
-                aria-label="Zoom in"
-                onClick={zoomIn}
-              />
-              <IconButton
-                icon={<Icon name="dash" size="small" />}
-                size="small"
-                variant="ghost-muted"
-                aria-label="Zoom out"
-                onClick={zoomOut}
-              />
-              <IconButton
-                icon={<Icon name="expand" size="small" />}
-                size="small"
-                variant="ghost-muted"
-                aria-label="Fit view"
-                onClick={fitView}
-              />
-              <IconButton
-                icon={<Icon name="arrow-clockwise" size="small" />}
-                size="small"
-                variant="ghost-muted"
-                aria-label="Rescan"
-                onClick={() => void loadGraph()}
-              />
-            </div>
-          </Show>
-
-          <Show when={props.onClose}>
+          <span class="text-[11px] text-[#7d7162] font-mono">
+            {graphData().fileCount} files · {graphData().dependencyCount} links
+          </span>
+          <div class="flex items-center border-s border-[#2c2217] ps-1.5 gap-0.5">
             <IconButton
-              icon={<Icon name="close" size="small" />}
+              icon={<Icon name="plus" size="small" />}
               size="small"
               variant="ghost-muted"
-              aria-label="Close knowledge graph"
-              onClick={props.onClose}
+              aria-label="Zoom in"
+              onClick={zoomIn}
             />
-          </Show>
+            <IconButton
+              icon={<Icon name="minus" size="small" />}
+              size="small"
+              variant="ghost-muted"
+              aria-label="Zoom out"
+              onClick={zoomOut}
+            />
+            <IconButton
+              icon={<Icon name="square-split-horizontal" size="small" />}
+              size="small"
+              variant="ghost-muted"
+              aria-label="Fit view"
+              onClick={fitView}
+            />
+            <IconButton
+              icon={<Icon name="arrow-clockwise" size="small" />}
+              size="small"
+              variant="ghost-muted"
+              aria-label="Reload graph"
+              onClick={loadGraph}
+            />
+          </div>
         </div>
       </div>
 
-      {/* Main View Area */}
-      <Show when={activeTab() === "cbm" && cbmAvailable()}>
-        <div class="relative w-full h-full pt-12 bg-[#080502]">
-          <iframe
-            src="http://localhost:9749"
-            class="w-full h-full border-none bg-[#080502]"
-            title="Codebase Memory 3D Graph Lens"
-          />
-        </div>
-      </Show>
+      {/* Main Cytoscape Graph Canvas */}
+      <div class="relative w-full h-full flex-1">
+        <Show when={loading()}>
+          <div class="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#080502]/80 backdrop-blur-sm">
+            <div class="w-6 h-6 border-2 border-[#e5a93c] border-t-transparent rounded-full animate-spin mb-2" />
+            <span class="text-xs text-[#a59a8c] font-mono">Analyzing codebase topology...</span>
+          </div>
+        </Show>
 
-      <Show when={activeTab() === "native" || !cbmAvailable()}>
-        <div
-          class="relative flex-1 w-full h-full pt-12"
-          style={{
-            "background-image": "radial-gradient(circle, #211a14 1px, transparent 1px)",
-            "background-size": "24px 24px",
-          }}
-        >
-          <Show when={loading()}>
-            <div class="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#080502]/85 backdrop-blur-xs gap-3">
-              <div class="w-6 h-6 border-2 border-[#e5a93c] border-t-transparent rounded-full animate-spin" />
-              <span class="text-xs text-[#a59a8c] font-mono">Mapping codebase architecture...</span>
+        <div ref={containerRef} class="w-full h-full cursor-grab active:cursor-grabbing" />
+      </div>
+
+      {/* Floating Node Inspection Card */}
+      <Show when={selectedNode()}>
+        {(node) => (
+          <div class="absolute bottom-4 right-4 z-30 w-80 max-w-[calc(100vw-2rem)] rounded-xl bg-[#140f0a]/95 border border-[#30261c] p-4 shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 duration-200">
+            <div class="flex items-start justify-between gap-2 mb-2">
+              <div class="min-w-0">
+                <div class="flex items-center gap-1.5 mb-1">
+                  <span
+                    class="w-2 h-2 rounded-full shrink-0"
+                    style={{ "background-color": KIND_COLORS[node().kind ?? "module"] ?? "#e5a93c" }}
+                  />
+                  <span class="text-xs font-mono font-semibold text-[#ede6dd] truncate">
+                    {node().label}
+                  </span>
+                </div>
+                <span class="text-[10px] text-[#7d7162] font-mono block truncate" title={node().path}>
+                  {node().path}
+                </span>
+              </div>
+              <IconButton
+                icon={<Icon name="xmark" size="small" />}
+                size="small"
+                variant="ghost-muted"
+                aria-label="Close details"
+                onClick={() => setSelectedNode(null)}
+              />
             </div>
-          </Show>
 
-          <Show when={!loading() && graphData().fileCount === 0}>
-            <div class="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 p-4">
-              <Icon name="graph" size="large" class="text-[#7d7162] opacity-40" />
-              <span class="text-xs text-[#7d7162]">No code files detected in this workspace directory.</span>
-              <Button variant="outline" size="small" onClick={() => void loadGraph()}>
-                Scan Again
+            <div class="flex items-center gap-1.5 mb-3">
+              <span
+                class="px-2 py-0.5 rounded text-[10px] font-mono font-medium"
+                style={{
+                  "background-color": `${KIND_COLORS[node().kind ?? "module"] ?? "#e5a93c"}20`,
+                  color: KIND_COLORS[node().kind ?? "module"] ?? "#e5a93c",
+                }}
+              >
+                {KIND_LABELS[node().kind ?? "module"] ?? "Module"}
+              </span>
+              <span class="text-[10px] text-[#7d7162] font-mono">
+                {node().dependencies?.length ?? 0} imports · {node().dependents?.length ?? 0} callers
+              </span>
+            </div>
+
+            {/* Exported symbols */}
+            <Show when={(node().symbols?.length ?? 0) > 0}>
+              <div class="mb-3">
+                <span class="text-[10px] text-[#7d7162] font-mono block mb-1 uppercase tracking-wider">
+                  Exported Symbols
+                </span>
+                <div class="flex flex-wrap gap-1 max-h-20 overflow-y-auto">
+                  <For each={node().symbols}>
+                    {(sym) => (
+                      <span class="px-1.5 py-0.5 rounded bg-[#1c1610] text-[#ede6dd] text-[10px] font-mono border border-[#2c2217]">
+                        {sym}
+                      </span>
+                    )}
+                  </For>
+                </div>
+              </div>
+            </Show>
+
+            {/* Action buttons */}
+            <div class="flex flex-col gap-1.5 pt-1 border-t border-[#261f17]">
+              <Button
+                type="button"
+                variant="primary"
+                size="small"
+                class="w-full justify-center gap-1.5 bg-[#e5a93c] text-[#080502] font-semibold hover:bg-[#d4962c]"
+                onClick={() => handleAskWhis(node())}
+              >
+                <Icon name="bubble-5" size="small" />
+                <span>Ask Whis about this</span>
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="small"
+                class="w-full justify-center gap-1.5 text-xs text-[#a59a8c] border-[#2c2217] hover:text-[#ede6dd] hover:bg-[#1c1610]"
+                onClick={() => handleMentionInChat(node())}
+              >
+                <Icon name="at" size="small" />
+                <span>Mention in Chat</span>
               </Button>
             </div>
-          </Show>
-
-          <div ref={containerRef} class="w-full h-full" />
-
-          {/* Selected Node Detail Drawer */}
-          <Show when={selectedNode()}>
-            {(node) => (
-              <div class="absolute bottom-4 right-4 z-20 w-80 rounded-xl bg-[#140f0a]/95 border border-[#2c2217] p-4 shadow-2xl backdrop-blur-md">
-                <div class="flex items-start justify-between gap-2 mb-2">
-                  <div class="min-w-0">
-                    <div class="flex items-center gap-1.5">
-                      <span
-                        class="w-2 h-2 rounded-full"
-                        style={{ "background-color": KIND_COLORS[node().kind ?? "module"] ?? "#e5a93c" }}
-                      />
-                      <h4 class="text-xs font-semibold text-[#ede6dd] truncate font-mono">{node().label}</h4>
-                    </div>
-                    <p class="text-[11px] text-[#7d7162] truncate mt-0.5 font-mono">{node().path}</p>
-                  </div>
-                  <IconButton
-                    icon={<Icon name="close" size="small" />}
-                    size="small"
-                    variant="ghost-muted"
-                    aria-label="Close"
-                    onClick={() => setSelectedNode(null)}
-                  />
-                </div>
-
-                <div class="flex items-center gap-2 my-3 text-[11px] text-[#a59a8c]">
-                  <span class="px-2 py-0.5 rounded-md bg-[#1c1610] border border-[#2c2217] font-mono">
-                    {node().ext ? `.${node().ext}` : "file"}
-                  </span>
-                  <span class="px-2 py-0.5 rounded-md bg-[#1c1610] border border-[#2c2217] font-mono">
-                    {node().kind ?? "module"}
-                  </span>
-                  <Show when={node().degree !== undefined && node().degree! > 0}>
-                    <span class="px-2 py-0.5 rounded-md bg-[#1c1610] border border-[#2c2217] font-mono">
-                      {node().degree} links
-                    </span>
-                  </Show>
-                </div>
-
-                <Show when={props.onSelectModule}>
-                  <Button
-                    variant="contrast"
-                    size="small"
-                    class="w-full justify-center gap-1.5 mt-2"
-                    onClick={() => {
-                      props.onSelectModule?.(node().path ?? node().id)
-                    }}
-                  >
-                    <Icon name="bubble-5" size="small" />
-                    <span>Chat about this module</span>
-                  </Button>
-                </Show>
-              </div>
-            )}
-          </Show>
-        </div>
+          </div>
+        )}
       </Show>
     </div>
   )

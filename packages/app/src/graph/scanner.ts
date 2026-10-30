@@ -8,9 +8,13 @@ export interface GraphNode {
     ext?: string
     kind?: "component" | "module" | "server" | "config" | "type"
     package?: string
-    path?: string
+    path: string
     size?: number
     degree?: number
+    symbols?: string[]
+    dependencies?: string[]
+    dependents?: string[]
+    color?: string
   }
 }
 
@@ -46,10 +50,10 @@ const IGNORED_PATHS = [
 
 function getFileKind(ext: string, filePath: string): GraphNode["data"]["kind"] {
   const lower = filePath.toLowerCase()
-  if (lower.includes("server") || lower.includes("api") || lower.includes("backend")) return "server"
-  if (ext === "tsx" || ext === "jsx") return "component"
-  if (lower.includes("types") || lower.includes(".d.ts")) return "type"
-  if (ext === "json" || ext === "yaml" || ext === "yml" || ext === "toml") return "config"
+  if (lower.includes("server") || lower.includes("api") || lower.includes("backend") || lower.includes("route")) return "server"
+  if (ext === "tsx" || ext === "jsx" || lower.includes("component") || lower.includes("view")) return "component"
+  if (lower.includes("types") || lower.includes(".d.ts") || lower.includes("schema")) return "type"
+  if (ext === "json" || ext === "yaml" || ext === "yml" || ext === "toml" || lower.includes("config")) return "config"
   return "module"
 }
 
@@ -62,36 +66,41 @@ export async function scanCodebaseGraph(
   const nodeMap = new Map<string, GraphNode>()
   const edgeSet = new Set<string>()
   const degreeMap = new Map<string, number>()
+  const dependenciesMap = new Map<string, string[]>()
+  const dependentsMap = new Map<string, string[]>()
 
   const loc = directory ? { directory } : undefined
 
   // Collect candidate project files
   const filePaths: string[] = []
 
-  // Strategy 1: Try client.file.find with empty query to match all files
-  try {
-    const res = await client.file.find({
-      location: loc,
-      query: "",
-      type: "file",
-      limit: 500,
-    })
+  // Strategy 1: Try client.file.find with empty and root queries
+  for (const q of ["", "."]) {
+    if (filePaths.length > 50) break
+    try {
+      const res = await client.file.find({
+        location: loc,
+        query: q,
+        type: "file",
+        limit: 500,
+      })
 
-    if (res?.data && res.data.length > 0) {
-      for (const entry of res.data) {
-        filePaths.push(entry.path)
+      if (res?.data && res.data.length > 0) {
+        for (const entry of res.data) {
+          if (entry.path) filePaths.push(entry.path)
+        }
       }
+    } catch {
+      // Continue to next strategy
     }
-  } catch (err) {
-    console.warn("Graph file.find fallback:", err)
   }
 
-  // Strategy 2: If strategy 1 returned few/no files, use recursive directory listing
-  if (filePaths.length < 5) {
+  // Strategy 2: Recursive directory listing if find returned few files
+  if (filePaths.length < 15) {
     const queue: string[] = [""]
     let visitedDirs = 0
 
-    while (queue.length > 0 && filePaths.length < 250 && visitedDirs < 30) {
+    while (queue.length > 0 && filePaths.length < 400 && visitedDirs < 60) {
       const currentDir = queue.shift()!
       visitedDirs++
 
@@ -106,7 +115,7 @@ export async function scanCodebaseGraph(
           if (IGNORED_PATHS.some((ignored) => p.includes(ignored))) continue
 
           if (entry.type === "directory") {
-            if (visitedDirs < 30 && queue.length < 20) {
+            if (visitedDirs < 60 && queue.length < 40) {
               queue.push(entry.path)
             }
           } else {
@@ -153,14 +162,17 @@ export async function scanCodebaseGraph(
         package: pkg,
         path: filePath,
         degree: 0,
+        symbols: [],
+        dependencies: [],
+        dependents: [],
       },
     }
     nodeMap.set(filePath, node)
     nodes.push(node)
   }
 
-  // Inspect first 80 files to extract import dependencies
-  const inspectionLimit = Math.min(validFiles.length, 80)
+  // Inspect first 100 files to extract import dependencies & exported symbols
+  const inspectionLimit = Math.min(validFiles.length, 100)
   for (let i = 0; i < inspectionLimit; i++) {
     const filePath = validFiles[i]
     try {
@@ -171,6 +183,21 @@ export async function scanCodebaseGraph(
 
       const content = fileBytes ? new TextDecoder().decode(fileBytes) : ""
       if (!content) continue
+
+      // Extract exported symbols (classes, functions, interfaces, constants)
+      const symbols: string[] = []
+      const symbolRegex = /(?:export\s+(?:default\s+)?(?:class|function|interface|type|const|let|var)\s+([A-Za-z0-9_$]+))/g
+      let symMatch: RegExpExecArray | null
+      while ((symMatch = symbolRegex.exec(content)) !== null) {
+        if (symMatch[1] && !symbols.includes(symMatch[1])) {
+          symbols.push(symMatch[1])
+        }
+      }
+
+      const currentNode = nodeMap.get(filePath)
+      if (currentNode) {
+        currentNode.data.symbols = symbols.slice(0, 8)
+      }
 
       // Match import specs (ESM & CJS)
       const importRegex = /(?:import\s+(?:[\w*\s{},]*\s+from\s+)?['"]([^'"]+)['"]|require\(['"]([^'"]+)['"]\))/g
@@ -202,20 +229,31 @@ export async function scanCodebaseGraph(
               },
             })
 
-            // Track degrees for centrality sizing
+            // Track degrees
             degreeMap.set(filePath, (degreeMap.get(filePath) ?? 0) + 1)
             degreeMap.set(matchedTarget, (degreeMap.get(matchedTarget) ?? 0) + 1)
+
+            // Track dependencies & dependents
+            const deps = dependenciesMap.get(filePath) ?? []
+            deps.push(matchedTarget)
+            dependenciesMap.set(filePath, deps)
+
+            const dependents = dependentsMap.get(matchedTarget) ?? []
+            dependents.push(filePath)
+            dependentsMap.set(matchedTarget, dependents)
           }
         }
       }
     } catch {
-      // Skip files that cannot be read
+      // Skip unreadable files
     }
   }
 
-  // Update node degrees for dynamic node sizing
+  // Populate node metadata
   for (const node of nodes) {
     node.data.degree = degreeMap.get(node.data.id) ?? 0
+    node.data.dependencies = dependenciesMap.get(node.data.id) ?? []
+    node.data.dependents = dependentsMap.get(node.data.id) ?? []
   }
 
   return {

@@ -3,6 +3,13 @@ import { createSignal } from "solid-js"
 interface IWindowWithSpeech extends Window {
   webkitSpeechRecognition?: any
   SpeechRecognition?: any
+  electron?: {
+    speech?: {
+      start: () => void
+      stop: () => void
+      onResult: (callback: (text: string) => void) => () => void
+    }
+  }
 }
 
 const [isListening, setIsListening] = createSignal(false)
@@ -12,16 +19,19 @@ const [audioLevel, setAudioLevel] = createSignal(0)
 export function useSpeechToText() {
   const isSupported =
     typeof window !== "undefined" &&
-    (Boolean(
-      (window as IWindowWithSpeech).webkitSpeechRecognition ||
-        (window as IWindowWithSpeech).SpeechRecognition,
-    ) || Boolean(navigator?.mediaDevices?.getUserMedia))
+    (Boolean((window as IWindowWithSpeech).electron?.speech) ||
+      Boolean(
+        (window as IWindowWithSpeech).webkitSpeechRecognition ||
+          (window as IWindowWithSpeech).SpeechRecognition,
+      ) ||
+      Boolean(navigator?.mediaDevices?.getUserMedia))
 
   let activeStream: MediaStream | null = null
   let audioCtx: AudioContext | null = null
   let analyser: AnalyserNode | null = null
   let animFrameId: number | null = null
   let recognition: any = null
+  let speechResultCleanup: (() => void) | null = null
   let silenceTimer: ReturnType<typeof setTimeout> | null = null
   let userHasSpoken = false
 
@@ -51,12 +61,28 @@ export function useSpeechToText() {
 
   function stop() {
     cleanupAudio()
+
+    if (speechResultCleanup) {
+      try {
+        speechResultCleanup()
+      } catch {}
+      speechResultCleanup = null
+    }
+
+    const electronSpeech = typeof window !== "undefined" ? (window as IWindowWithSpeech).electron?.speech : undefined
+    if (electronSpeech) {
+      try {
+        electronSpeech.stop()
+      } catch {}
+    }
+
     if (recognition) {
       try {
         recognition.stop()
       } catch {}
       recognition = null
     }
+
     setIsListening(false)
   }
 
@@ -87,11 +113,6 @@ export function useSpeechToText() {
         setIsListening(false)
         return
       }
-    }
-
-    if (!stream && !((window as IWindowWithSpeech).webkitSpeechRecognition || (window as IWindowWithSpeech).SpeechRecognition)) {
-      setError("Speech recognition / microphone is not available.")
-      return
     }
 
     setIsListening(true)
@@ -145,7 +166,25 @@ export function useSpeechToText() {
       }
     }
 
-    // 3. Set up SpeechRecognition if supported
+    // 3. Prefer Native Electron Speech Recognition (Windows System.Speech)
+    const electronSpeech = typeof window !== "undefined" ? (window as IWindowWithSpeech).electron?.speech : undefined
+
+    if (electronSpeech) {
+      try {
+        speechResultCleanup = electronSpeech.onResult((text: string) => {
+          if (text && text.trim()) {
+            userHasSpoken = true
+            options.onTranscript(text.trim(), true)
+          }
+        })
+        electronSpeech.start()
+        return
+      } catch (err) {
+        console.warn("Native electron speech start failed:", err)
+      }
+    }
+
+    // 4. Web Speech API Fallback
     const SpeechRec =
       (window as IWindowWithSpeech).webkitSpeechRecognition ||
       (window as IWindowWithSpeech).SpeechRecognition
@@ -182,7 +221,6 @@ export function useSpeechToText() {
         recognition.onerror = (e: any) => {
           console.warn("Speech recognition status:", e.error)
           if (e.error === "network") {
-            // Electron lacks proprietary Google cloud speech keys; keep live VAD active
             setError("Listening... Tip: Win+H activates Windows Voice Typing directly into Whis")
           } else if (e.error !== "no-speech") {
             setError(e.error === "not-allowed" ? "Microphone access blocked" : `Speech: ${e.error}`)
@@ -190,7 +228,6 @@ export function useSpeechToText() {
         }
 
         recognition.onend = () => {
-          // If speech recognition ended on its own but audio stream is still active, don't force stop
           if (!activeStream) {
             setIsListening(false)
           }

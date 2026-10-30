@@ -792,22 +792,18 @@ export function AssistantTextContent(props: {
                       .replace(/[*_#>]/g, "")
                       .trim()
                     const utt = new SpeechSynthesisUtterance(clean)
-                    let preferredVoice = ""
-                    let speed = 1.0
-                    try {
-                      const raw = localStorage.getItem("settings.v3")
-                      if (raw) {
-                        const parsed = JSON.parse(raw)
-                        if (parsed?.voice?.voice) preferredVoice = parsed.voice.voice
-                        if (parsed?.voice?.speed) speed = parsed.voice.speed
-                      }
-                    } catch {}
+                    const preferredVoice = (typeof localStorage !== "undefined" && localStorage.getItem("whis_voice")) || ""
+                    const speed = (typeof localStorage !== "undefined" && parseFloat(localStorage.getItem("whis_speed") || "1.0")) || 1.0
                     utt.rate = Math.max(0.5, Math.min(2.0, speed))
                     const voices = window.speechSynthesis.getVoices()
-                    let chosen = preferredVoice
-                      ? (voices.find((v) => v.name === preferredVoice || v.voiceURI === preferredVoice) ??
-                         voices.find((v) => v.name.toLowerCase().includes(preferredVoice.toLowerCase())))
-                      : undefined
+                    let chosen: SpeechSynthesisVoice | undefined
+                    if (preferredVoice && preferredVoice.trim()) {
+                      const pv = preferredVoice.trim().toLowerCase()
+                      chosen =
+                        voices.find((v) => v.name === preferredVoice || v.voiceURI === preferredVoice) ??
+                        voices.find((v) => v.name.toLowerCase() === pv || v.voiceURI.toLowerCase() === pv) ??
+                        voices.find((v) => v.name.toLowerCase().includes(pv) || pv.includes(v.name.toLowerCase()))
+                    }
                     if (!chosen && voices.length > 0) {
                       chosen =
                         voices.find((v) => v.default) ??
