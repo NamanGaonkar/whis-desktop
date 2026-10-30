@@ -171,8 +171,47 @@ export async function scanCodebaseGraph(
     nodes.push(node)
   }
 
-  // Inspect first 100 files to extract import dependencies & exported symbols
-  const inspectionLimit = Math.min(validFiles.length, 100)
+  // File cache for cross-referencing
+  interface FileCacheItem {
+    filePath: string
+    content: string
+    symbols: string[]
+    imports: string[]
+  }
+  const fileCache: FileCacheItem[] = []
+
+  // Helper to add edge safely
+  function addEdge(source: string, target: string, type: "import" | "dependency" = "import") {
+    if (source === target) return
+    const edgeId = `${source}->${target}`
+    if (edgeSet.has(edgeId)) return
+    edgeSet.add(edgeId)
+
+    edges.push({
+      data: {
+        id: edgeId,
+        source,
+        target,
+        type,
+      },
+    })
+
+    // Track degrees
+    degreeMap.set(source, (degreeMap.get(source) ?? 0) + 1)
+    degreeMap.set(target, (degreeMap.get(target) ?? 0) + 1)
+
+    // Track dependencies & dependents
+    const deps = dependenciesMap.get(source) ?? []
+    deps.push(target)
+    dependenciesMap.set(source, deps)
+
+    const dependents = dependentsMap.get(target) ?? []
+    dependents.push(source)
+    dependentsMap.set(target, dependents)
+  }
+
+  // Pass 1: Read files and extract defined symbols & explicit imports across languages
+  const inspectionLimit = Math.min(validFiles.length, 120)
   for (let i = 0; i < inspectionLimit; i++) {
     const filePath = validFiles[i]
     try {
@@ -184,68 +223,177 @@ export async function scanCodebaseGraph(
       const content = fileBytes ? new TextDecoder().decode(fileBytes) : ""
       if (!content) continue
 
-      // Extract exported symbols (classes, functions, interfaces, constants)
       const symbols: string[] = []
-      const symbolRegex = /(?:export\s+(?:default\s+)?(?:class|function|interface|type|const|let|var)\s+([A-Za-z0-9_$]+))/g
-      let symMatch: RegExpExecArray | null
-      while ((symMatch = symbolRegex.exec(content)) !== null) {
-        if (symMatch[1] && !symbols.includes(symMatch[1])) {
-          symbols.push(symMatch[1])
+      const imports: string[] = []
+      const lower = filePath.toLowerCase()
+
+      // 1. Language-Specific Symbol Extraction
+      if (lower.endsWith(".go")) {
+        // Go functions & methods: func Name( or func (r Receiver) Name(
+        const funcRegex = /func\s+(?:\([^)]+\)\s+)?([A-Za-z0-9_]{3,})\s*\(/g
+        let m: RegExpExecArray | null
+        while ((m = funcRegex.exec(content)) !== null) {
+          if (m[1] && !symbols.includes(m[1])) symbols.push(m[1])
+        }
+        // Go types: type Name struct / interface
+        const typeRegex = /type\s+([A-Za-z0-9_]{3,})\s+(?:struct|interface)/g
+        while ((m = typeRegex.exec(content)) !== null) {
+          if (m[1] && !symbols.includes(m[1])) symbols.push(m[1])
+        }
+        // Go imports: import "..." or import ( ... )
+        const goImportBlock = /import\s*\(([\s\S]*?)\)/g
+        while ((m = goImportBlock.exec(content)) !== null) {
+          const lines = m[1].split("\n")
+          for (const line of lines) {
+            const spec = line.match(/"([^"]+)"/)
+            if (spec && spec[1]) imports.push(spec[1])
+          }
+        }
+        const singleGoImport = /import\s+"([^"]+)"/g
+        while ((m = singleGoImport.exec(content)) !== null) {
+          if (m[1]) imports.push(m[1])
+        }
+      } else if (lower.endsWith(".py")) {
+        // Python classes & functions
+        const pyRegex = /(?:def|class)\s+([A-Za-z0-9_]{3,})/g
+        let m: RegExpExecArray | null
+        while ((m = pyRegex.exec(content)) !== null) {
+          if (m[1] && !symbols.includes(m[1])) symbols.push(m[1])
+        }
+        // Python imports: import x or from x import y
+        const pyImportRegex = /(?:from\s+([a-zA-Z0-9_.]+)\s+import|import\s+([a-zA-Z0-9_.]+))/g
+        while ((m = pyImportRegex.exec(content)) !== null) {
+          const spec = m[1] || m[2]
+          if (spec) imports.push(spec)
+        }
+      } else if (lower.endsWith(".rs")) {
+        // Rust structs, enums, functions
+        const rsRegex = /(?:pub\s+)?(?:fn|struct|enum|trait)\s+([A-Za-z0-9_]{3,})/g
+        let m: RegExpExecArray | null
+        while ((m = rsRegex.exec(content)) !== null) {
+          if (m[1] && !symbols.includes(m[1])) symbols.push(m[1])
+        }
+        // Rust use or mod
+        const rsImportRegex = /(?:use\s+([a-zA-Z0-9_:]+)|mod\s+([a-zA-Z0-9_]+))/g
+        while ((m = rsImportRegex.exec(content)) !== null) {
+          const spec = m[1] || m[2]
+          if (spec) imports.push(spec)
+        }
+      } else {
+        // TypeScript / JavaScript
+        const tsSymbolRegex = /(?:export\s+(?:default\s+)?(?:class|function|interface|type|const|let|var)\s+([A-Za-z0-9_$]+))/g
+        let m: RegExpExecArray | null
+        while ((m = tsSymbolRegex.exec(content)) !== null) {
+          if (m[1] && !symbols.includes(m[1])) symbols.push(m[1])
+        }
+        // JS/TS imports
+        const jsImportRegex = /(?:import\s+(?:[\w*\s{},]*\s+from\s+)?['"]([^'"]+)['"]|require\(['"]([^'"]+)['"]\))/g
+        while ((m = jsImportRegex.exec(content)) !== null) {
+          const spec = m[1] || m[2]
+          if (spec) imports.push(spec)
         }
       }
 
       const currentNode = nodeMap.get(filePath)
       if (currentNode) {
-        currentNode.data.symbols = symbols.slice(0, 8)
+        currentNode.data.symbols = symbols.slice(0, 10)
       }
 
-      // Match import specs (ESM & CJS)
-      const importRegex = /(?:import\s+(?:[\w*\s{},]*\s+from\s+)?['"]([^'"]+)['"]|require\(['"]([^'"]+)['"]\))/g
-      let match: RegExpExecArray | null
-
-      while ((match = importRegex.exec(content)) !== null) {
-        const importSpec = match[1] || match[2]
-        if (!importSpec) continue
-        if (importSpec.startsWith("@") && !importSpec.includes("/")) continue
-
-        const matchedTarget = validFiles.find((f) => {
-          if (importSpec.startsWith(".")) {
-            const specBase = importSpec.split(/[/\\]/).at(-1)
-            return f !== filePath && Boolean(specBase && f.includes(specBase))
-          }
-          return f !== filePath && f.includes(importSpec)
-        })
-
-        if (matchedTarget) {
-          const edgeId = `${filePath}->${matchedTarget}`
-          if (!edgeSet.has(edgeId)) {
-            edgeSet.add(edgeId)
-            edges.push({
-              data: {
-                id: edgeId,
-                source: filePath,
-                target: matchedTarget,
-                type: "import",
-              },
-            })
-
-            // Track degrees
-            degreeMap.set(filePath, (degreeMap.get(filePath) ?? 0) + 1)
-            degreeMap.set(matchedTarget, (degreeMap.get(matchedTarget) ?? 0) + 1)
-
-            // Track dependencies & dependents
-            const deps = dependenciesMap.get(filePath) ?? []
-            deps.push(matchedTarget)
-            dependenciesMap.set(filePath, deps)
-
-            const dependents = dependentsMap.get(matchedTarget) ?? []
-            dependents.push(filePath)
-            dependentsMap.set(matchedTarget, dependents)
-          }
-        }
-      }
+      fileCache.push({
+        filePath,
+        content,
+        symbols,
+        imports,
+      })
     } catch {
       // Skip unreadable files
+    }
+  }
+
+  // Pass 2: Connect via explicit imports
+  for (const item of fileCache) {
+    for (const importSpec of item.imports) {
+      if (importSpec.startsWith("@") && !importSpec.includes("/")) continue
+
+      const matchedTarget = validFiles.find((f) => {
+        if (importSpec.startsWith(".")) {
+          const specBase = importSpec.split(/[/\\]/).at(-1)
+          return f !== item.filePath && Boolean(specBase && f.includes(specBase))
+        }
+        const specBase = importSpec.split(/[/\\]/).at(-1)
+        return f !== item.filePath && Boolean(specBase && f.includes(specBase))
+      })
+
+      if (matchedTarget) {
+        addEdge(item.filePath, matchedTarget, "import")
+      }
+    }
+  }
+
+  // Pass 3: Cross-Reference Symbol Linking (Especially for Go, Python, Rust where files share packages)
+  // Build symbol registry: Map<SymbolName, FilePath[]>
+  const symbolToFile = new Map<string, string[]>()
+  for (const item of fileCache) {
+    for (const sym of item.symbols) {
+      // Only index meaningful symbols (>3 chars, not generic keywords)
+      if (sym.length < 4) continue
+      if (["init", "main", "test", "data", "type", "error"].includes(sym.toLowerCase())) continue
+      const list = symbolToFile.get(sym) ?? []
+      list.push(item.filePath)
+      symbolToFile.set(sym, list)
+    }
+  }
+
+  // For each file, check if it invokes or references symbols declared in other files
+  for (const item of fileCache) {
+    for (const [sym, declaringFiles] of symbolToFile.entries()) {
+      for (const targetFile of declaringFiles) {
+        if (targetFile === item.filePath) continue
+
+        // Quick word boundary check
+        const regex = new RegExp(`\\b${sym}\\b`)
+        if (regex.test(item.content)) {
+          addEdge(item.filePath, targetFile, "dependency")
+        }
+      }
+    }
+
+    // Connect test files to implementation files (e.g., foo_test.go -> foo.go)
+    const baseName = item.filePath.replace(/([._-](?:test|spec))?\.[a-zA-Z0-9]+$/, "")
+    const targetImp = validFiles.find((f) => {
+      if (f === item.filePath) return false
+      const targetBase = f.replace(/([._-](?:test|spec))?\.[a-zA-Z0-9]+$/, "")
+      return targetBase === baseName
+    })
+    if (targetImp) {
+      addEdge(item.filePath, targetImp, "dependency")
+    }
+  }
+
+  // Pass 4: Intra-directory semantic cohesion (Ensure files in small directories have structural ties)
+  const dirToFile = new Map<string, string[]>()
+  for (const f of validFiles) {
+    const parts = f.split(/[/\\]/)
+    const dir = parts.length > 1 ? parts.slice(0, -1).join("/") : "root"
+    const list = dirToFile.get(dir) ?? []
+    list.push(f)
+    dirToFile.set(dir, list)
+  }
+
+  // If a directory has disconnected files, link them to the main/entry or adjacent file in that directory
+  for (const [dir, filesInDir] of dirToFile.entries()) {
+    if (filesInDir.length <= 1) continue
+    const mainFile = filesInDir.find((f) => {
+      const lower = f.toLowerCase()
+      return lower.includes("main.") || lower.includes("index.") || lower.includes("mod.") || lower.includes("app.")
+    }) || filesInDir[0]
+
+    for (const other of filesInDir) {
+      if (other === mainFile) continue
+      // If node currently has degree 0, link it to the directory anchor
+      if ((degreeMap.get(other) ?? 0) === 0) {
+        addEdge(other, mainFile, "dependency")
+      }
     }
   }
 

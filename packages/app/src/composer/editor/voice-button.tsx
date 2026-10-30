@@ -19,13 +19,19 @@ export const ComposerVoiceInputButton: Component<{
       return
     }
 
+    // Ensure editor is focused before starting so dictation targets the active prompt
+    const el = props.editor()
+    if (el) {
+      el.focus()
+    }
+
     stt.start({
       autoSendEnabled: settings.voice.autoSend(),
       onTranscript: (chunk, isFinal) => {
         if (!isFinal) return
-        const el = props.editor()
-        if (!el) return
-        el.focus()
+        const editorEl = props.editor()
+        if (!editorEl) return
+        editorEl.focus()
         // Standard contenteditable text insertion preserves undo stack & triggers input listener
         const text = chunk.trim() + " "
         document.execCommand("insertText", false, text)
@@ -44,7 +50,7 @@ export const ComposerVoiceInputButton: Component<{
           stt.error() ??
           (stt.isListening()
             ? "Listening... (Click to stop or pause 1.5s to auto-send)"
-            : "Voice Input (Click to speak \u00B7 Win+H supported)")
+            : "Voice Input (Click to speak \u00B7 Windows Voice Typing supported)")
         }
       >
         <IconButton

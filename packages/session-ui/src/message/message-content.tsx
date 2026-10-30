@@ -1,3 +1,4 @@
+import { normalizeForSpeech } from "./normalizer"
 function formatMessageTime(timestamp: number | undefined, locale: string) {
   if (!timestamp) return ""
   const date = new Date(timestamp)
@@ -786,11 +787,8 @@ export function AssistantTextContent(props: {
                   if (window.speechSynthesis.speaking) {
                     window.speechSynthesis.cancel()
                   } else {
-                    const clean = props.text
-                      .replace(/```[\s\S]*?```/g, " [Here is the code.] ")
-                      .replace(/`([^`]+)`/g, "$1")
-                      .replace(/[*_#>]/g, "")
-                      .trim()
+                    const clean = normalizeForSpeech(props.text)
+                    if (!clean) return
                     const utt = new SpeechSynthesisUtterance(clean)
                     const preferredVoice = (typeof localStorage !== "undefined" && localStorage.getItem("whis_voice")) || ""
                     const speed = (typeof localStorage !== "undefined" && parseFloat(localStorage.getItem("whis_speed") || "1.0")) || 1.0
