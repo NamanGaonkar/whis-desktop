@@ -21,8 +21,8 @@ const speedOptions = [
 ]
 
 const engineOptions = [
-  { value: "kokoro", label: "Kokoro Neural (Local HD - CPU Optimized)" },
-  { value: "system", label: "Windows Built-in Voice" },
+  { value: "system", label: "Fast Windows Voice (Instant 0ms, Zero Lag - Recommended)" },
+  { value: "kokoro", label: "Kokoro Neural Voice (Local HD, Experimental)" },
 ]
 
 export const SettingsVoice: Component = () => {
@@ -69,7 +69,7 @@ export const SettingsVoice: Component = () => {
 
     const eng = settings.voice.engine() as "kokoro" | "system"
     tts.speak(
-      "Hello! I am Whis, your autonomous AI coding partner. Neural voice synthesis is running locally and naturally.",
+      "Hello! I am Whis, your AI pair programmer. Voice is working smoothly and naturally.",
       {
         engine: eng,
         voice: eng === "kokoro" ? settings.voice.kokoroVoice() : settings.voice.voice(),

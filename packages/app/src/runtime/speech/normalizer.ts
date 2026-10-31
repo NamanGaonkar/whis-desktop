@@ -71,7 +71,12 @@ export function normalizeForSpeech(text: string): string {
   // 11. Remove HTML tags
   cleaned = cleaned.replace(/<[^>]+>/g, "")
 
-  // 12. GPU and Hardware Model Pronunciation
+  // 12. App Name Pronunciation
+  // Pronounce "Whis" as "Whiss" (/wɪs/) instead of "whys" (/waɪz/)
+  cleaned = cleaned.replace(/\b[wW]his\b/g, "Whiss")
+  cleaned = cleaned.replace(/\b[wW]his[- ]([a-zA-Z]+)\b/g, "Whiss $1")
+
+  // 13. GPU and Hardware Model Pronunciation
   // Pronounce 4-digit GPU models naturally in words (e.g. RTX 4050 -> RTX forty fifty instead of "four thousand fifty")
   cleaned = cleaned.replace(
     /\b(RTX|GTX|RX|GeForce|Radeon|Arc|Intel|Core|Ryzen|NVIDIA)?\s*([1-9]\d)(00|10|20|30|40|50|60|70|80|90|50|60|70|80|90|\d{2})\b/gi,

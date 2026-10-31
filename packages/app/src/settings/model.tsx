@@ -317,7 +317,7 @@ export const defaultSettings: Settings = {
     voice: typeof localStorage !== "undefined" ? (localStorage.getItem("whis_voice") ?? "") : "",
     speed: typeof localStorage !== "undefined" && localStorage.getItem("whis_speed") ? parseFloat(localStorage.getItem("whis_speed") ?? "1.0") : 1.0,
     autoSend: typeof localStorage !== "undefined" ? localStorage.getItem("whis_autosend") !== "false" : true,
-    engine: typeof localStorage !== "undefined" ? (localStorage.getItem("whis_engine") ?? "kokoro") : "kokoro",
+    engine: typeof localStorage !== "undefined" ? (localStorage.getItem("whis_engine") ?? "system") : "system",
     kokoroVoice: typeof localStorage !== "undefined" ? (localStorage.getItem("whis_kokoro_voice") ?? "af_heart") : "af_heart",
     whisperModel: typeof localStorage !== "undefined" ? (localStorage.getItem("whis_whisper_model") ?? "base") : "base",
     silenceThreshold: typeof localStorage !== "undefined" && localStorage.getItem("whis_silence_threshold") ? parseFloat(localStorage.getItem("whis_silence_threshold") ?? "1.0") : 1.0,

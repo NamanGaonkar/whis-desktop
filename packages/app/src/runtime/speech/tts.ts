@@ -18,6 +18,7 @@ const [isSystemSpeaking, setIsSystemSpeaking] = createSignal(false)
 const [availableSystemVoices, setAvailableSystemVoices] = createSignal<VoiceOption[]>([])
 
 let currentUtterance: SpeechSynthesisUtterance | null = null
+let systemPlaybackSession = 0
 
 function cleanVoiceName(rawName: string, lang: string): string {
   const name = rawName
@@ -27,33 +28,34 @@ function cleanVoiceName(rawName: string, lang: string): string {
     .replace(/\s+-\s+English\s+\(United Kingdom\)/i, " (UK)")
     .replace(/\s+-\s+English\s+\(India\)/i, " (India)")
     .replace(/\s+-\s+English\s+\(Australia\)/i, " (AU)")
-    .replace(/\s+Online\s+\(Natural\)/i, " (Natural)")
+    .replace(/\s+Desktop/i, "")
+    .trim()
 
-  const langTag = lang ? ` [${lang}]` : ""
-  return `${name}${langTag}`
+  return name || `${lang} Voice`
 }
 
 function updateSystemVoices() {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return
-  const raw = window.speechSynthesis.getVoices()
-  if (!raw || raw.length === 0) return
+  const voices = window.speechSynthesis.getVoices()
+  if (!voices || voices.length === 0) return
 
-  const list: VoiceOption[] = raw.map((v) => ({
-    id: v.name,
-    name: cleanVoiceName(v.name, v.lang),
-    lang: v.lang,
-    isNatural: v.name.toLowerCase().includes("natural") || v.name.toLowerCase().includes("online"),
-  }))
+  const english = voices
+    .filter((v) => v.lang.startsWith("en") || !v.lang)
+    .map((v) => ({
+      id: v.name,
+      name: cleanVoiceName(v.name, v.lang),
+      lang: v.lang,
+      isNatural: v.name.includes("Natural") || v.name.includes("Online"),
+    }))
+    .sort((a, b) => {
+      if (a.isNatural && !b.isNatural) return -1
+      if (!a.isNatural && b.isNatural) return 1
+      return a.name.localeCompare(b.name)
+    })
 
-  list.sort((a, b) => {
-    const aEn = a.lang.toLowerCase().startsWith("en") ? 1 : 0
-    const bEn = b.lang.toLowerCase().startsWith("en") ? 1 : 0
-    if (aEn !== bEn) return bEn - aEn
-    if (a.isNatural !== b.isNatural) return a.isNatural ? -1 : 1
-    return a.name.localeCompare(b.name)
-  })
-
-  setAvailableSystemVoices(list)
+  if (english.length > 0) {
+    setAvailableSystemVoices(english)
+  }
 }
 
 if (typeof window !== "undefined" && "speechSynthesis" in window) {
@@ -61,6 +63,13 @@ if (typeof window !== "undefined" && "speechSynthesis" in window) {
   window.speechSynthesis.onvoiceschanged = () => {
     updateSystemVoices()
   }
+}
+
+function splitIntoSentences(text: string): string[] {
+  return text
+    .split(/(?<=[.!?])\s+|\n+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
 }
 
 export function useTextToSpeech() {
@@ -71,6 +80,7 @@ export function useTextToSpeech() {
   }
 
   function stop() {
+    systemPlaybackSession++
     stopKokoroSpeech()
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       if (currentUtterance) {
@@ -83,26 +93,34 @@ export function useTextToSpeech() {
     setIsSystemSpeaking(false)
   }
 
-  function speakSystem(rawText: string, options?: { voice?: string; speed?: number }) {
+  function speakSystem(
+    rawText: string,
+    options?: {
+      voice?: string
+      speed?: number
+      onSentenceStart?: (sentence: string, index: number, total: number) => void
+    },
+  ) {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return
 
-    const text = normalizeForSpeech(rawText)
-    if (!text.trim()) return
+    const clean = normalizeForSpeech(rawText)
+    if (!clean.trim()) return
 
-    const utterance = new SpeechSynthesisUtterance(text)
-    currentUtterance = utterance
-    const rate = options?.speed ?? 1.0
-    utterance.rate = Math.max(0.5, Math.min(2.0, rate))
+    const sentences = splitIntoSentences(clean)
+    if (sentences.length === 0) return
 
-    const preferred = options?.voice
+    stop()
+    const sessionId = ++systemPlaybackSession
+
     const voices = window.speechSynthesis.getVoices()
-
+    const preferred = options?.voice
     let matchedVoice: SpeechSynthesisVoice | undefined
+
     if (preferred && preferred.trim()) {
       matchedVoice = voices.find((v) => v.name === preferred)
       if (!matchedVoice) {
-        const lowerPref = preferred.toLowerCase()
-        matchedVoice = voices.find((v) => v.name.toLowerCase().includes(lowerPref))
+        const lower = preferred.toLowerCase()
+        matchedVoice = voices.find((v) => v.name.toLowerCase().includes(lower))
       }
     }
     if (!matchedVoice) {
@@ -112,21 +130,46 @@ export function useTextToSpeech() {
         voices[0]
     }
 
-    if (matchedVoice) {
-      utterance.voice = matchedVoice
+    const rate = Math.max(0.6, Math.min(1.8, options?.speed ?? 1.0))
+    setIsSystemSpeaking(true)
+
+    let index = 0
+
+    function speakNext() {
+      if (sessionId !== systemPlaybackSession) return
+      if (index >= sentences.length) {
+        setIsSystemSpeaking(false)
+        currentUtterance = null
+        return
+      }
+
+      const sentenceText = sentences[index]
+      options?.onSentenceStart?.(sentenceText, index, sentences.length)
+
+      const utterance = new SpeechSynthesisUtterance(sentenceText)
+      currentUtterance = utterance
+      utterance.rate = rate
+      if (matchedVoice) {
+        utterance.voice = matchedVoice
+      }
+
+      utterance.onend = () => {
+        if (sessionId !== systemPlaybackSession) return
+        index++
+        speakNext()
+      }
+
+      utterance.onerror = (e) => {
+        if (e.error === "canceled" || e.error === "interrupted") return
+        if (sessionId !== systemPlaybackSession) return
+        index++
+        speakNext()
+      }
+
+      window.speechSynthesis.speak(utterance)
     }
 
-    utterance.onstart = () => setIsSystemSpeaking(true)
-    utterance.onend = () => {
-      setIsSystemSpeaking(false)
-      currentUtterance = null
-    }
-    utterance.onerror = () => {
-      setIsSystemSpeaking(false)
-      currentUtterance = null
-    }
-
-    window.speechSynthesis.speak(utterance)
+    speakNext()
   }
 
   function speak(
@@ -139,7 +182,7 @@ export function useTextToSpeech() {
     },
   ) {
     stop()
-    const engine = options?.engine ?? "kokoro"
+    const engine = options?.engine ?? "system"
 
     if (engine === "kokoro") {
       void speakWithKokoro(rawText, {
@@ -157,7 +200,7 @@ export function useTextToSpeech() {
   if (typeof window !== "undefined") {
     ;(window as any).__whis_tts = {
       speak: (text: string) => {
-        const eng = (typeof localStorage !== "undefined" ? (localStorage.getItem("whis_engine") ?? "kokoro") : "kokoro") as "kokoro" | "system"
+        const eng = (typeof localStorage !== "undefined" ? (localStorage.getItem("whis_engine") ?? "system") : "system") as "kokoro" | "system"
         const v =
           eng === "kokoro"
             ? (typeof localStorage !== "undefined" ? (localStorage.getItem("whis_kokoro_voice") ?? "af_heart") : "af_heart")
