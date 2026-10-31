@@ -20,13 +20,13 @@ const speedOptions = [
 ]
 
 const engineOptions = [
-  { value: "kokoro", label: "Kokoro Neural Voice (Studio Human HD - Background Worker)" },
-  { value: "system", label: "Fast Windows Voice (Instant 0ms, Zero Lag)" },
+  { value: "kokoro", label: "Kokoro Neural Voice (Studio HD)" },
+  { value: "system", label: "Windows Voice (Instant 0ms)" },
 ]
 
 const sttEngineOptions = [
-  { value: "windows", label: "Windows Native Voice Typing (Win + H - Instant 0ms, Streaming - Recommended)" },
-  { value: "whisper", label: "Local Whisper Model (Offline Background Worker)" },
+  { value: "windows", label: "Windows Native Voice Typing (Win + H)" },
+  { value: "whisper", label: "Local Whisper Model (Offline)" },
 ]
 
 export const SettingsVoice: Component = () => {
@@ -96,24 +96,26 @@ export const SettingsVoice: Component = () => {
             title="TTS Engine"
             description="Choose between local Kokoro neural synthesis (studio human voice) or Windows built-in voice"
           >
-            <Select
-              data-action="settings-voice-engine"
-              options={engineOptions}
-              current={selectedEngine()}
-              value={(opt) => opt.value}
-              label={(opt) => opt.label}
-              placement="bottom-end"
-              gutter={6}
-              onSelect={(opt) => {
-                if (!opt) return
-                settings.voice.setEngine(opt.value)
-                if (opt.value === "system") {
-                  kokoro.unload()
-                } else if (opt.value === "kokoro") {
-                  kokoro.preload()
-                }
-              }}
-            />
+            <div class="w-72 max-w-full">
+              <Select
+                data-action="settings-voice-engine"
+                options={engineOptions}
+                current={selectedEngine()}
+                value={(opt) => opt.value}
+                label={(opt) => opt.label}
+                placement="bottom-end"
+                gutter={6}
+                onSelect={(opt) => {
+                  if (!opt) return
+                  settings.voice.setEngine(opt.value)
+                  if (opt.value === "system") {
+                    kokoro.unload()
+                  } else if (opt.value === "kokoro") {
+                    kokoro.preload()
+                  }
+                }}
+              />
+            </div>
           </SettingsRow>
 
           <Show when={settings.voice.engine() === "kokoro"}>
@@ -229,16 +231,18 @@ export const SettingsVoice: Component = () => {
             title="Speech-to-Text Engine"
             description="Choose between native Windows Voice Typing (instant 0ms streaming) or local Whisper"
           >
-            <Select
-              data-action="settings-stt-engine"
-              options={sttEngineOptions}
-              current={selectedSttEngine()}
-              value={(opt) => opt.value}
-              label={(opt) => opt.label}
-              placement="bottom-end"
-              gutter={6}
-              onSelect={(opt) => opt && settings.voice.setSttEngine(opt.value)}
-            />
+            <div class="w-72 max-w-full">
+              <Select
+                data-action="settings-stt-engine"
+                options={sttEngineOptions}
+                current={selectedSttEngine()}
+                value={(opt) => opt.value}
+                label={(opt) => opt.label}
+                placement="bottom-end"
+                gutter={6}
+                onSelect={(opt) => opt && settings.voice.setSttEngine(opt.value)}
+              />
+            </div>
           </SettingsRow>
 
           <Show when={settings.voice.sttEngine() === "whisper"}>
@@ -246,16 +250,18 @@ export const SettingsVoice: Component = () => {
               title="Local Whisper Model"
               description="Runs 100% locally on CPU without external servers or API keys"
             >
-              <Select
-                data-action="settings-whisper-model"
-                options={WHISPER_MODELS}
-                current={selectedWhisperModel()}
-                value={(opt) => opt.id}
-                label={(opt) => `${opt.name} (${opt.size})`}
-                placement="bottom-end"
-                gutter={6}
-                onSelect={(opt) => opt && settings.voice.setWhisperModel(opt.id)}
-              />
+              <div class="w-72 max-w-full">
+                <Select
+                  data-action="settings-whisper-model"
+                  options={WHISPER_MODELS}
+                  current={selectedWhisperModel()}
+                  value={(opt) => opt.id}
+                  label={(opt) => `${opt.name} (${opt.size})`}
+                  placement="bottom-end"
+                  gutter={6}
+                  onSelect={(opt) => opt && settings.voice.setWhisperModel(opt.id)}
+                />
+              </div>
             </SettingsRow>
 
             <Show when={whisper.downloadProgress() > 0 && whisper.downloadProgress() < 100}>
@@ -299,26 +305,6 @@ export const SettingsVoice: Component = () => {
               <Switch
                 checked={settings.voice.autoSend()}
                 onChange={(checked) => settings.voice.setAutoSend(checked)}
-              />
-            </div>
-          </SettingsRow>
-        </SettingsList>
-      </section>
-
-      {/* 3. Activation & Hotkeys */}
-      <section class="settings-section" aria-label="Activation & Hotkeys">
-        <h3 class="settings-section-title">Activation & Hotkeys</h3>
-        <SettingsList>
-          <SettingsRow
-            title="Push-to-Talk Global Hotkey"
-            description="Global hotkey to start or toggle voice dictation anywhere in Windows"
-          >
-            <div class="flex items-center gap-2">
-              <input
-                type="text"
-                value={settings.voice.pushToTalkHotkey()}
-                onInput={(e) => settings.voice.setPushToTalkHotkey(e.currentTarget.value)}
-                class="h-7 w-48 rounded-md px-2 text-xs font-mono bg-[#18130e] text-[#ede6dd] border border-[#2c2217] focus:outline-none focus:border-[#e5a93c]"
               />
             </div>
           </SettingsRow>
