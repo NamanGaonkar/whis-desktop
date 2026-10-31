@@ -765,7 +765,7 @@ export const KnowledgeGraph3D: Component<{
       const sprite = createTextSprite(node.data.label, dark)
       sprite.position.set(pos.x, pos.y - baseRadius - 4.5, pos.z)
       // Hubs and key nodes show label by default, others show on hover/select
-      sprite.visible = degree >= 2 || visibleNodes.length <= 55
+      sprite.visible = degree >= 2 || filteredNodes.length <= 55
       scene.add(sprite)
       nodeSprites.set(node.data.id, sprite)
     })

@@ -1,5 +1,6 @@
 import { createSignal } from "solid-js"
 import { normalizeForSpeech } from "./normalizer"
+import { showToast } from "@/shell/notifications/toast"
 
 export interface KokoroVoice {
   id: string
@@ -40,6 +41,7 @@ let scheduledSourceNodes: AudioBufferSourceNode[] = []
 let currentPlaybackSession = 0
 let nextMessageId = 0
 let nextScheduledAudioTime = 0
+let hasNotifiedReady = false
 const pendingRequests = new Map<number, { resolve: (val: any) => void; reject: (err: any) => void }>()
 
 function getWorker(): Worker {
@@ -51,6 +53,19 @@ function getWorker(): Worker {
       if (data.type === "status") {
         setStatus(data.status)
         if (data.message) setStatusMessage(data.message)
+        if (data.status === "ready" && !hasNotifiedReady) {
+          const isKokoro = typeof localStorage !== "undefined" && localStorage.getItem("whis_engine") === "kokoro"
+          if (isKokoro) {
+            hasNotifiedReady = true
+            setTimeout(() => {
+              showToast({
+                title: "Kokoro Voice Ready",
+                description: "Studio neural voice model is loaded and ready to talk.",
+                variant: "success",
+              })
+            }, 800)
+          }
+        }
       } else if (data.type === "progress") {
         setDownloadProgress(data.progress)
         setStatusMessage(`Downloading Kokoro Model: ${data.progress}%`)
@@ -116,6 +131,7 @@ export function unloadKokoroEngine(): void {
   }
   workerInitPromise = null
   pendingRequests.clear()
+  hasNotifiedReady = false
   setStatus("unloaded")
   setDownloadProgress(0)
   setStatusMessage("")
