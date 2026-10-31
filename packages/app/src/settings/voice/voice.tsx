@@ -104,7 +104,15 @@ export const SettingsVoice: Component = () => {
               label={(opt) => opt.label}
               placement="bottom-end"
               gutter={6}
-              onSelect={(opt) => opt && settings.voice.setEngine(opt.value)}
+              onSelect={(opt) => {
+                if (!opt) return
+                settings.voice.setEngine(opt.value)
+                if (opt.value === "system") {
+                  kokoro.unload()
+                } else if (opt.value === "kokoro") {
+                  kokoro.preload()
+                }
+              }}
             />
           </SettingsRow>
 

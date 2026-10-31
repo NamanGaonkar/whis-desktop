@@ -14,6 +14,12 @@ import zh from "@/runtime/i18n/zh"
 import { authFromToken } from "@/runtime/server/api"
 import pkg from "../package.json"
 import { ServerConnection } from "@/runtime/server/registry"
+import { preloadKokoroEngine } from "@/runtime/speech/kokoro-engine"
+
+// Preload Kokoro Neural TTS on startup so first speech is instant and models are cached
+if (typeof localStorage !== "undefined" && localStorage.getItem("whis_engine") === "kokoro") {
+  preloadKokoroEngine()
+}
 
 const getLocale = () => {
   if (typeof navigator === "undefined") return "en" as const

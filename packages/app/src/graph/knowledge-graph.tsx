@@ -14,6 +14,7 @@ import { Button } from "@opencode/ui/button"
 import { useTheme } from "@opencode/ui/theme"
 import { useServerSDK } from "@/runtime/server/client"
 import { scanCodebaseGraph, type GraphData, type GraphNode } from "./scanner"
+import { KnowledgeGraph3D } from "./knowledge-graph-3d"
 
 const KIND_COLORS: Record<string, string> = {
   component: "#38bdf8",
@@ -60,6 +61,15 @@ export const CodebaseKnowledgeGraph: Component<{
   const [selectedNode, setSelectedNode] = createSignal<GraphNode["data"] | null>(null)
   const [searchQuery, setSearchQuery] = createSignal("")
   const [activeFilter, setActiveFilter] = createSignal<string>("all")
+  const [viewMode, setViewMode] = createSignal<"3d" | "2d">("3d")
+  const [isAutoRotating, setIsAutoRotating] = createSignal<boolean>(false)
+
+  function handleSetViewMode(mode: "3d" | "2d") {
+    setViewMode(mode)
+    if (mode === "2d" && !cy && graphData().nodes.length > 0) {
+      setTimeout(() => initCytoscape(graphData()), 50)
+    }
+  }
 
   async function loadGraph() {
     setLoading(true)
@@ -460,8 +470,59 @@ export const CodebaseKnowledgeGraph: Component<{
 
         {/* Right Controls */}
         <div class="flex items-center gap-2">
+          {/* 3D / 2D View Switch */}
+          <div
+            class="flex items-center rounded-lg p-0.5 border text-xs"
+            classList={{
+              "border-[#2c2217] bg-[#140f0a]": isDark(),
+              "border-[#ded3c3] bg-[#f0e9df]": !isDark(),
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => handleSetViewMode("3d")}
+              class="px-2.5 py-1 rounded-md text-[11px] font-medium transition-all"
+              classList={{
+                "bg-[#e5a93c] text-black shadow-sm font-semibold": viewMode() === "3d",
+                "text-[#8c7e6c] hover:text-[#ede6dd]": viewMode() !== "3d" && isDark(),
+                "text-[#736350] hover:text-[#1f1912]": viewMode() !== "3d" && !isDark(),
+              }}
+            >
+              3D Neural
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSetViewMode("2d")}
+              class="px-2.5 py-1 rounded-md text-[11px] font-medium transition-all"
+              classList={{
+                "bg-[#e5a93c] text-black shadow-sm font-semibold": viewMode() === "2d",
+                "text-[#8c7e6c] hover:text-[#ede6dd]": viewMode() !== "2d" && isDark(),
+                "text-[#736350] hover:text-[#1f1912]": viewMode() !== "2d" && !isDark(),
+              }}
+            >
+              2D Flat
+            </button>
+          </div>
+
+          {/* Auto Rotate Toggle (3D Mode) */}
+          <Show when={viewMode() === "3d"}>
+            <button
+              type="button"
+              onClick={() => setIsAutoRotating(!isAutoRotating())}
+              class="px-2.5 py-1 rounded-lg border text-[11px] font-medium transition-all"
+              classList={{
+                "bg-[#e5a93c]/20 text-[#e5a93c] border-[#e5a93c]/50 font-semibold": isAutoRotating(),
+                "text-[#8c7e6c] border-[#2c2217] hover:text-[#ede6dd] hover:border-[#423324]": !isAutoRotating() && isDark(),
+                "text-[#736350] border-[#ded3c3] hover:text-[#1f1912] hover:border-[#c5b8a6]": !isAutoRotating() && !isDark(),
+              }}
+              title="Toggle slow 3-axis orbital auto-rotation"
+            >
+              {isAutoRotating() ? "Orbiting" : "Static"}
+            </button>
+          </Show>
+
           <span
-            class="text-[11px] font-mono"
+            class="text-[11px] font-mono hidden sm:inline"
             classList={{
               "text-[#7d7162]": isDark(),
               "text-[#807466]": !isDark(),
@@ -469,6 +530,7 @@ export const CodebaseKnowledgeGraph: Component<{
           >
             {graphData().fileCount} files · {graphData().dependencyCount} links
           </span>
+
           <div
             class="flex items-center border-s ps-1.5 gap-0.5"
             classList={{
@@ -508,8 +570,8 @@ export const CodebaseKnowledgeGraph: Component<{
         </div>
       </div>
 
-      {/* Main Cytoscape Graph Canvas */}
-      <div class="relative w-full h-full flex-1">
+      {/* Main Graph Canvas (3D Neural or 2D Cytoscape) */}
+      <div class="relative w-full h-full flex-1 overflow-hidden">
         <Show when={loading()}>
           <div
             class="absolute inset-0 z-20 flex flex-col items-center justify-center backdrop-blur-sm"
@@ -531,7 +593,23 @@ export const CodebaseKnowledgeGraph: Component<{
           </div>
         </Show>
 
-        <div ref={containerRef} class="w-full h-full cursor-grab active:cursor-grabbing" />
+        <Show when={viewMode() === "3d"}>
+          <KnowledgeGraph3D
+            data={graphData()}
+            isDark={isDark}
+            selectedNodeId={selectedNode()?.id}
+            searchQuery={searchQuery()}
+            activeFilter={activeFilter()}
+            isAutoRotating={isAutoRotating()}
+            onSelectNode={(nodeData) => setSelectedNode(nodeData)}
+          />
+        </Show>
+
+        <div
+          ref={containerRef}
+          class="w-full h-full cursor-grab active:cursor-grabbing"
+          classList={{ hidden: viewMode() !== "2d" }}
+        />
       </div>
 
       {/* Floating Node Inspection Card */}

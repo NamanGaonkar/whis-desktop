@@ -1,4 +1,11 @@
 import { KokoroTTS } from "kokoro-js"
+import { env } from "@huggingface/transformers"
+
+// Ensure browser CacheStorage persists models locally and never re-downloads
+if (env) {
+  env.useBrowserCache = true
+  env.allowLocalModels = false
+}
 
 let ttsInstance: any = null
 let modelPromise: Promise<any> | null = null
@@ -12,14 +19,15 @@ async function getTTS() {
 
     const modelId = "onnx-community/Kokoro-82M-v1.0-ONNX"
 
-    // Try WebGPU hardware acceleration if available
+    // Consistently use dtype: "q8" (quantized 8-bit ~86MB) so it persists in browser cache
+    // and never triggers re-downloading a 320MB fp32 model every restart.
     let tts: any = null
     const hasGpu = typeof navigator !== "undefined" && Boolean((navigator as any).gpu)
 
     if (hasGpu) {
       try {
         tts = await KokoroTTS.from_pretrained(modelId, {
-          dtype: "fp32",
+          dtype: "q8",
           device: "webgpu",
           progress_callback: (p: any) => {
             if (p && typeof p.progress === "number") {

@@ -99,6 +99,28 @@ export async function initKokoroWorker(): Promise<void> {
   return workerInitPromise
 }
 
+export function preloadKokoroEngine(): void {
+  if (status() === "ready" || status() === "loading") return
+  void initKokoroWorker().catch((err) => {
+    console.warn("Kokoro background preload warning:", err)
+  })
+}
+
+export function unloadKokoroEngine(): void {
+  stopKokoroSpeech()
+  if (kokoroWorker) {
+    try {
+      kokoroWorker.terminate()
+    } catch {}
+    kokoroWorker = null
+  }
+  workerInitPromise = null
+  pendingRequests.clear()
+  setStatus("unloaded")
+  setDownloadProgress(0)
+  setStatusMessage("")
+}
+
 export function chunkTextForStreaming(text: string): string[] {
   if (!text) return []
 
@@ -280,6 +302,8 @@ export function useKokoroEngine() {
     isSpeaking,
     voices: KOKORO_VOICES,
     init: initKokoroWorker,
+    preload: preloadKokoroEngine,
+    unload: unloadKokoroEngine,
     speak: speakWithKokoro,
     stop: stopKokoroSpeech,
   }
