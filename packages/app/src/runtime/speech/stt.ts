@@ -3,7 +3,7 @@ import type { WhisperModelSize } from "./whisper-engine"
 
 export interface SpeechToTextOptions {
   onTranscript: (text: string, isFinal: boolean) => void
-  onAutoSend?: () => void
+  onAutoSend?: (transcript: string) => void
   autoSendEnabled?: boolean
   silenceThresholdSeconds?: number
   whisperModel?: WhisperModelSize
@@ -18,13 +18,13 @@ export function useSpeechToText() {
   function start(options: SpeechToTextOptions) {
     startVADListening({
       silenceThresholdSeconds: options.silenceThresholdSeconds ?? 1.0,
-      whisperModel: options.whisperModel ?? "base",
+      whisperModel: options.whisperModel ?? "tiny.en",
       onTranscript: (text: string) => {
         options.onTranscript(text, true)
       },
-      onAutoSend: () => {
+      onAutoSend: (transcript: string) => {
         if (options.autoSendEnabled !== false) {
-          options.onAutoSend?.()
+          options.onAutoSend?.(transcript)
         }
       },
       onError: (err: string) => {

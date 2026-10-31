@@ -80,7 +80,7 @@ export async function startVADListening(options: {
   silenceThresholdSeconds?: number
   whisperModel?: WhisperModelSize
   onTranscript: (text: string) => void
-  onAutoSend?: () => void
+  onAutoSend?: (transcript: string) => void
   onError?: (errText: string) => void
 }) {
   stopVADListening()
@@ -216,17 +216,16 @@ export async function startVADListening(options: {
                   const text = await transcribeAudioWithWhisper(fullAudio, options.whisperModel ?? "tiny.en")
                   if (sessionId !== activeSessionId) return
 
-                  if (text && text.trim().length > 0) {
-                    options.onTranscript(text.trim())
+                  const trimmed = text ? text.trim() : ""
+                  if (trimmed.length > 0) {
+                    options.onTranscript(trimmed)
 
                     if (options.onAutoSend) {
                       setStatus("sending")
-                      setTimeout(() => {
-                        if (sessionId === activeSessionId) {
-                          options.onAutoSend?.()
-                          setStatus("listening")
-                        }
-                      }, 80)
+                      options.onAutoSend(trimmed)
+                      if (sessionId === activeSessionId) {
+                        setStatus("listening")
+                      }
                     } else {
                       setStatus("listening")
                     }

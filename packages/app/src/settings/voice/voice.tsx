@@ -21,8 +21,8 @@ const speedOptions = [
 ]
 
 const engineOptions = [
-  { value: "system", label: "Fast Windows Voice (Instant 0ms, Zero Lag - Recommended)" },
-  { value: "kokoro", label: "Kokoro Neural Voice (Local HD, Experimental)" },
+  { value: "kokoro", label: "Kokoro Neural Voice (Studio Human HD - Background Worker)" },
+  { value: "system", label: "Fast Windows Voice (Instant 0ms, Zero Lag)" },
 ]
 
 export const SettingsVoice: Component = () => {

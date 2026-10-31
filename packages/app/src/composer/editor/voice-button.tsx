@@ -37,38 +37,52 @@ export const ComposerVoiceInputButton: Component<{
       autoSendEnabled: settings.voice.autoSend(),
       getEditorText: () => props.editor()?.innerText ?? "",
       onTranscript: (chunk) => {
-        const el = props.editor()
-        if (!el) return
-        el.focus()
-        // Insert text cleanly into the contenteditable editor
-        const textToInsert = chunk.trim() + " "
-        try {
-          document.execCommand("insertText", false, textToInsert)
-        } catch {}
-        el.dispatchEvent(new Event("input", { bubbles: true }))
+        const textToInsert = chunk.trim()
+        if (!textToInsert) return
 
-        // Ensure controller state is updated
+        const el = props.editor()
+        if (el) {
+          el.focus()
+          try {
+            document.execCommand("insertText", false, textToInsert + " ")
+          } catch {
+            el.innerText = (el.innerText ? el.innerText + " " : "") + textToInsert
+          }
+          el.dispatchEvent(new Event("input", { bubbles: true }))
+        }
+
         if (props.controller) {
-          const currentText = el.innerText.trim()
-          props.controller.onInput(currentText, [{ type: "text", content: currentText, start: 0, end: currentText.length }], currentText.length)
+          const currentText = el?.innerText?.trim() || textToInsert
+          props.controller.onInput(
+            currentText,
+            [{ type: "text", content: currentText, start: 0, end: currentText.length }],
+            currentText.length,
+          )
         }
       },
-      onAutoSend: () => {
-        showTemporaryFeedback("Sending...")
+      onAutoSend: (transcriptText) => {
         const el = props.editor()
-        const text = el?.innerText?.trim() ?? ""
-        if (text.length > 0) {
-          if (props.controller) {
-            props.controller.onInput(text, [{ type: "text", content: text, start: 0, end: text.length }], text.length)
-          }
-          if (el) {
-            el.dispatchEvent(new Event("input", { bubbles: true }))
-            el.dispatchEvent(new Event("change", { bubbles: true }))
-          }
-          setTimeout(() => {
-            props.onSubmit()
-          }, 50)
+        const currentEditorText = el?.innerText?.trim() || ""
+        const finalPrompt = currentEditorText.length > 0 ? currentEditorText : (transcriptText ? transcriptText.trim() : "")
+        if (finalPrompt.length === 0) return
+
+        showTemporaryFeedback("Sending...")
+
+        if (props.controller) {
+          props.controller.onInput(
+            finalPrompt,
+            [{ type: "text", content: finalPrompt, start: 0, end: finalPrompt.length }],
+            finalPrompt.length,
+          )
         }
+        if (el) {
+          el.innerText = finalPrompt
+          el.dispatchEvent(new Event("input", { bubbles: true }))
+          el.dispatchEvent(new Event("change", { bubbles: true }))
+        }
+
+        props.onSubmit()
+        stt.stop()
       },
     })
   }

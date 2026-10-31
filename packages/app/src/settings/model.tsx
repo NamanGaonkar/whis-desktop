@@ -319,7 +319,7 @@ export const defaultSettings: Settings = {
     autoSend: typeof localStorage !== "undefined" ? localStorage.getItem("whis_autosend") !== "false" : true,
     engine: typeof localStorage !== "undefined" ? (localStorage.getItem("whis_engine") ?? "system") : "system",
     kokoroVoice: typeof localStorage !== "undefined" ? (localStorage.getItem("whis_kokoro_voice") ?? "af_heart") : "af_heart",
-    whisperModel: typeof localStorage !== "undefined" ? (localStorage.getItem("whis_whisper_model") ?? "base") : "base",
+    whisperModel: typeof localStorage !== "undefined" ? (localStorage.getItem("whis_whisper_model") ?? "tiny.en") : "tiny.en",
     silenceThreshold: typeof localStorage !== "undefined" && localStorage.getItem("whis_silence_threshold") ? parseFloat(localStorage.getItem("whis_silence_threshold") ?? "1.0") : 1.0,
     pushToTalkHotkey: typeof localStorage !== "undefined" ? (localStorage.getItem("whis_ptt_hotkey") ?? "CommandOrControl+Shift+Space") : "CommandOrControl+Shift+Space",
     wakeWordEnabled: typeof localStorage !== "undefined" ? localStorage.getItem("whis_wakeword_enabled") === "true" : false,

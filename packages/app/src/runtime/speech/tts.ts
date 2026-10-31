@@ -133,43 +133,38 @@ export function useTextToSpeech() {
     const rate = Math.max(0.6, Math.min(1.8, options?.speed ?? 1.0))
     setIsSystemSpeaking(true)
 
-    let index = 0
-
-    function speakNext() {
-      if (sessionId !== systemPlaybackSession) return
-      if (index >= sentences.length) {
-        setIsSystemSpeaking(false)
-        currentUtterance = null
-        return
-      }
-
-      const sentenceText = sentences[index]
-      options?.onSentenceStart?.(sentenceText, index, sentences.length)
-
+    // Enqueue all sentences directly into the speech synthesis queue for zero-gap playback
+    sentences.forEach((sentenceText, idx) => {
       const utterance = new SpeechSynthesisUtterance(sentenceText)
-      currentUtterance = utterance
       utterance.rate = rate
       if (matchedVoice) {
         utterance.voice = matchedVoice
       }
 
-      utterance.onend = () => {
+      utterance.onstart = () => {
         if (sessionId !== systemPlaybackSession) return
-        index++
-        speakNext()
+        options?.onSentenceStart?.(sentenceText, idx, sentences.length)
+      }
+
+      if (idx === sentences.length - 1) {
+        utterance.onend = () => {
+          if (sessionId === systemPlaybackSession) {
+            setIsSystemSpeaking(false)
+            currentUtterance = null
+          }
+        }
       }
 
       utterance.onerror = (e) => {
         if (e.error === "canceled" || e.error === "interrupted") return
-        if (sessionId !== systemPlaybackSession) return
-        index++
-        speakNext()
+        if (sessionId === systemPlaybackSession && idx === sentences.length - 1) {
+          setIsSystemSpeaking(false)
+          currentUtterance = null
+        }
       }
 
       window.speechSynthesis.speak(utterance)
-    }
-
-    speakNext()
+    })
   }
 
   function speak(
