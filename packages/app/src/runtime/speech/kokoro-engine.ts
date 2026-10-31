@@ -102,6 +102,7 @@ export async function initKokoroWorker(): Promise<void> {
 export function chunkTextForStreaming(text: string): string[] {
   if (!text) return []
 
+  // Split on sentence boundaries: . ! ? followed by space or capital letter/number
   const rawSentences = text
     .replace(/([.!?])\s*(?=[A-Z0-9])/g, "$1|SPLIT|")
     .replace(/\n+/g, "|SPLIT|")
@@ -111,19 +112,24 @@ export function chunkTextForStreaming(text: string): string[] {
 
   if (rawSentences.length === 0) return [text.trim()]
 
+  // Never split on commas - splitting on commas creates fragmented ONNX calls with dead air!
+  // Instead, combine very short clauses (< 35 chars) with the next sentence so the audio buffer
+  // is long enough (2+ seconds) to completely overlap the background generation of the next chunk.
   const chunks: string[] = []
+  let buffer = ""
 
-  for (let i = 0; i < rawSentences.length; i++) {
-    const s = rawSentences[i]
-    // For the very first sentence, if it has commas or is long (> 6 words), split at comma for instant start
-    if (i === 0 && s.split(/\s+/).length > 6) {
-      const parts = s.split(/(?<=[,;:])\s+/)
-      if (parts.length > 1) {
-        chunks.push(...parts.map((p) => p.trim()).filter((p) => p.length > 0))
-        continue
-      }
+  for (const s of rawSentences) {
+    if (!buffer) {
+      buffer = s
+    } else if (buffer.length < 35 || buffer.length + s.length < 100) {
+      buffer = `${buffer} ${s}`
+    } else {
+      chunks.push(buffer)
+      buffer = s
     }
-    chunks.push(s)
+  }
+  if (buffer) {
+    chunks.push(buffer)
   }
 
   return chunks.length > 0 ? chunks : [text.trim()]
@@ -233,7 +239,7 @@ export async function speakWithKokoro(
 
       if (rawSamples && rawSamples.length > 0) {
         const audioBuffer = ctx.createBuffer(1, rawSamples.length, sampleRate)
-        audioBuffer.copyToChannel(rawSamples, 0)
+        audioBuffer.getChannelData(0).set(rawSamples)
 
         const source = ctx.createBufferSource()
         source.buffer = audioBuffer

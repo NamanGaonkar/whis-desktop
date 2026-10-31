@@ -57,17 +57,39 @@ export function normalizeForSpeech(text: string): string {
   cleaned = cleaned.replace(/^>\s+/gm, "")
   cleaned = cleaned.replace(/^[-*_]{3,}\s*$/gm, "")
 
-  // 6. Remove list markers
-  cleaned = cleaned.replace(/^[\s]*[-*+]\s+/gm, "")
-  cleaned = cleaned.replace(/^[\s]*\d+\.\s+/gm, "")
+  // 6. Emojis, Emoticons and Pictographs Removal
+  // Strip markdown shortcodes like :smile:, :thumbsup:, :heart:
+  cleaned = cleaned.replace(/:[a-zA-Z0-9_+-]+:/g, "")
+  // Strip common text emoticons: :) :( :-) :D :-D ;) <3 xD etc.
+  cleaned = cleaned.replace(/(^|\s)([:;8][-o']?[)DdpP(\\/\]|]|[<>]?3|xD|XD)(\s|$)/g, "$1$3")
+  // Strip Unicode emojis, pictographs, symbols, dingbats, regional flags, variation selectors
+  cleaned = cleaned.replace(/[\u{1F300}-\u{1F9FF}\u{1FA00}-\u{1FAFF}\u{1F1E6}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F000}-\u{1F02F}\u{1F0A0}-\u{1F0FF}]/gu, "")
+  try {
+    cleaned = cleaned.replace(/\p{Extended_Pictographic}/gu, "")
+    cleaned = cleaned.replace(/\p{Emoji_Presentation}/gu, "")
+  } catch {}
 
-  // 7. Remove emphasis markers
+  // 7. Lists, Points and Bullets
+  // Numbered list prefixes (e.g. "1. First step", "2) Second step") -> "Point 1: First step."
+  cleaned = cleaned.replace(/^[\s]*(\d+)[\.\)]\s+/gm, "Point $1: ")
+  // Bullet points (-, *, +, •, ◦, ▪, ▫, ◆, ✓, ✔, ➢, ➤) at start of lines -> "Point: "
+  cleaned = cleaned.replace(/^[\s]*[-*+•◦▪▫◆✓✔➢➤]\s+/gm, "Point: ")
+
+  // 8. Dashes and Hyphens
+  // Convert em-dashes (—), en-dashes (–), double/triple hyphens (--) to natural pauses
+  cleaned = cleaned.replace(/[—–]/g, ", ")
+  cleaned = cleaned.replace(/--+/g, ", ")
+  // Convert isolated hyphens surrounded by spaces (" - ") or leading/trailing hyphens to a comma pause
+  cleaned = cleaned.replace(/\s+-\s+/g, ", ")
+  cleaned = cleaned.replace(/(^|\s)-+(?=\s|$)/gm, "$1, ")
+
+  // 9. Remove emphasis markers
   cleaned = cleaned.replace(/[*_]{1,3}([^*_]+)[*_]{1,3}/g, "$1")
 
-  // 8. Remove HTML tags
+  // 10. Remove HTML tags
   cleaned = cleaned.replace(/<[^>]+>/g, "")
 
-  // 9. Hardware & GPU models pronunciation (e.g. RTX 4050 -> RTX forty fifty, never "four thousand fifty")
+  // 11. Hardware & GPU models pronunciation (e.g. RTX 4050 -> RTX forty fifty, never "four thousand fifty")
   cleaned = cleaned.replace(
     /\b(RTX|GTX|RX|GeForce|Radeon|Arc|Intel|Core|Ryzen|NVIDIA)?\s*([1-9]\d)(00|10|20|30|40|50|60|70|80|90|50|60|70|80|90|\d{2})\b/gi,
     (_match, prefix, high, low) => {
@@ -100,8 +122,24 @@ export function normalizeForSpeech(text: string): string {
   cleaned = cleaned.replace(/\b(\d+(?:\.\d+)?)\s*fps\b/gi, "$1 frames per second")
   cleaned = cleaned.replace(/\b(\d+(?:\.\d+)?)\s*px\b/gi, "$1 pixels")
 
-  // 14. Collapse whitespace
+  // 15. App Name Pronunciation
+  cleaned = cleaned.replace(/\b[wW]his\b/g, "Whiss")
+  cleaned = cleaned.replace(/\b[wW]his[- ]([a-zA-Z]+)\b/g, "Whiss $1")
+
+  // 16. Punctuation cleanup (eliminate awkward delays between multiple punctuations like !!, ..., :., ,.)
+  cleaned = cleaned.replace(/:\s*(?=\n)/g, ".")
+  cleaned = cleaned.replace(/[:;]\s*([.!?])/g, "$1")
+  cleaned = cleaned.replace(/!+/g, "!")
+  cleaned = cleaned.replace(/\?+/g, "?")
+  cleaned = cleaned.replace(/\.{2,}/g, ".")
+  cleaned = cleaned.replace(/,{2,}/g, ",")
+  cleaned = cleaned.replace(/,\s*\./g, ".")
+  cleaned = cleaned.replace(/\.\s*,/g, ".")
+
+  // 17. Collapse multiple newlines into clean sentence transitions
   cleaned = cleaned.replace(/\n+/g, ". ").replace(/\s{2,}/g, " ")
+  cleaned = cleaned.replace(/\s+([,.:!?])/g, "$1")
+  cleaned = cleaned.replace(/\.\s*\./g, ".")
 
   return cleaned.trim()
 }

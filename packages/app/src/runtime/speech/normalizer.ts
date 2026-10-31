@@ -25,7 +25,7 @@ function twoDigitsToWords(n: string): string {
 
 /**
  * Normalizes markdown/assistant technical output into natural human speech.
- * Skips raw code blocks, syntax clutter, and expands technical terms and units.
+ * Skips raw code blocks, syntax clutter, emojis, dashes, and expands technical terms and units.
  */
 export function normalizeForSpeech(text: string): string {
   if (!text) return ""
@@ -59,24 +59,44 @@ export function normalizeForSpeech(text: string): string {
   // 7. Remove markdown horizontal rules --- or ***
   cleaned = cleaned.replace(/^[-*_]{3,}\s*$/gm, "")
 
-  // 8. Remove bullet points - or * at start of lines
-  cleaned = cleaned.replace(/^[\s]*[-*+]\s+/gm, "")
+  // 8. Emojis, Emoticons and Pictographs Removal
+  // Strip markdown shortcodes like :smile:, :thumbsup:, :heart:
+  cleaned = cleaned.replace(/:[a-zA-Z0-9_+-]+:/g, "")
+  // Strip common text emoticons: :) :( :-) :D :-D ;) <3 xD etc.
+  cleaned = cleaned.replace(/(^|\s)([:;8][-o']?[)DdpP(\\/\]|]|[<>]?3|xD|XD)(\s|$)/g, "$1$3")
+  // Strip Unicode emojis, pictographs, symbols, dingbats, regional flags, variation selectors
+  cleaned = cleaned.replace(/[\u{1F300}-\u{1F9FF}\u{1FA00}-\u{1FAFF}\u{1F1E6}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F000}-\u{1F02F}\u{1F0A0}-\u{1F0FF}]/gu, "")
+  try {
+    cleaned = cleaned.replace(/\p{Extended_Pictographic}/gu, "")
+    cleaned = cleaned.replace(/\p{Emoji_Presentation}/gu, "")
+  } catch {}
 
-  // 9. Remove numbered list prefixes 1. 2.
-  cleaned = cleaned.replace(/^[\s]*\d+\.\s+/gm, "")
+  // 9. Lists, Points and Bullets
+  // Numbered list prefixes (e.g. "1. First step", "2) Second step") -> "Point 1: First step."
+  cleaned = cleaned.replace(/^[\s]*(\d+)[\.\)]\s+/gm, "Point $1: ")
+  // Bullet points (-, *, +, •, ◦, ▪, ▫, ◆, ✓, ✔, ➢, ➤) at start of lines -> "Point: "
+  cleaned = cleaned.replace(/^[\s]*[-*+•◦▪▫◆✓✔➢➤]\s+/gm, "Point: ")
 
-  // 10. Remove emphasis markers (* and _)
+  // 10. Dashes and Hyphens
+  // Convert em-dashes (—), en-dashes (–), double/triple hyphens (--) to natural pauses
+  cleaned = cleaned.replace(/[—–]/g, ", ")
+  cleaned = cleaned.replace(/--+/g, ", ")
+  // Convert isolated hyphens surrounded by spaces (" - ") or at edge of words to a comma pause
+  cleaned = cleaned.replace(/\s+-\s+/g, ", ")
+  cleaned = cleaned.replace(/(^|\s)-+(?=\s|$)/gm, "$1, ")
+
+  // 11. Remove emphasis markers (* and _)
   cleaned = cleaned.replace(/[*_]{1,3}([^*_]+)[*_]{1,3}/g, "$1")
 
-  // 11. Remove HTML tags
+  // 12. Remove HTML tags
   cleaned = cleaned.replace(/<[^>]+>/g, "")
 
-  // 12. App Name Pronunciation
+  // 13. App Name Pronunciation
   // Pronounce "Whis" as "Whiss" (/wɪs/) instead of "whys" (/waɪz/)
   cleaned = cleaned.replace(/\b[wW]his\b/g, "Whiss")
   cleaned = cleaned.replace(/\b[wW]his[- ]([a-zA-Z]+)\b/g, "Whiss $1")
 
-  // 13. GPU and Hardware Model Pronunciation
+  // 14. GPU and Hardware Model Pronunciation
   // Pronounce 4-digit GPU models naturally in words (e.g. RTX 4050 -> RTX forty fifty instead of "four thousand fifty")
   cleaned = cleaned.replace(
     /\b(RTX|GTX|RX|GeForce|Radeon|Arc|Intel|Core|Ryzen|NVIDIA)?\s*([1-9]\d)(00|10|20|30|40|50|60|70|80|90|50|60|70|80|90|\d{2})\b/gi,
@@ -86,8 +106,7 @@ export function normalizeForSpeech(text: string): string {
     },
   )
 
-  // 13. Electrical and Power Units
-  // 140w or 140 W -> 140 watts, 1w -> 1 watt
+  // 15. Electrical and Power Units
   cleaned = cleaned.replace(/\b(\d+(?:\.\d+)?)\s*[wW]\b/g, (_m, num) => {
     return Number(num) === 1 ? `${num} watt` : `${num} watts`
   })
@@ -95,25 +114,42 @@ export function normalizeForSpeech(text: string): string {
   cleaned = cleaned.replace(/\b(\d+(?:\.\d+)?)\s*[vV]\b/g, "$1 volts")
   cleaned = cleaned.replace(/\b(\d+(?:\.\d+)?)\s*[aA]\b/g, "$1 amps")
 
-  // 14. Memory and Storage Units
+  // 16. Memory and Storage Units
   cleaned = cleaned.replace(/\b(\d+(?:\.\d+)?)\s*[gG][bB]\b/g, "$1 gigabytes")
   cleaned = cleaned.replace(/\b(\d+(?:\.\d+)?)\s*[mM][bB]\b/g, "$1 megabytes")
   cleaned = cleaned.replace(/\b(\d+(?:\.\d+)?)\s*[tT][bB]\b/g, "$1 terabytes")
   cleaned = cleaned.replace(/\b(\d+(?:\.\d+)?)\s*[kK][bB]\b/g, "$1 kilobytes")
 
-  // 15. Frequency and Clock Speeds
+  // 17. Frequency and Clock Speeds
   cleaned = cleaned.replace(/\b(\d+(?:\.\d+)?)\s*[gG][hH][zZ]\b/g, "$1 gigahertz")
   cleaned = cleaned.replace(/\b(\d+(?:\.\d+)?)\s*[mM][hH][zZ]\b/g, "$1 megahertz")
   cleaned = cleaned.replace(/\b(\d+(?:\.\d+)?)\s*[kK][hH][zZ]\b/g, "$1 kilohertz")
   cleaned = cleaned.replace(/\b(\d+(?:\.\d+)?)\s*[hH][zZ]\b/g, "$1 hertz")
 
-  // 16. Time and Performance Metrics
+  // 18. Time and Performance Metrics
   cleaned = cleaned.replace(/\b(\d+(?:\.\d+)?)\s*ms\b/gi, "$1 milliseconds")
   cleaned = cleaned.replace(/\b(\d+(?:\.\d+)?)\s*fps\b/gi, "$1 frames per second")
   cleaned = cleaned.replace(/\b(\d+(?:\.\d+)?)\s*px\b/gi, "$1 pixels")
 
-  // 17. Collapse multiple newlines and spaces
+  // 19. Punctuation cleanup (eliminate awkward delays between multiple punctuations like !!, ..., :., ,.)
+  // If colon precedes a newline, convert to period
+  cleaned = cleaned.replace(/:\s*(?=\n)/g, ".")
+  // Clean combinations like :. or ;.
+  cleaned = cleaned.replace(/[:;]\s*([.!?])/g, "$1")
+  // Deduplicate multiple punctuation marks
+  cleaned = cleaned.replace(/!+/g, "!")
+  cleaned = cleaned.replace(/\?+/g, "?")
+  cleaned = cleaned.replace(/\.{2,}/g, ".")
+  cleaned = cleaned.replace(/,{2,}/g, ",")
+  cleaned = cleaned.replace(/,\s*\./g, ".")
+  cleaned = cleaned.replace(/\.\s*,/g, ".")
+
+  // 20. Collapse multiple newlines into clean sentence transitions
   cleaned = cleaned.replace(/\n+/g, ". ").replace(/\s{2,}/g, " ")
+  // Remove space before punctuation (e.g. "word , next" -> "word, next")
+  cleaned = cleaned.replace(/\s+([,.:!?])/g, "$1")
+  // Final clean up of doubled periods after newline replacement
+  cleaned = cleaned.replace(/\.\s*\./g, ".")
 
   return cleaned.trim()
 }

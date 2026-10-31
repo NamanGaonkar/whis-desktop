@@ -11,15 +11,39 @@ async function getTTS() {
     self.postMessage({ type: "status", status: "loading", message: "Loading Kokoro Neural TTS..." })
 
     const modelId = "onnx-community/Kokoro-82M-v1.0-ONNX"
-    const tts = await KokoroTTS.from_pretrained(modelId, {
-      dtype: "q8",
-      device: "wasm",
-      progress_callback: (p: any) => {
-        if (p && typeof p.progress === "number") {
-          self.postMessage({ type: "progress", progress: Math.round(p.progress) })
-        }
-      },
-    })
+
+    // Try WebGPU hardware acceleration if available
+    let tts: any = null
+    const hasGpu = typeof navigator !== "undefined" && Boolean((navigator as any).gpu)
+
+    if (hasGpu) {
+      try {
+        tts = await KokoroTTS.from_pretrained(modelId, {
+          dtype: "fp32",
+          device: "webgpu",
+          progress_callback: (p: any) => {
+            if (p && typeof p.progress === "number") {
+              self.postMessage({ type: "progress", progress: Math.round(p.progress) })
+            }
+          },
+        })
+      } catch (gpuErr) {
+        console.warn("WebGPU initialization failed for Kokoro, falling back to wasm:", gpuErr)
+        tts = null
+      }
+    }
+
+    if (!tts) {
+      tts = await KokoroTTS.from_pretrained(modelId, {
+        dtype: "q8",
+        device: "wasm",
+        progress_callback: (p: any) => {
+          if (p && typeof p.progress === "number") {
+            self.postMessage({ type: "progress", progress: Math.round(p.progress) })
+          }
+        },
+      })
+    }
 
     ttsInstance = tts
     self.postMessage({ type: "status", status: "ready", message: "Kokoro Neural TTS Ready" })
@@ -43,8 +67,14 @@ self.onmessage = async (e: MessageEvent) => {
 
   if (type === "generate") {
     try {
+      const cleanText = (text || "").trim()
+      if (!cleanText) {
+        self.postMessage({ id, type: "audio", audio: new Float32Array(0), samplingRate: 24000 })
+        return
+      }
+
       const tts = await getTTS()
-      const result = await tts.generate(text, { voice: voice || "af_heart" })
+      const result = await tts.generate(cleanText, { voice: voice || "af_heart" })
       const rawAudio: Float32Array = result.audio
       const samplingRate: number = result.sampling_rate || 24000
 
