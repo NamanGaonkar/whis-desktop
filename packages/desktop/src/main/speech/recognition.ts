@@ -1,10 +1,49 @@
-import { ipcMain } from "electron"
+import { ipcMain, globalShortcut, BrowserWindow, app } from "electron"
 import { spawn, type ChildProcess } from "child_process"
 import path from "path"
 
 let activeSpeechProcess: ChildProcess | null = null
+let currentPTTHotkey = "CommandOrControl+Shift+Space"
+
+function registerPTTHotkey(hotkey: string) {
+  try {
+    if (currentPTTHotkey) {
+      globalShortcut.unregister(currentPTTHotkey)
+    }
+    const cleanHotkey = hotkey.trim()
+    if (!cleanHotkey) return
+
+    currentPTTHotkey = cleanHotkey
+    const registered = globalShortcut.register(cleanHotkey, () => {
+      const windows = BrowserWindow.getAllWindows()
+      for (const win of windows) {
+        if (!win.isDestroyed()) {
+          win.webContents.send("whis-voice-ptt-triggered")
+        }
+      }
+    })
+
+    if (!registered) {
+      console.warn("Failed to register PTT global shortcut:", cleanHotkey)
+    }
+  } catch (err) {
+    console.warn("Error registering PTT shortcut:", err)
+  }
+}
 
 export function registerSpeechRecognitionHandler() {
+  registerPTTHotkey(currentPTTHotkey)
+
+  ipcMain.on("whis-voice-set-ptt", (_event, hotkey: string) => {
+    if (typeof hotkey === "string" && hotkey.trim()) {
+      registerPTTHotkey(hotkey)
+    }
+  })
+
+  app.on("will-quit", () => {
+    globalShortcut.unregisterAll()
+  })
+
   ipcMain.on("whis-speech-start", (event) => {
     if (activeSpeechProcess) {
       try {

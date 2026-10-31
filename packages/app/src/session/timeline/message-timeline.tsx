@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, on, onCleanup, onMount, Show, type Accessor, type JSX } from "solid-js"
+import { createEffect, createMemo, createSignal, on, onCleanup, Show, type Accessor, type JSX } from "solid-js"
 import { createStore } from "solid-js/store"
 import { Predicate } from "effect"
 import { createAnimatedPresence } from "@/runtime/animated-presence"
@@ -168,8 +168,10 @@ function MessageTimelineView(
                   .map((c: any) => c.text)
                 const textToSpeak = texts.join("\n\n")
                 if (textToSpeak) {
+                  const eng = (settings.voice.engine() ?? "kokoro") as "kokoro" | "system"
                   tts.speak(textToSpeak, {
-                    voice: settings.voice.voice(),
+                    engine: eng,
+                    voice: eng === "kokoro" ? settings.voice.kokoroVoice() : settings.voice.voice(),
                     speed: settings.voice.speed(),
                   })
                 }

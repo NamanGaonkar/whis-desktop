@@ -40,4 +40,14 @@ contextBridge.exposeInMainWorld("electron", {
       }
     },
   },
+  voice: {
+    setPushToTalkHotkey: (keybind: string) => ipcRenderer.send("whis-voice-set-ptt", keybind),
+    onPushToTalkTriggered: (callback: () => void) => {
+      const handler = () => callback()
+      ipcRenderer.on("whis-voice-ptt-triggered", handler)
+      return () => {
+        ipcRenderer.removeListener("whis-voice-ptt-triggered", handler)
+      }
+    },
+  },
 })

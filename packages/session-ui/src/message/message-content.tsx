@@ -783,6 +783,15 @@ export function AssistantTextContent(props: {
               label={i18n.t("ui.message.voice")}
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => {
+                if (typeof window !== "undefined" && (window as any).__whis_tts) {
+                  if ((window as any).__whis_tts.isSpeaking()) {
+                    (window as any).__whis_tts.stop()
+                  } else {
+                    (window as any).__whis_tts.speak(props.text)
+                  }
+                  return
+                }
+
                 if (typeof window === "undefined" || !("speechSynthesis" in window)) return
                 if (window.speechSynthesis.speaking) {
                   window.speechSynthesis.cancel()

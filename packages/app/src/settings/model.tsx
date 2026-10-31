@@ -168,6 +168,13 @@ const voiceSchema = Persistence.struct({
   voice: Schema.String,
   speed: Schema.Number,
   autoSend: Schema.Boolean,
+  engine: Persistence.optional(Schema.String),
+  kokoroVoice: Persistence.optional(Schema.String),
+  whisperModel: Persistence.optional(Schema.String),
+  silenceThreshold: Persistence.optional(Schema.Number),
+  pushToTalkHotkey: Persistence.optional(Schema.String),
+  wakeWordEnabled: Persistence.optional(Schema.Boolean),
+  wakeWordSensitivity: Persistence.optional(Schema.Number),
 })
 
 export const settingsSchema = Persistence.struct({
@@ -308,8 +315,15 @@ export const defaultSettings: Settings = {
   voice: {
     autoSpeak: typeof localStorage !== "undefined" ? localStorage.getItem("whis_autospeak") === "true" : false,
     voice: typeof localStorage !== "undefined" ? (localStorage.getItem("whis_voice") ?? "") : "",
-    speed: typeof localStorage !== "undefined" && localStorage.getItem("whis_speed") ? parseFloat(localStorage.getItem("whis_speed")) : 1.0,
+    speed: typeof localStorage !== "undefined" && localStorage.getItem("whis_speed") ? parseFloat(localStorage.getItem("whis_speed") ?? "1.0") : 1.0,
     autoSend: typeof localStorage !== "undefined" ? localStorage.getItem("whis_autosend") !== "false" : true,
+    engine: typeof localStorage !== "undefined" ? (localStorage.getItem("whis_engine") ?? "kokoro") : "kokoro",
+    kokoroVoice: typeof localStorage !== "undefined" ? (localStorage.getItem("whis_kokoro_voice") ?? "af_heart") : "af_heart",
+    whisperModel: typeof localStorage !== "undefined" ? (localStorage.getItem("whis_whisper_model") ?? "base") : "base",
+    silenceThreshold: typeof localStorage !== "undefined" && localStorage.getItem("whis_silence_threshold") ? parseFloat(localStorage.getItem("whis_silence_threshold") ?? "1.0") : 1.0,
+    pushToTalkHotkey: typeof localStorage !== "undefined" ? (localStorage.getItem("whis_ptt_hotkey") ?? "CommandOrControl+Shift+Space") : "CommandOrControl+Shift+Space",
+    wakeWordEnabled: typeof localStorage !== "undefined" ? localStorage.getItem("whis_wakeword_enabled") === "true" : false,
+    wakeWordSensitivity: typeof localStorage !== "undefined" && localStorage.getItem("whis_wakeword_sensitivity") ? parseFloat(localStorage.getItem("whis_wakeword_sensitivity") ?? "0.5") : 0.5,
   },
 }
 
@@ -527,25 +541,63 @@ export const { use: useSettings, provider: SettingsProvider } = createSimpleCont
         },
       },
       voice: {
-        autoSpeak: withFallback(() => store.voice?.autoSpeak, defaultSettings.voice.autoSpeak),
+        autoSpeak: withFallback(() => store.voice?.autoSpeak, defaultSettings.voice!.autoSpeak),
         setAutoSpeak(value: boolean) {
           if (typeof localStorage !== "undefined") localStorage.setItem("whis_autospeak", String(value))
-          setStore("voice", (prev) => ({ ...(prev ?? defaultSettings.voice), autoSpeak: value }))
+          setStore("voice", (prev) => ({ ...(prev ?? defaultSettings.voice!), autoSpeak: value }))
         },
-        voice: withFallback(() => store.voice?.voice, defaultSettings.voice.voice),
+        voice: withFallback(() => store.voice?.voice, defaultSettings.voice!.voice),
         setVoice(value: string) {
           if (typeof localStorage !== "undefined") localStorage.setItem("whis_voice", value)
-          setStore("voice", (prev) => ({ ...(prev ?? defaultSettings.voice), voice: value }))
+          setStore("voice", (prev) => ({ ...(prev ?? defaultSettings.voice!), voice: value }))
         },
-        speed: withFallback(() => store.voice?.speed, defaultSettings.voice.speed),
+        speed: withFallback(() => store.voice?.speed, defaultSettings.voice!.speed),
         setSpeed(value: number) {
           if (typeof localStorage !== "undefined") localStorage.setItem("whis_speed", String(value))
-          setStore("voice", (prev) => ({ ...(prev ?? defaultSettings.voice), speed: value }))
+          setStore("voice", (prev) => ({ ...(prev ?? defaultSettings.voice!), speed: value }))
         },
-        autoSend: withFallback(() => store.voice?.autoSend, defaultSettings.voice.autoSend),
+        autoSend: withFallback(() => store.voice?.autoSend, defaultSettings.voice!.autoSend),
         setAutoSend(value: boolean) {
           if (typeof localStorage !== "undefined") localStorage.setItem("whis_autosend", String(value))
-          setStore("voice", (prev) => ({ ...(prev ?? defaultSettings.voice), autoSend: value }))
+          setStore("voice", (prev) => ({ ...(prev ?? defaultSettings.voice!), autoSend: value }))
+        },
+        engine: withFallback(() => store.voice?.engine, defaultSettings.voice!.engine),
+        setEngine(value: string) {
+          if (typeof localStorage !== "undefined") localStorage.setItem("whis_engine", value)
+          setStore("voice", (prev) => ({ ...(prev ?? defaultSettings.voice!), engine: value }))
+        },
+        kokoroVoice: withFallback(() => store.voice?.kokoroVoice, defaultSettings.voice!.kokoroVoice),
+        setKokoroVoice(value: string) {
+          if (typeof localStorage !== "undefined") localStorage.setItem("whis_kokoro_voice", value)
+          setStore("voice", (prev) => ({ ...(prev ?? defaultSettings.voice!), kokoroVoice: value }))
+        },
+        whisperModel: withFallback(() => store.voice?.whisperModel, defaultSettings.voice!.whisperModel),
+        setWhisperModel(value: string) {
+          if (typeof localStorage !== "undefined") localStorage.setItem("whis_whisper_model", value)
+          setStore("voice", (prev) => ({ ...(prev ?? defaultSettings.voice!), whisperModel: value }))
+        },
+        silenceThreshold: withFallback(() => store.voice?.silenceThreshold, defaultSettings.voice!.silenceThreshold),
+        setSilenceThreshold(value: number) {
+          if (typeof localStorage !== "undefined") localStorage.setItem("whis_silence_threshold", String(value))
+          setStore("voice", (prev) => ({ ...(prev ?? defaultSettings.voice!), silenceThreshold: value }))
+        },
+        pushToTalkHotkey: withFallback(() => store.voice?.pushToTalkHotkey, defaultSettings.voice!.pushToTalkHotkey),
+        setPushToTalkHotkey(value: string) {
+          if (typeof localStorage !== "undefined") localStorage.setItem("whis_ptt_hotkey", value)
+          setStore("voice", (prev) => ({ ...(prev ?? defaultSettings.voice!), pushToTalkHotkey: value }))
+          if (typeof window !== "undefined" && (window as any).electron?.voice?.setPushToTalkHotkey) {
+            ;(window as any).electron.voice.setPushToTalkHotkey(value)
+          }
+        },
+        wakeWordEnabled: withFallback(() => store.voice?.wakeWordEnabled, defaultSettings.voice!.wakeWordEnabled),
+        setWakeWordEnabled(value: boolean) {
+          if (typeof localStorage !== "undefined") localStorage.setItem("whis_wakeword_enabled", String(value))
+          setStore("voice", (prev) => ({ ...(prev ?? defaultSettings.voice!), wakeWordEnabled: value }))
+        },
+        wakeWordSensitivity: withFallback(() => store.voice?.wakeWordSensitivity, defaultSettings.voice!.wakeWordSensitivity),
+        setWakeWordSensitivity(value: number) {
+          if (typeof localStorage !== "undefined") localStorage.setItem("whis_wakeword_sensitivity", String(value))
+          setStore("voice", (prev) => ({ ...(prev ?? defaultSettings.voice!), wakeWordSensitivity: value }))
         },
       },
     }

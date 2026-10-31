@@ -1,4 +1,4 @@
-import { Component, createMemo } from "solid-js"
+import { Component, createMemo, Show } from "solid-js"
 import { Select } from "@opencode/ui/select"
 import { Switch } from "@opencode/ui/switch"
 import { Button } from "@opencode/ui/button"
@@ -8,6 +8,9 @@ import { SettingsList } from "@/settings/list"
 import { SettingsRow } from "@/settings/row"
 import { useSettings } from "@/settings/model"
 import { useTextToSpeech, type VoiceOption } from "@/runtime/speech/tts"
+import { useKokoroEngine, type KokoroVoice } from "@/runtime/speech/kokoro-engine"
+import { useWhisperEngine, WHISPER_MODELS, type WhisperModelOption } from "@/runtime/speech/whisper-engine"
+import { useWakeWordEngine } from "@/runtime/speech/wake-word-engine"
 import "@/settings/settings.css"
 
 const speedOptions = [
@@ -17,22 +20,45 @@ const speedOptions = [
   { value: 1.5, label: "1.5x (Speedy)" },
 ]
 
+const engineOptions = [
+  { value: "kokoro", label: "Kokoro Neural (Local HD - CPU Optimized)" },
+  { value: "system", label: "Windows Built-in Voice" },
+]
+
 export const SettingsVoice: Component = () => {
   const language = useLanguage()
   const settings = useSettings()
   const tts = useTextToSpeech()
+  const kokoro = useKokoroEngine()
+  const whisper = useWhisperEngine()
+  const wakeWord = useWakeWordEngine()
 
-  const voiceOptions = createMemo((): VoiceOption[] => {
+  const systemVoiceOptions = createMemo((): VoiceOption[] => {
     const list = tts.availableVoices()
     if (list.length > 0) return list
     return [{ id: "", name: "Default System Voice", lang: "en", isNatural: false }]
   })
 
-  const selectedVoice = createMemo(() => {
+  const selectedEngine = createMemo(() => {
+    const eng = settings.voice.engine()
+    return engineOptions.find((e) => e.value === eng) ?? engineOptions[0]
+  })
+
+  const selectedKokoroVoice = createMemo((): KokoroVoice => {
+    const cur = settings.voice.kokoroVoice()
+    return kokoro.voices.find((v) => v.id === cur) ?? kokoro.voices[0]!
+  })
+
+  const selectedSystemVoice = createMemo(() => {
     const currentId = settings.voice.voice()
-    const options = voiceOptions()
+    const options = systemVoiceOptions()
     if (!currentId) return options[0]
     return options.find((opt) => opt.id === currentId) ?? options[0]
+  })
+
+  const selectedWhisperModel = createMemo((): WhisperModelOption => {
+    const cur = settings.voice.whisperModel()
+    return WHISPER_MODELS.find((m) => m.id === cur) ?? WHISPER_MODELS[0]
   })
 
   function handleTestVoice() {
@@ -40,10 +66,13 @@ export const SettingsVoice: Component = () => {
       tts.stop()
       return
     }
+
+    const eng = settings.voice.engine() as "kokoro" | "system"
     tts.speak(
-      "Hello! I am Whis, your autonomous coding assistant. Voice synthesis is working smoothly and naturally.",
+      "Hello! I am Whis, your autonomous AI coding partner. Neural voice synthesis is running locally and naturally.",
       {
-        voice: settings.voice.voice(),
+        engine: eng,
+        voice: eng === "kokoro" ? settings.voice.kokoroVoice() : settings.voice.voice(),
         speed: settings.voice.speed(),
       },
     )
@@ -51,52 +80,100 @@ export const SettingsVoice: Component = () => {
 
   return (
     <div class="settings-tab-body settings-tab-body--sectioned">
-      <section class="settings-section" aria-label={language.t("settings.voice.section.output")}>
-        <h3 class="settings-section-title">{language.t("settings.voice.section.output")}</h3>
+      {/* 1. Speech Output (TTS) */}
+      <section class="settings-section" aria-label="Speech Output (Neural TTS)">
+        <h3 class="settings-section-title">Speech Output (Text-to-Speech)</h3>
         <SettingsList>
           <SettingsRow
-            title={language.t("settings.voice.autoSpeak.title")}
-            description={language.t("settings.voice.autoSpeak.description")}
+            title="TTS Engine"
+            description="Choose between local Kokoro neural synthesis (studio human voice) or Windows built-in voice"
           >
-            <div data-action="settings-voice-autospeak">
-              <Switch
-                checked={settings.voice.autoSpeak()}
-                onChange={(checked) => settings.voice.setAutoSpeak(checked)}
-              />
-            </div>
+            <Select
+              data-action="settings-voice-engine"
+              options={engineOptions}
+              current={selectedEngine()}
+              value={(opt) => opt.value}
+              label={(opt) => opt.label}
+              placement="bottom-end"
+              gutter={6}
+              onSelect={(opt) => opt && settings.voice.setEngine(opt.value)}
+            />
           </SettingsRow>
 
-          <SettingsRow
-            title={language.t("settings.voice.voiceSelect.title")}
-            description={language.t("settings.voice.voiceSelect.description")}
-          >
-            <div class="flex items-center gap-2">
-              <Select
-                data-action="settings-voice-select"
-                options={voiceOptions()}
-                current={selectedVoice()}
-                value={(opt) => opt.id}
-                label={(opt) => opt.name}
-                placement="bottom-end"
-                gutter={6}
-                onSelect={(opt) => {
-                  if (opt) {
-                    settings.voice.setVoice(opt.id)
-                  }
-                }}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="small"
-                class="gap-1.5 shrink-0"
-                onClick={handleTestVoice}
-              >
-                <Icon name={tts.isSpeaking() ? "stop" : "volume"} size="small" />
-                <span>{tts.isSpeaking() ? "Stop" : language.t("settings.voice.preview")}</span>
-              </Button>
-            </div>
-          </SettingsRow>
+          <Show when={settings.voice.engine() === "kokoro"}>
+            <SettingsRow
+              title="Kokoro Neural Voice"
+              description="High-fidelity 82M open-weight neural voice running locally on CPU via ONNX (no GPU overhead)"
+            >
+              <div class="flex items-center gap-2">
+                <Select
+                  data-action="settings-voice-kokoro-select"
+                  options={kokoro.voices}
+                  current={selectedKokoroVoice()}
+                  value={(opt) => opt.id}
+                  label={(opt) => `${opt.name} (${opt.gender}, ${opt.accent})`}
+                  placement="bottom-end"
+                  gutter={6}
+                  onSelect={(opt) => opt && settings.voice.setKokoroVoice(opt.id)}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="small"
+                  class="gap-1.5 shrink-0"
+                  onClick={handleTestVoice}
+                >
+                  <Icon name={tts.isSpeaking() ? "stop" : "volume"} size="small" />
+                  <span>{tts.isSpeaking() ? "Stop" : "Preview"}</span>
+                </Button>
+              </div>
+            </SettingsRow>
+
+            {/* Model download / cache progress */}
+            <Show when={kokoro.downloadProgress() > 0 && kokoro.downloadProgress() < 100}>
+              <SettingsRow title="Downloading Kokoro Model" description="Downloading model once for offline use">
+                <div class="w-48 flex flex-col gap-1">
+                  <div class="w-full bg-[#261f17] h-2 rounded-full overflow-hidden">
+                    <div
+                      class="bg-[#e5a93c] h-full transition-all duration-300"
+                      style={{ width: `${kokoro.downloadProgress()}%` }}
+                    />
+                  </div>
+                  <span class="text-[11px] text-[#e5a93c] font-mono">{kokoro.downloadProgress()}%</span>
+                </div>
+              </SettingsRow>
+            </Show>
+          </Show>
+
+          <Show when={settings.voice.engine() === "system"}>
+            <SettingsRow
+              title={language.t("settings.voice.voiceSelect.title")}
+              description={language.t("settings.voice.voiceSelect.description")}
+            >
+              <div class="flex items-center gap-2">
+                <Select
+                  data-action="settings-voice-select"
+                  options={systemVoiceOptions()}
+                  current={selectedSystemVoice()}
+                  value={(opt) => opt.id}
+                  label={(opt) => opt.name}
+                  placement="bottom-end"
+                  gutter={6}
+                  onSelect={(opt) => opt && settings.voice.setVoice(opt.id)}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="small"
+                  class="gap-1.5 shrink-0"
+                  onClick={handleTestVoice}
+                >
+                  <Icon name={tts.isSpeaking() ? "stop" : "volume"} size="small" />
+                  <span>{tts.isSpeaking() ? "Stop" : language.t("settings.voice.preview")}</span>
+                </Button>
+              </div>
+            </SettingsRow>
+          </Show>
 
           <SettingsRow
             title={language.t("settings.voice.speed.title")}
@@ -113,12 +190,73 @@ export const SettingsVoice: Component = () => {
               onSelect={(opt) => opt && settings.voice.setSpeed(opt.value)}
             />
           </SettingsRow>
+
+          <SettingsRow
+            title={language.t("settings.voice.autoSpeak.title")}
+            description={language.t("settings.voice.autoSpeak.description")}
+          >
+            <div data-action="settings-voice-autospeak">
+              <Switch
+                checked={settings.voice.autoSpeak()}
+                onChange={(checked) => settings.voice.setAutoSpeak(checked)}
+              />
+            </div>
+          </SettingsRow>
         </SettingsList>
       </section>
 
-      <section class="settings-section" aria-label={language.t("settings.voice.section.input")}>
-        <h3 class="settings-section-title">{language.t("settings.voice.section.input")}</h3>
+      {/* 2. Speech Input (STT & VAD) */}
+      <section class="settings-section" aria-label="Speech Input (Local Whisper & Silero VAD)">
+        <h3 class="settings-section-title">Speech Input (Whisper & VAD)</h3>
         <SettingsList>
+          <SettingsRow
+            title="Local Whisper Model"
+            description="Runs 100% locally on CPU without external servers or API keys"
+          >
+            <Select
+              data-action="settings-whisper-model"
+              options={WHISPER_MODELS}
+              current={selectedWhisperModel()}
+              value={(opt) => opt.id}
+              label={(opt) => `${opt.name} (${opt.size})`}
+              placement="bottom-end"
+              gutter={6}
+              onSelect={(opt) => opt && settings.voice.setWhisperModel(opt.id)}
+            />
+          </SettingsRow>
+
+          <Show when={whisper.downloadProgress() > 0 && whisper.downloadProgress() < 100}>
+            <SettingsRow title="Downloading Whisper Model" description="Downloading once for local offline speech recognition">
+              <div class="w-48 flex flex-col gap-1">
+                <div class="w-full bg-[#261f17] h-2 rounded-full overflow-hidden">
+                  <div
+                    class="bg-[#e5a93c] h-full transition-all duration-300"
+                    style={{ width: `${whisper.downloadProgress()}%` }}
+                  />
+                </div>
+                <span class="text-[11px] text-[#e5a93c] font-mono">{whisper.downloadProgress()}%</span>
+              </div>
+            </SettingsRow>
+          </Show>
+
+          <SettingsRow
+            title="Silence Pause Duration"
+            description="How long to wait after you stop speaking before auto-submitting your prompt"
+          >
+            <div class="flex items-center gap-3">
+              <input
+                type="range"
+                min="0.5"
+                max="2.0"
+                step="0.1"
+                value={settings.voice.silenceThreshold()}
+                onInput={(e) => settings.voice.setSilenceThreshold(parseFloat(e.currentTarget.value))}
+                class="w-32 accent-[#e5a93c]"
+              />
+              <span class="text-xs font-mono w-12 text-[#ede6dd]">{settings.voice.silenceThreshold()}s</span>
+            </div>
+          </SettingsRow>
+
           <SettingsRow
             title={language.t("settings.voice.autoSend.title")}
             description={language.t("settings.voice.autoSend.description")}
@@ -130,6 +268,66 @@ export const SettingsVoice: Component = () => {
               />
             </div>
           </SettingsRow>
+        </SettingsList>
+      </section>
+
+      {/* 3. Activation & Hotkeys */}
+      <section class="settings-section" aria-label="Activation & Hotkeys">
+        <h3 class="settings-section-title">Activation & Wake Controls</h3>
+        <SettingsList>
+          <SettingsRow
+            title="Push-to-Talk Global Hotkey"
+            description="Global hotkey to start or toggle voice dictation anywhere in Windows"
+          >
+            <div class="flex items-center gap-2">
+              <input
+                type="text"
+                value={settings.voice.pushToTalkHotkey()}
+                onInput={(e) => settings.voice.setPushToTalkHotkey(e.currentTarget.value)}
+                class="h-7 w-48 rounded-md px-2 text-xs font-mono bg-[#18130e] text-[#ede6dd] border border-[#2c2217] focus:outline-none focus:border-[#e5a93c]"
+              />
+            </div>
+          </SettingsRow>
+
+          <SettingsRow
+            title='Wake Word ("Hey Whis")'
+            description="Acoustic keyword detection for 'Hey Whis' (Off by default, runs 100% locally on CPU)"
+          >
+            <div class="flex items-center gap-2">
+              <Show when={settings.voice.wakeWordEnabled() || wakeWord.isAlwaysListening()}>
+                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono bg-[#10b981]/20 text-[#10b981]">
+                  <span class="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
+                  Active
+                </span>
+              </Show>
+              <Switch
+                checked={settings.voice.wakeWordEnabled()}
+                onChange={(checked) => settings.voice.setWakeWordEnabled(checked)}
+              />
+            </div>
+          </SettingsRow>
+
+          <Show when={settings.voice.wakeWordEnabled()}>
+            <SettingsRow
+              title="Wake Word Sensitivity"
+              description="Adjust sensitivity to avoid false wake triggers"
+            >
+              <div class="flex items-center gap-3">
+                <input
+                  type="range"
+                  min="0.1"
+                  max="0.9"
+                  step="0.05"
+                  value={settings.voice.wakeWordSensitivity()}
+                  onInput={(e) => settings.voice.setWakeWordSensitivity(parseFloat(e.currentTarget.value))}
+                  class="w-32 accent-[#e5a93c]"
+                />
+                <span class="text-xs font-mono w-12 text-[#ede6dd]">
+                  {Math.round((settings.voice.wakeWordSensitivity() ?? 0.5) * 100)}%
+                </span>
+              </div>
+            </SettingsRow>
+          </Show>
         </SettingsList>
       </section>
     </div>
