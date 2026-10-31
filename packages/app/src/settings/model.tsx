@@ -169,6 +169,7 @@ const voiceSchema = Persistence.struct({
   speed: Schema.Number,
   autoSend: Schema.Boolean,
   engine: Persistence.optional(Schema.String),
+  sttEngine: Persistence.optional(Schema.String),
   kokoroVoice: Persistence.optional(Schema.String),
   whisperModel: Persistence.optional(Schema.String),
   silenceThreshold: Persistence.optional(Schema.Number),
@@ -318,6 +319,7 @@ export const defaultSettings: Settings = {
     speed: typeof localStorage !== "undefined" && localStorage.getItem("whis_speed") ? parseFloat(localStorage.getItem("whis_speed") ?? "1.0") : 1.0,
     autoSend: typeof localStorage !== "undefined" ? localStorage.getItem("whis_autosend") !== "false" : true,
     engine: typeof localStorage !== "undefined" ? (localStorage.getItem("whis_engine") ?? "system") : "system",
+    sttEngine: typeof localStorage !== "undefined" ? (localStorage.getItem("whis_stt_engine") ?? "windows") : "windows",
     kokoroVoice: typeof localStorage !== "undefined" ? (localStorage.getItem("whis_kokoro_voice") ?? "af_heart") : "af_heart",
     whisperModel: typeof localStorage !== "undefined" ? (localStorage.getItem("whis_whisper_model") ?? "tiny.en") : "tiny.en",
     silenceThreshold: typeof localStorage !== "undefined" && localStorage.getItem("whis_silence_threshold") ? parseFloat(localStorage.getItem("whis_silence_threshold") ?? "1.0") : 1.0,
@@ -565,6 +567,11 @@ export const { use: useSettings, provider: SettingsProvider } = createSimpleCont
         setEngine(value: string) {
           if (typeof localStorage !== "undefined") localStorage.setItem("whis_engine", value)
           setStore("voice", (prev) => ({ ...(prev ?? defaultSettings.voice!), engine: value }))
+        },
+        sttEngine: withFallback(() => store.voice?.sttEngine, defaultSettings.voice!.sttEngine),
+        setSttEngine(value: string) {
+          if (typeof localStorage !== "undefined") localStorage.setItem("whis_stt_engine", value)
+          setStore("voice", (prev) => ({ ...(prev ?? defaultSettings.voice!), sttEngine: value }))
         },
         kokoroVoice: withFallback(() => store.voice?.kokoroVoice, defaultSettings.voice!.kokoroVoice),
         setKokoroVoice(value: string) {

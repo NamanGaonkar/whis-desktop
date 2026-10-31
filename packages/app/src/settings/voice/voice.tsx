@@ -10,7 +10,6 @@ import { useSettings } from "@/settings/model"
 import { useTextToSpeech, type VoiceOption } from "@/runtime/speech/tts"
 import { useKokoroEngine, type KokoroVoice } from "@/runtime/speech/kokoro-engine"
 import { useWhisperEngine, WHISPER_MODELS, type WhisperModelOption } from "@/runtime/speech/whisper-engine"
-import { useWakeWordEngine } from "@/runtime/speech/wake-word-engine"
 import "@/settings/settings.css"
 
 const speedOptions = [
@@ -25,13 +24,17 @@ const engineOptions = [
   { value: "system", label: "Fast Windows Voice (Instant 0ms, Zero Lag)" },
 ]
 
+const sttEngineOptions = [
+  { value: "windows", label: "Windows Native Voice Typing (Win + H - Instant 0ms, Streaming - Recommended)" },
+  { value: "whisper", label: "Local Whisper Model (Offline Background Worker)" },
+]
+
 export const SettingsVoice: Component = () => {
   const language = useLanguage()
   const settings = useSettings()
   const tts = useTextToSpeech()
   const kokoro = useKokoroEngine()
   const whisper = useWhisperEngine()
-  const wakeWord = useWakeWordEngine()
 
   const systemVoiceOptions = createMemo((): VoiceOption[] => {
     const list = tts.availableVoices()
@@ -42,6 +45,11 @@ export const SettingsVoice: Component = () => {
   const selectedEngine = createMemo(() => {
     const eng = settings.voice.engine()
     return engineOptions.find((e) => e.value === eng) ?? engineOptions[0]
+  })
+
+  const selectedSttEngine = createMemo(() => {
+    const eng = settings.voice.sttEngine()
+    return sttEngineOptions.find((e) => e.value === eng) ?? sttEngineOptions[0]
   })
 
   const selectedKokoroVoice = createMemo((): KokoroVoice => {
@@ -103,7 +111,7 @@ export const SettingsVoice: Component = () => {
           <Show when={settings.voice.engine() === "kokoro"}>
             <SettingsRow
               title="Kokoro Neural Voice"
-              description="High-fidelity 82M open-weight neural voice running locally on CPU via ONNX (no GPU overhead)"
+              description="High-fidelity 82M open-weight neural voice running in background Web Worker (zero UI lag)"
             >
               <div class="flex items-center gap-2">
                 <Select
@@ -205,38 +213,56 @@ export const SettingsVoice: Component = () => {
         </SettingsList>
       </section>
 
-      {/* 2. Speech Input (STT & VAD) */}
-      <section class="settings-section" aria-label="Speech Input (Local Whisper & Silero VAD)">
-        <h3 class="settings-section-title">Speech Input (Whisper & VAD)</h3>
+      {/* 2. Speech Input (STT Engine & Settings) */}
+      <section class="settings-section" aria-label="Speech Input (Speech-to-Text)">
+        <h3 class="settings-section-title">Speech Input (Speech-to-Text)</h3>
         <SettingsList>
           <SettingsRow
-            title="Local Whisper Model"
-            description="Runs 100% locally on CPU without external servers or API keys"
+            title="Speech-to-Text Engine"
+            description="Choose between native Windows Voice Typing (instant 0ms streaming) or local Whisper"
           >
             <Select
-              data-action="settings-whisper-model"
-              options={WHISPER_MODELS}
-              current={selectedWhisperModel()}
-              value={(opt) => opt.id}
-              label={(opt) => `${opt.name} (${opt.size})`}
+              data-action="settings-stt-engine"
+              options={sttEngineOptions}
+              current={selectedSttEngine()}
+              value={(opt) => opt.value}
+              label={(opt) => opt.label}
               placement="bottom-end"
               gutter={6}
-              onSelect={(opt) => opt && settings.voice.setWhisperModel(opt.id)}
+              onSelect={(opt) => opt && settings.voice.setSttEngine(opt.value)}
             />
           </SettingsRow>
 
-          <Show when={whisper.downloadProgress() > 0 && whisper.downloadProgress() < 100}>
-            <SettingsRow title="Downloading Whisper Model" description="Downloading once for local offline speech recognition">
-              <div class="w-48 flex flex-col gap-1">
-                <div class="w-full bg-[#261f17] h-2 rounded-full overflow-hidden">
-                  <div
-                    class="bg-[#e5a93c] h-full transition-all duration-300"
-                    style={{ width: `${whisper.downloadProgress()}%` }}
-                  />
-                </div>
-                <span class="text-[11px] text-[#e5a93c] font-mono">{whisper.downloadProgress()}%</span>
-              </div>
+          <Show when={settings.voice.sttEngine() === "whisper"}>
+            <SettingsRow
+              title="Local Whisper Model"
+              description="Runs 100% locally on CPU without external servers or API keys"
+            >
+              <Select
+                data-action="settings-whisper-model"
+                options={WHISPER_MODELS}
+                current={selectedWhisperModel()}
+                value={(opt) => opt.id}
+                label={(opt) => `${opt.name} (${opt.size})`}
+                placement="bottom-end"
+                gutter={6}
+                onSelect={(opt) => opt && settings.voice.setWhisperModel(opt.id)}
+              />
             </SettingsRow>
+
+            <Show when={whisper.downloadProgress() > 0 && whisper.downloadProgress() < 100}>
+              <SettingsRow title="Downloading Whisper Model" description="Downloading once for local offline speech recognition">
+                <div class="w-48 flex flex-col gap-1">
+                  <div class="w-full bg-[#261f17] h-2 rounded-full overflow-hidden">
+                    <div
+                      class="bg-[#e5a93c] h-full transition-all duration-300"
+                      style={{ width: `${whisper.downloadProgress()}%` }}
+                    />
+                  </div>
+                  <span class="text-[11px] text-[#e5a93c] font-mono">{whisper.downloadProgress()}%</span>
+                </div>
+              </SettingsRow>
+            </Show>
           </Show>
 
           <SettingsRow
@@ -273,7 +299,7 @@ export const SettingsVoice: Component = () => {
 
       {/* 3. Activation & Hotkeys */}
       <section class="settings-section" aria-label="Activation & Hotkeys">
-        <h3 class="settings-section-title">Activation & Wake Controls</h3>
+        <h3 class="settings-section-title">Activation & Hotkeys</h3>
         <SettingsList>
           <SettingsRow
             title="Push-to-Talk Global Hotkey"
@@ -288,46 +314,6 @@ export const SettingsVoice: Component = () => {
               />
             </div>
           </SettingsRow>
-
-          <SettingsRow
-            title='Wake Word ("Hey Whis")'
-            description="Acoustic keyword detection for 'Hey Whis' (Off by default, runs 100% locally on CPU)"
-          >
-            <div class="flex items-center gap-2">
-              <Show when={settings.voice.wakeWordEnabled() || wakeWord.isAlwaysListening()}>
-                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono bg-[#10b981]/20 text-[#10b981]">
-                  <span class="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
-                  Active
-                </span>
-              </Show>
-              <Switch
-                checked={settings.voice.wakeWordEnabled()}
-                onChange={(checked) => settings.voice.setWakeWordEnabled(checked)}
-              />
-            </div>
-          </SettingsRow>
-
-          <Show when={settings.voice.wakeWordEnabled()}>
-            <SettingsRow
-              title="Wake Word Sensitivity"
-              description="Adjust sensitivity to avoid false wake triggers"
-            >
-              <div class="flex items-center gap-3">
-                <input
-                  type="range"
-                  min="0.1"
-                  max="0.9"
-                  step="0.05"
-                  value={settings.voice.wakeWordSensitivity()}
-                  onInput={(e) => settings.voice.setWakeWordSensitivity(parseFloat(e.currentTarget.value))}
-                  class="w-32 accent-[#e5a93c]"
-                />
-                <span class="text-xs font-mono w-12 text-[#ede6dd]">
-                  {Math.round((settings.voice.wakeWordSensitivity() ?? 0.5) * 100)}%
-                </span>
-              </div>
-            </SettingsRow>
-          </Show>
         </SettingsList>
       </section>
     </div>

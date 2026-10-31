@@ -1,10 +1,9 @@
-import { Component, Show, createSignal, onMount, onCleanup, createEffect } from "solid-js"
+import { Component, Show, createSignal, onMount, onCleanup } from "solid-js"
 import { IconButton } from "@opencode/ui/icon-button"
 import { Icon } from "@opencode/ui/icon"
 import { Tooltip } from "@opencode/ui/tooltip"
 import { useSpeechToText } from "@/runtime/speech/stt"
 import { useSettings } from "@/settings/model"
-import { useWakeWordEngine } from "@/runtime/speech/wake-word-engine"
 import type { ComposerEditorModel } from "./interaction"
 
 export const ComposerVoiceInputButton: Component<{
@@ -15,7 +14,6 @@ export const ComposerVoiceInputButton: Component<{
 }> = (props) => {
   const stt = useSpeechToText()
   const settings = useSettings()
-  const wakeWord = useWakeWordEngine()
   const [feedback, setFeedback] = createSignal<string | null>(null)
 
   function showTemporaryFeedback(text: string) {
@@ -32,6 +30,7 @@ export const ComposerVoiceInputButton: Component<{
     }
 
     stt.start({
+      engine: (settings.voice.sttEngine() ?? "windows") as any,
       silenceThresholdSeconds: settings.voice.silenceThreshold(),
       whisperModel: settings.voice.whisperModel() as any,
       autoSendEnabled: settings.voice.autoSend(),
@@ -112,39 +111,19 @@ export const ComposerVoiceInputButton: Component<{
     })
   })
 
-  // Wake Word ("Hey Whis") integration
-  createEffect(() => {
-    const isWakeEnabled = settings.voice.wakeWordEnabled()
-    const sensitivity = settings.voice.wakeWordSensitivity()
-
-    if (isWakeEnabled) {
-      wakeWord.start({
-        sensitivity,
-        onWakeWord: () => {
-          showTemporaryFeedback("Hey Whis heard!")
-          if (!stt.isListening()) {
-            startListening()
-          }
-        },
-      })
-    } else {
-      wakeWord.stop()
-    }
-  })
-
   onCleanup(() => {
-    wakeWord.stop()
     stt.stop()
   })
 
   const tooltipText = () => {
     if (feedback()) return feedback()!
     if (stt.error()) return stt.error()!
-    if (stt.status() === "transcribing") return "Transcribing with local Whisper..."
+    if (stt.status() === "transcribing") return "Transcribing speech..."
     if (stt.status() === "sending") return "Auto-sending prompt..."
-    if (stt.status() === "speech_detected") return "Listening to speech (VAD Active)..."
     if (stt.isListening()) return `Listening... (Auto-sends after ${settings.voice.silenceThreshold()}s pause)`
-    return "Local Voice Input (Silero VAD + Whisper \u00B7 Auto-send)"
+    return settings.voice.sttEngine() === "windows"
+      ? "Voice Typing (Windows Win+H \u00B7 Auto-send)"
+      : "Voice Input (Local Whisper \u00B7 Auto-send)"
   }
 
   return (
@@ -192,14 +171,6 @@ export const ComposerVoiceInputButton: Component<{
               toggleListening()
             }}
           />
-
-          {/* Wake Word active badge indicator */}
-          <Show when={settings.voice.wakeWordEnabled() && !stt.isListening()}>
-            <span
-              class="absolute -bottom-1 left-1.5 w-1.5 h-1.5 rounded-full bg-[#10b981] ring-1 ring-[#080502]"
-              title="Wake word active ('Hey Whis')"
-            />
-          </Show>
         </div>
       </Tooltip>
     </Show>
