@@ -95,20 +95,41 @@ function createGlowTexture(hexColor: number): CanvasTexture {
   return texture
 }
 
-function createTextSprite(text: string, color: string, fontSize = 22): Sprite {
+function createTextSprite(text: string, isDark: boolean): Sprite {
   const canvas = document.createElement("canvas")
-  canvas.width = 256
-  canvas.height = 64
+  canvas.width = 512
+  canvas.height = 128
   const ctx = canvas.getContext("2d")
   if (ctx) {
-    ctx.clearRect(0, 0, 256, 64)
-    ctx.font = `bold ${fontSize}px ui-monospace, Menlo, Monaco, Consolas, monospace`
+    ctx.clearRect(0, 0, 512, 128)
+    const labelText = text.length > 22 ? `${text.slice(0, 20)}…` : text
+
+    ctx.font = "bold 32px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
+    const metrics = ctx.measureText(labelText)
+    const badgeW = Math.min(480, Math.max(160, metrics.width + 56))
+    const badgeH = 70
+    const badgeX = (512 - badgeW) / 2
+    const badgeY = (128 - badgeH) / 2
+    const r = 20
+
+    // High contrast rounded pill badge background
+    ctx.beginPath()
+    if (typeof (ctx as any).roundRect === "function") {
+      ;(ctx as any).roundRect(badgeX, badgeY, badgeW, badgeH, r)
+    } else {
+      ctx.rect(badgeX, badgeY, badgeW, badgeH)
+    }
+    ctx.fillStyle = isDark ? "rgba(18, 14, 10, 0.92)" : "rgba(255, 255, 255, 0.96)"
+    ctx.fill()
+    ctx.lineWidth = 3
+    ctx.strokeStyle = isDark ? "rgba(229, 169, 60, 0.75)" : "rgba(180, 83, 9, 0.65)"
+    ctx.stroke()
+
+    // High contrast crisp text
     ctx.textAlign = "center"
     ctx.textBaseline = "middle"
-    ctx.fillStyle = color
-    ctx.shadowColor = "rgba(0, 0, 0, 0.9)"
-    ctx.shadowBlur = 6
-    ctx.fillText(text.length > 20 ? `${text.slice(0, 18)}…` : text, 128, 32)
+    ctx.fillStyle = isDark ? "#ffffff" : "#140e06"
+    ctx.fillText(labelText, 256, 64)
   }
 
   const texture = new CanvasTexture(canvas)
@@ -116,11 +137,12 @@ function createTextSprite(text: string, color: string, fontSize = 22): Sprite {
   const spriteMat = new SpriteMaterial({
     map: texture,
     transparent: true,
-    opacity: 0.9,
+    opacity: 0.96,
     depthWrite: false,
+    depthTest: false,
   })
   const sprite = new Sprite(spriteMat)
-  sprite.scale.set(18, 4.5, 1)
+  sprite.scale.set(24, 6, 1)
   return sprite
 }
 
@@ -279,9 +301,22 @@ function simulate3DForceLayout(
     temp *= 0.96
   }
 
+  // Calculate actual cluster centroid and shift down by -25 units
+  // so the entire 3D neural cluster is vertically centered on screen and clear of the top toolbar
+  let cx = 0, cy = 0, cz = 0
+  for (const n of simNodes) {
+    cx += n.x
+    cy += n.y
+    cz += n.z
+  }
+  const count = Math.max(1, simNodes.length)
+  cx /= count
+  cy /= count
+  cz /= count
+
   const result = new Map<string, Vector3>()
   for (const n of simNodes) {
-    result.set(n.id, new Vector3(n.x, n.y, n.z))
+    result.set(n.id, new Vector3(n.x - cx, n.y - cy - 25, n.z - cz))
   }
   return result
 }
@@ -293,7 +328,7 @@ export const KnowledgeGraph3D: Component<{
   searchQuery?: string
   activeFilter?: string
   isAutoRotating?: boolean
-  onSelectNode?: (nodeData: GraphNode["data"]) => void
+  onSelectNode?: (nodeData: GraphNode["data"] | null) => void
 }> = (props) => {
   let containerRef: HTMLDivElement | undefined
   let renderer: WebGLRenderer | null = null
@@ -326,8 +361,8 @@ export const KnowledgeGraph3D: Component<{
     const height = containerRef.clientHeight || 600
 
     scene = new Scene()
-    camera = new PerspectiveCamera(55, width / height, 0.1, 3000)
-    camera.position.set(0, 60, 280)
+    camera = new PerspectiveCamera(52, width / height, 0.1, 3000)
+    camera.position.set(0, 5, 330)
 
     renderer = new WebGLRenderer({ antialias: true, alpha: true })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
@@ -343,6 +378,7 @@ export const KnowledgeGraph3D: Component<{
     controls.panSpeed = 0.8
     controls.minDistance = 15
     controls.maxDistance = 1200
+    controls.target.set(0, -25, 0)
 
     // Cinematic deep space neural lighting
     const ambientLight = new AmbientLight(0xffffff, 1.1)
@@ -394,7 +430,8 @@ export const KnowledgeGraph3D: Component<{
         }
         for (const [id, sprite] of nodeSprites.entries()) {
           const data = nodeDataMap.get(id)
-          sprite.visible = Boolean((data?.degree ?? 0) >= 4)
+          sprite.visible = Boolean((data?.degree ?? 0) >= 2 || nodeSprites.size <= 55)
+          sprite.scale.set(24, 6, 1)
         }
         if (edgeColorsAttribute && originalEdgeColors) {
           edgeColorsAttribute.copyArray(originalEdgeColors)
@@ -422,9 +459,16 @@ export const KnowledgeGraph3D: Component<{
         }
       }
 
-      // Show labels for self and neighbors
+      // Show labels for self and neighbors, scale selected label up
       for (const [id, sprite] of nodeSprites.entries()) {
-        sprite.visible = id === activeId || neighbors.has(id)
+        const isSelf = id === activeId
+        const isNeighbor = neighbors.has(id)
+        sprite.visible = isSelf || isNeighbor
+        if (isSelf) {
+          sprite.scale.set(30, 7.5, 1)
+        } else {
+          sprite.scale.set(24, 6, 1)
+        }
       }
 
       // Halos
@@ -459,6 +503,12 @@ export const KnowledgeGraph3D: Component<{
       }
     }
 
+    // Reactively update highlight when props.selectedNodeId changes externally
+    createEffect(() => {
+      const active = props.selectedNodeId || null
+      updateHighlight(active)
+    })
+
     const onPointerMove = (e: MouseEvent) => {
       if (!containerRef || !camera) return
       const rect = containerRef.getBoundingClientRect()
@@ -481,12 +531,17 @@ export const KnowledgeGraph3D: Component<{
         containerRef.style.cursor = "grab"
         if (hoverNodeId) {
           hoverNodeId = null
-          updateHighlight(null)
+          updateHighlight(props.selectedNodeId || null)
         }
       }
     }
 
-    const onPointerDown = () => {
+    let downPointerX = 0
+    let downPointerY = 0
+
+    const onPointerDown = (e: MouseEvent) => {
+      downPointerX = e.clientX
+      downPointerY = e.clientY
       if (containerRef) containerRef.style.cursor = "grabbing"
     }
 
@@ -496,6 +551,11 @@ export const KnowledgeGraph3D: Component<{
 
     const onClick = (e: MouseEvent) => {
       if (!containerRef || !camera) return
+
+      // If user dragged to orbit (> 6px movement), ignore click
+      const dragDist = Math.hypot(e.clientX - downPointerX, e.clientY - downPointerY)
+      if (dragDist > 6) return
+
       const rect = containerRef.getBoundingClientRect()
       mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1
       mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1
@@ -508,9 +568,19 @@ export const KnowledgeGraph3D: Component<{
         const hit = intersects[0].object as Mesh
         const nodeId = hit.userData.nodeId
         if (nodeId && nodeDataMap.has(nodeId)) {
-          props.onSelectNode?.(nodeDataMap.get(nodeId)!)
-          updateHighlight(nodeId)
+          // If already selected, clicking it again toggles and deselects!
+          if (props.selectedNodeId === nodeId) {
+            props.onSelectNode?.(null)
+            updateHighlight(null)
+          } else {
+            props.onSelectNode?.(nodeDataMap.get(nodeId)!)
+            updateHighlight(nodeId)
+          }
         }
+      } else {
+        // Tapped empty background in 3D -> deselect!
+        props.onSelectNode?.(null)
+        updateHighlight(null)
       }
     }
 
@@ -691,12 +761,11 @@ export const KnowledgeGraph3D: Component<{
         haloSprites.set(node.data.id, haloSprite)
       }
 
-      // Billboard Text Label
-      const labelColor = dark ? "#f1f5f9" : "#1e293b"
-      const sprite = createTextSprite(node.data.label, labelColor)
-      sprite.position.set(pos.x, pos.y - baseRadius - 3.8, pos.z)
-      // Hubs show label by default, others show on hover/select
-      sprite.visible = degree >= 4
+      // Billboard Text Label with high-contrast pill badge
+      const sprite = createTextSprite(node.data.label, dark)
+      sprite.position.set(pos.x, pos.y - baseRadius - 4.5, pos.z)
+      // Hubs and key nodes show label by default, others show on hover/select
+      sprite.visible = degree >= 2 || visibleNodes.length <= 55
       scene.add(sprite)
       nodeSprites.set(node.data.id, sprite)
     })

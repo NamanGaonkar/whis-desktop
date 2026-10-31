@@ -92,9 +92,8 @@ export function normalizeForSpeech(text: string): string {
   cleaned = cleaned.replace(/<[^>]+>/g, "")
 
   // 13. App Name Pronunciation
-  // Pronounce "Whis" as "Whiss" (/wɪs/) instead of "whys" (/waɪz/)
-  cleaned = cleaned.replace(/\b[wW]his\b/g, "Whiss")
-  cleaned = cleaned.replace(/\b[wW]his[- ]([a-zA-Z]+)\b/g, "Whiss $1")
+  // Pronounce "Whis" cleanly and naturally
+  cleaned = cleaned.replace(/\b[wW]hiss\b/g, "Whis")
 
   // 14. GPU and Hardware Model Pronunciation
   // Pronounce 4-digit GPU models naturally in words (e.g. RTX 4050 -> RTX forty fifty instead of "four thousand fifty")

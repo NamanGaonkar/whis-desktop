@@ -19,15 +19,15 @@ async function getTTS() {
 
     const modelId = "onnx-community/Kokoro-82M-v1.0-ONNX"
 
-    // Consistently use dtype: "q8" (quantized 8-bit ~86MB) so it persists in browser cache
-    // and never triggers re-downloading a 320MB fp32 model every restart.
+    // Use full precision fp32 for studio-quality human voice synthesis
+    // and WebGPU hardware acceleration when available.
     let tts: any = null
     const hasGpu = typeof navigator !== "undefined" && Boolean((navigator as any).gpu)
 
     if (hasGpu) {
       try {
         tts = await KokoroTTS.from_pretrained(modelId, {
-          dtype: "q8",
+          dtype: "fp32",
           device: "webgpu",
           progress_callback: (p: any) => {
             if (p && typeof p.progress === "number") {
@@ -43,7 +43,7 @@ async function getTTS() {
 
     if (!tts) {
       tts = await KokoroTTS.from_pretrained(modelId, {
-        dtype: "q8",
+        dtype: "fp32",
         device: "wasm",
         progress_callback: (p: any) => {
           if (p && typeof p.progress === "number") {
@@ -51,6 +51,13 @@ async function getTTS() {
           }
         },
       })
+    }
+
+    // Warm up the ONNX graph with default voice so initial preview/speech is instant
+    try {
+      await tts.generate("Hello", { voice: "af_heart" })
+    } catch (warmupErr) {
+      console.warn("Kokoro warmup notice:", warmupErr)
     }
 
     ttsInstance = tts
@@ -83,7 +90,9 @@ self.onmessage = async (e: MessageEvent) => {
 
       const tts = await getTTS()
       const result = await tts.generate(cleanText, { voice: voice || "af_heart" })
-      const rawAudio: Float32Array = result.audio
+      const rawAudio: Float32Array = (result && result.data instanceof Float32Array)
+        ? result.data
+        : (result?.audio instanceof Float32Array ? result.audio : new Float32Array(result?.audio || 0))
       const samplingRate: number = result.sampling_rate || 24000
 
       // Clone to transfer ownership cleanly to main thread
